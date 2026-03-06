@@ -1,0 +1,54 @@
+.sprite-importer {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sprite-importer__loaded {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sprite-importer__preview-wrap {
+  width: 100%;
+  max-height: 120px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: repeating-conic-gradient(
+      var(--surface3) 0% 25%,
+      var(--surface2) 0% 50%
+    )
+    0 0 / 12px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sprite-importer__preview {
+  max-width: 100%;
+  max-height: 120px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+.sprite-importer__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sprite-importer__filename {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sprite-importer__dims,
+.sprite-importer__cells {
+  font-size: 11px;
+  color: var(--text-muted);
+}

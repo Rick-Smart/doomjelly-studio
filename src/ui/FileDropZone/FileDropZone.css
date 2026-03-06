@@ -1,0 +1,52 @@
+.drop-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 28px 20px;
+  border: 2px dashed var(--border);
+  border-radius: 6px;
+  background: var(--surface2);
+  cursor: pointer;
+  text-align: center;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+  outline: none;
+}
+
+.drop-zone:hover,
+.drop-zone:focus-visible {
+  border-color: var(--accent);
+  background: var(--surface3);
+}
+
+.drop-zone--over {
+  border-color: var(--accent);
+  background: var(--surface3);
+}
+
+.drop-zone__input {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.drop-zone__icon {
+  font-size: 28px;
+  line-height: 1;
+}
+
+.drop-zone__label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.drop-zone__hint {
+  font-size: 11px;
+  color: var(--text-muted);
+}

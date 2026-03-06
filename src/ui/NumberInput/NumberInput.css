@@ -1,0 +1,38 @@
+.num-input {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.num-input__label {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.num-input__row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.num-input__field {
+  width: 64px;
+  padding: 4px 6px;
+  text-align: right;
+  /* Remove browser spinner arrows */
+  -moz-appearance: textfield;
+}
+
+.num-input__field::-webkit-inner-spin-button,
+.num-input__field::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.num-input__suffix {
+  font-size: 11px;
+  color: var(--text-muted);
+}

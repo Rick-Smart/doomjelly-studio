@@ -1,0 +1,11 @@
+.frame-config {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.frame-config__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 12px;
+}

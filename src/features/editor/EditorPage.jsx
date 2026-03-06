@@ -1,10 +1,49 @@
+import { useState } from "react";
+import { SpriteImporter } from "./SpriteImporter";
+import { FrameConfigPanel } from "./FrameConfigPanel";
+import { SheetViewerCanvas } from "./SheetViewerCanvas";
+import "./EditorPage.css";
+
 export function EditorPage() {
+  const [imageUrl, setImageUrl] = useState(null);
+  const [leftOpen, setLeftOpen] = useState(true);
+
   return (
-    <div className="page-placeholder">
-      <p className="placeholder-title">Editor</p>
-      <p className="placeholder-hint">
-        Sprite sheet importer and animation builder — coming next.
-      </p>
+    <div className="editor">
+      {/* ── Left panel: importer + frame config ── */}
+      <aside
+        className={`editor__left${leftOpen ? "" : " editor__left--collapsed"}`}
+      >
+        <button
+          className="editor__collapse-btn"
+          onClick={() => setLeftOpen((o) => !o)}
+          title={leftOpen ? "Collapse panel" : "Expand panel"}
+          aria-label={leftOpen ? "Collapse left panel" : "Expand left panel"}
+        >
+          {leftOpen ? "‹" : "›"}
+        </button>
+
+        {leftOpen && (
+          <div className="editor__left-inner">
+            <SpriteImporter onSheetLoaded={(url) => setImageUrl(url)} />
+            <div className="editor__divider" />
+            <FrameConfigPanel />
+          </div>
+        )}
+      </aside>
+
+      {/* ── Main: sheet viewer canvas ── */}
+      <div className="editor__canvas-area">
+        <SheetViewerCanvas imageUrl={imageUrl} />
+      </div>
+
+      {/* ── Right panel: sequence builder + preview (coming M2) ── */}
+      <aside className="editor__right">
+        <div className="editor__right-placeholder">
+          <span>Sequence &amp; Preview</span>
+          <span className="editor__right-hint">Coming in M2</span>
+        </div>
+      </aside>
     </div>
   );
 }
