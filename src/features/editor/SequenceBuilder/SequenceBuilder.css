@@ -24,6 +24,39 @@
   flex-shrink: 0;
 }
 
+/* ── List / Timeline view toggle ──────────────────────── */
+.seq-builder__view-toggle {
+  display: flex;
+  gap: 2px;
+  margin-left: auto;
+}
+
+.seq-builder__view-btn {
+  font-size: 10px;
+  padding: 2px 7px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  line-height: 16px;
+  transition:
+    background 0.1s,
+    color 0.1s,
+    border-color 0.1s;
+}
+
+.seq-builder__view-btn:hover {
+  background: var(--surface2);
+  color: var(--text);
+}
+
+.seq-builder__view-btn--active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
 .seq-builder__col-headers {
   display: flex;
   align-items: center;

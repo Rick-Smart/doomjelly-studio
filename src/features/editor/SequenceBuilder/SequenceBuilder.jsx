@@ -5,6 +5,7 @@ import { EmptyState } from "../../../ui/EmptyState";
 import { IconButton } from "../../../ui/IconButton";
 import { NumberInput } from "../../../ui/NumberInput";
 import { FrameRow } from "./FrameRow";
+import { TimelineView } from "../TimelineView";
 import "./SequenceBuilder.css";
 
 export function SequenceBuilder() {
@@ -15,6 +16,7 @@ export function SequenceBuilder() {
   const { frameIndex: playbackIdx } = usePlayback();
 
   const [bulkTicks, setBulkTicks] = useState(6);
+  const [viewMode, setViewMode] = useState("list"); // 'list' | 'timeline'
 
   // Auto-scroll to keep the active frame visible while playing.
   const activeRowRef = useRef(null);
@@ -74,6 +76,22 @@ export function SequenceBuilder() {
       <div className="seq-builder__header">
         <span className="panel-heading">Frames — {activeAnim.name}</span>
         <span className="seq-builder__count">{frames.length}</span>
+        <div className="seq-builder__view-toggle">
+          <button
+            className={`seq-builder__view-btn${viewMode === "list" ? " seq-builder__view-btn--active" : ""}`}
+            onClick={() => setViewMode("list")}
+            title="List view"
+          >
+            List
+          </button>
+          <button
+            className={`seq-builder__view-btn${viewMode === "timeline" ? " seq-builder__view-btn--active" : ""}`}
+            onClick={() => setViewMode("timeline")}
+            title="Timeline view"
+          >
+            Timeline
+          </button>
+        </div>
       </div>
 
       {frames.length === 0 ? (
@@ -82,6 +100,8 @@ export function SequenceBuilder() {
           title="No frames yet"
           hint="Click cells on the sheet to add"
         />
+      ) : viewMode === "timeline" ? (
+        <TimelineView />
       ) : (
         <>
           <div className="seq-builder__col-headers" aria-hidden="true">

@@ -55,11 +55,14 @@ export function PreviewCanvas() {
     { mode, speed, ticksPerSecond: 60, resetKey: activeAnimationId },
   );
 
-  // Publish frameIndex to PlaybackContext so SequenceBuilder can highlight it.
-  const { setFrameIndex } = usePlayback();
+  // Publish frameIndex + controls to PlaybackContext.
+  const { setFrameIndex, registerControls } = usePlayback();
   useEffect(() => {
     setFrameIndex(frameIndex);
   }, [frameIndex, setFrameIndex]);
+  useEffect(() => {
+    registerControls(seek, pause);
+  }, [seek, pause, registerControls]);
 
   const canvasRef = useRef(null);
   const imgRef = useRef(null);

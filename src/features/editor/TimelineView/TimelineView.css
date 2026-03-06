@@ -1,0 +1,88 @@
+/* ── Timeline container ───────────────────────────────── */
+.tl {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.tl__scroll {
+  height: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+/* Full-width inner strip — cells lay out flex-row */
+.tl__strip {
+  position: relative;
+  display: flex;
+  height: 100%;
+  min-height: 72px;
+}
+
+/* ── Playhead ─────────────────────────────────────────── */
+.tl__playhead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border-left: 2px solid var(--accent);
+  pointer-events: none;
+  z-index: 1;
+  transition: left 60ms linear;
+}
+
+/* ── Frame cell ───────────────────────────────────────── */
+.tl-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 4px 2px 3px;
+  border-right: 1px solid var(--border);
+  cursor: pointer;
+  flex-shrink: 0;
+  position: relative;
+  transition: background 0.08s;
+  user-select: none;
+}
+
+.tl-cell:hover {
+  background: var(--surface2);
+}
+
+.tl-cell--active .tl-cell__ticks {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+/* ── Thumbnail canvas ─────────────────────────────────── */
+.tl-cell__thumb {
+  display: block;
+  image-rendering: pixelated;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+}
+
+/* ── Tick count badge ─────────────────────────────────── */
+.tl-cell__ticks {
+  font-size: 9px;
+  color: var(--text-muted);
+  line-height: 1;
+  letter-spacing: 0.02em;
+}
+
+/* ── Frame index (top-left corner) ───────────────────── */
+.tl-cell__index {
+  position: absolute;
+  top: 2px;
+  left: 3px;
+  font-size: 8px;
+  color: var(--text-muted);
+  line-height: 1;
+  opacity: 0.6;
+}
