@@ -1,6 +1,6 @@
 # DoomJelly Studio — Project Roadmap
 
-**Last updated:** 2026-03-06 (M11 complete)
+**Last updated:** 2026-03-06 (M12 complete)
 **Status key:** ✅ Done · 🔄 In Progress · 🔵 Next · ⬜ Pending · 💭 Wishlist
 
 ---
@@ -12,6 +12,24 @@
 - Canvas resizes with panel (SheetViewerCanvas responds to panel width changes)
 - Keyboard: `Esc` to deselect, `A` to select all cells
 - Drag to reorder animations (AnimationSidebar)
+- Preview panel resizable (right panel already resizable; preview canvas itself could fill it)
+
+---
+
+## M12: Custom Theme Editor + Swatch Fix (complete)
+
+- Theme swatch cards now show a diagonal bg/accent split gradient — honest preview in all themes (no more "purple for light mode")
+- Swatch border uses `var(--border)` — visible in all themes including light
+- **Custom** theme added to theme picker; persisted to `dj-theme`
+- `CustomThemeEditor` panel expands below theme grid when Custom is selected:
+  - 9 color pickers: Background, Panel Surface, Surface 2/3, Accent, Text, Muted Text, Border, Danger
+  - Auto-derives `--accent-hover` / `--danger-hover` (80% brightness of base) and `color-scheme` (light/dark by luminance)
+  - "Copy from" buttons: populate pickers from Dark / Light / Synthwave
+  - Background image upload (≤ 2 MB, stored as base64 in `dj-theme-custom-bg`)
+  - Opacity slider (5–100%) controls overlay strength
+  - Remove image button with thumbnail preview
+- All custom vars and bg image persisted to localStorage
+- Background image applied via `html.has-bg-image::before` CSS rule
 
 ---
 
@@ -236,7 +254,7 @@
 | Per-frame dx/dy nudge offset (±64px, highlights when non-zero) | ✅     | P1       |
 | Reorder frame up/down buttons                                  | ✅     | P0       |
 | Delete frame button                                            | ✅     | P0       |
-| Drag to reorder frames                                         | ⬜     | P2       |
+| Drag to reorder frames                                         | ✅     | P2       |
 | Active frame highlighted (synced with scrub slider)            | ✅     | P1       |
 | Import frames from existing JSON                               | ⬜     | P2       |
 | Total animation duration display                               | ✅     | P1       |
@@ -264,7 +282,7 @@
 | Background: checkerboard                                       | ✅     | P0       |
 | Background: solid black                                        | ✅     | P0       |
 | Background: solid white                                        | ✅     | P0       |
-| Background: custom color picker                                | ⬜     | P2       |
+| Background: custom color picker                                | ✅     | P2       |
 | Preview scale control (1×, 2×, 4×)                             | ✅     | P1       |
 | Preview panel resizable                                        | ⬜     | P2       |
 
@@ -278,7 +296,7 @@
 | -------------------------------------------------------------- | ------ | -------- |
 | Three-column layout: sidebar / sheet viewer / sequence+preview | ✅     | P0       |
 | Collapsible left panel (sprite importer + frame config)        | ✅     | P1       |
-| Resizable panel dividers                                       | ⬜     | P2       |
+| Resizable panel dividers                                       | ✅     | P2       |
 | Responsive to window resize                                    | ⬜     | P1       |
 | Keyboard shortcuts: Space = play/pause, arrow keys = scrub     | ⬜     | P2       |
 
@@ -391,6 +409,8 @@
 | Feature                             | Status | Priority |
 | ----------------------------------- | ------ | -------- |
 | Theme picker (all available themes) | ✅     | P2       |
+| Custom theme with color pickers     | ✅     | P2       |
+| Custom theme background image       | ✅     | P2       |
 | Default frame size preferences      | ✅     | P2       |
 | Default export format preference    | ✅     | P2       |
 | Keyboard shortcut reference list    | ✅     | P2       |
