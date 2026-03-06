@@ -120,10 +120,25 @@ export function SheetViewerCanvas({ imageUrl }) {
       containerRef.current.style.cursor = spaceRef.current ? "grab" : "";
   }
 
-  function resetZoomPan() {
-    setZoom(1);
+  // Fit the sheet to the current container size (used on image load + zoom-reset button)
+  const fitToContainer = useCallback(() => {
+    const container = containerRef.current;
+    const img = imgRef.current;
+    if (!container || !img) {
+      setZoom(1);
+      setPan({ x: 0, y: 0 });
+      return;
+    }
+    const cw = container.clientWidth - 32;
+    const ch = container.clientHeight - 32;
+    const scaledW = img.naturalWidth * scale;
+    const scaledH = img.naturalHeight * scale;
+    if (scaledW > 0 && scaledH > 0) {
+      const fitZoom = Math.min(cw / scaledW, ch / scaledH, ZOOM_MAX);
+      setZoom(Math.max(ZOOM_MIN, +fitZoom.toFixed(4)));
+    }
     setPan({ x: 0, y: 0 });
-  }
+  }, [scale]);
 
   useEffect(() => {
     if (!imageUrl) {
@@ -134,6 +149,7 @@ export function SheetViewerCanvas({ imageUrl }) {
     const img = new Image();
     img.onload = () => {
       imgRef.current = img;
+      fitToContainer();
       draw();
     };
     img.src = imageUrl;
@@ -462,8 +478,8 @@ export function SheetViewerCanvas({ imageUrl }) {
           </button>
           <button
             className="sheet-viewer__zoom-btn sheet-viewer__zoom-label"
-            onClick={resetZoomPan}
-            title="Reset zoom & pan"
+            onClick={fitToContainer}
+            title="Fit to panel (click to reset)"
           >
             {Math.round(zoom * 100)}%
           </button>

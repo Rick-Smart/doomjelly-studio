@@ -1,6 +1,6 @@
 # DoomJelly Studio — Project Roadmap
 
-**Last updated:** 2026-03-06 (M12 complete)
+**Last updated:** 2026-03-06 (M13 complete)
 **Status key:** ✅ Done · 🔄 In Progress · 🔵 Next · ⬜ Pending · 💭 Wishlist
 
 ---
@@ -9,10 +9,22 @@
 
 **P2 items worth tackling next:**
 
-- Canvas resizes with panel (SheetViewerCanvas responds to panel width changes)
-- Keyboard: `Esc` to deselect, `A` to select all cells
-- Drag to reorder animations (AnimationSidebar)
-- Preview panel resizable (right panel already resizable; preview canvas itself could fill it)
+- Responsive to window resize (Editor Layout)
+- Preview panel resizable (right panel resizes via divider; preview canvas could fill it)
+- Export all animations as zip
+- Drag & drop `.doomjelly.json` onto Projects page
+- Rename project
+
+---
+
+## M13: Canvas Fit-to-Panel + Keyboard Shortcuts (complete)
+
+- `fitToContainer()` replaces zoom-reset: calculates zoom so the sheet fills the current panel at click time
+- Sheet auto-fits to panel when an image is first loaded
+- Zoom `%` button tooltip updated to "Fit to panel"
+- `Esc` — deselects active animation (all cell highlights clear), guarded against focused inputs
+- `A` (no modifier) — replaces active animation frames with all cells from the sheet (row-major, undoable via Ctrl+Z)
+- Drag-to-reorder animations in AnimationSidebar confirmed complete
 
 ---
 
@@ -211,11 +223,11 @@
 | Drag-select rectangular region → add all cells in rect                                               | ✅     | P1       |
 | Blue cell count badge overlay (# times cell is in sequence)                                          | ✅     | P1       |
 | Highlighted state for cells already in sequence                                                      | ✅     | P1       |
-| Canvas resizes with panel                                                                            | ⬜     | P1       |
+| Canvas resizes with panel                                                                            | ✅     | P1       |
 | Pan (Space+drag or middle-click) for large sheets                                                    | ✅     | P2       |
 | Zoom (scroll wheel + overlay buttons, reset on click)                                                | ✅     | P2       |
 | Grid lines visible at all zoom levels and in all themes                                              | ✅     | P2       |
-| Keyboard: `Esc` to deselect, `A` to select all                                                       | ⬜     | P2       |
+| Keyboard: `Esc` to deselect, `A` to select all                                                       | ✅     | P2       |
 | Custom Grid — drag individual grid lines to arbitrary positions for uneven/non-uniform sprite sheets | 💭     | P3       |
 
 ---
@@ -233,7 +245,7 @@
 | Delete animation (with confirm)             | ✅     | P0       |
 | Rename animation (inline double-click edit) | ✅     | P1       |
 | Duplicate animation                         | ✅     | P1       |
-| Drag to reorder animations                  | ⬜     | P2       |
+| Drag to reorder animations                  | ✅     | P2       |
 | Frame count shown per animation             | ✅     | P1       |
 | Onboarding empty state CTA                  | ✅     | P1       |
 

@@ -28,7 +28,7 @@ import "./EditorPage.css";
  * PlaybackContext (play/pause/seek) and ProjectContext (undo/redo/save).
  */
 function KeyboardHandler({ onSave, onHelp }) {
-  const { state, undo, redo, canUndo, canRedo } = useProject();
+  const { state, dispatch, undo, redo, canUndo, canRedo } = useProject();
   const { frameIndex, isPlaying, playPlayback, pausePlayback, seekTo } =
     usePlayback();
 
@@ -81,6 +81,36 @@ function KeyboardHandler({ onSave, onHelp }) {
       if (e.key === "?") {
         e.preventDefault();
         onHelp?.();
+        return;
+      }
+      if (e.key === "Escape") {
+        if (state.activeAnimationId !== null) {
+          dispatch({ type: "SET_ACTIVE_ANIMATION", payload: null });
+        }
+        return;
+      }
+      if ((e.key === "a" || e.key === "A") && !e.ctrlKey && !e.metaKey) {
+        const { activeAnimationId, spriteSheet, frameConfig } = state;
+        if (!activeAnimationId || !spriteSheet) return;
+        e.preventDefault();
+        const { frameW, frameH, offsetX, offsetY, gutterX, gutterY } =
+          frameConfig;
+        const stepX = frameW + gutterX;
+        const stepY = frameH + gutterY;
+        if (!frameW || !frameH || stepX <= 0 || stepY <= 0) return;
+        const cols = Math.floor((spriteSheet.width - offsetX) / stepX);
+        const rows = Math.floor((spriteSheet.height - offsetY) / stepY);
+        if (cols <= 0 || rows <= 0) return;
+        const newFrames = [];
+        for (let row = 0; row < rows; row++) {
+          for (let col = 0; col < cols; col++) {
+            newFrames.push({ col, row, ticks: 6, dx: 0, dy: 0 });
+          }
+        }
+        dispatch({
+          type: "UPDATE_ANIMATION",
+          payload: { id: activeAnimationId, frames: newFrames },
+        });
       }
     }
 
@@ -97,7 +127,12 @@ function KeyboardHandler({ onSave, onHelp }) {
     redo,
     canUndo,
     canRedo,
+    dispatch,
+    state.activeAnimationId,
+    state.spriteSheet,
+    state.frameConfig,
     onSave,
+    onHelp,
   ]);
 
   return null;
