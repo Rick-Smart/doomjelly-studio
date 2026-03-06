@@ -85,3 +85,28 @@
   box-shadow: 0 0 0 1px var(--accent);
   filter: drop-shadow(0 0 4px var(--accent));
 }
+
+/* Custom background color picker */
+.preview-canvas__color-input {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.preview-canvas__color-swatch {
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  padding: 0;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.preview-canvas__color-swatch:hover {
+  border-color: var(--accent);
+}

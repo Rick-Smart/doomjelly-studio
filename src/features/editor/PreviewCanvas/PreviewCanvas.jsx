@@ -2,6 +2,7 @@ import { useRef, useEffect, useState } from "react";
 import { useProject } from "../../../contexts/ProjectContext";
 import { useAnimationLoop } from "../../../hooks/useAnimationLoop";
 import { usePlayback } from "../../../contexts/PlaybackContext";
+import { useLocalStorage } from "../../../hooks/useLocalStorage";
 import { IconButton } from "../../../ui/IconButton";
 import { Select } from "../../../ui/Select";
 import { Slider } from "../../../ui/Slider";
@@ -24,6 +25,7 @@ const BG_OPTIONS = [
   { value: "checker", label: "Checker" },
   { value: "#000000", label: "Black" },
   { value: "#ffffff", label: "White" },
+  { value: "custom", label: "Custom…" },
 ];
 
 function drawChecker(ctx, w, h, size = 8) {
@@ -45,8 +47,13 @@ export function PreviewCanvas() {
   const [mode, setMode] = useState("loop");
   const [speed, setSpeed] = useState(1);
   const [scale, setScale] = useState("2");
-  const [bg, setBg] = useState("checker");
+  const [bg, setBg] = useLocalStorage("dj-preview-bg", "checker");
+  const [customColor, setCustomColor] = useLocalStorage(
+    "dj-preview-custom-color",
+    "#1a1a24",
+  );
   const [onionSkin, setOnionSkin] = useState(false);
+  const colorInputRef = useRef(null);
   // Bumped when the source image finishes loading so the draw effect re-runs.
   const [imgVer, setImgVer] = useState(0);
 
@@ -104,6 +111,9 @@ export function PreviewCanvas() {
 
     if (bg === "checker") {
       drawChecker(ctx, canvas.width, canvas.height);
+    } else if (bg === "custom") {
+      ctx.fillStyle = customColor;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
     } else {
       ctx.fillStyle = bg;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -150,7 +160,16 @@ export function PreviewCanvas() {
       canvas.height,
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [frameIndex, bg, scale, frameConfig, frames, imgVer, onionSkin]);
+  }, [
+    frameIndex,
+    bg,
+    customColor,
+    scale,
+    frameConfig,
+    frames,
+    imgVer,
+    onionSkin,
+  ]);
 
   const hasFrames = frames.length > 0;
 
@@ -217,6 +236,25 @@ export function PreviewCanvas() {
             options={BG_OPTIONS}
             className="preview-canvas__compact-select"
           />
+          {bg === "custom" && (
+            <>
+              <input
+                ref={colorInputRef}
+                type="color"
+                value={customColor}
+                onChange={(e) => setCustomColor(e.target.value)}
+                className="preview-canvas__color-input"
+                title="Pick custom background color"
+              />
+              <button
+                type="button"
+                className="preview-canvas__color-swatch"
+                style={{ background: customColor }}
+                onClick={() => colorInputRef.current?.click()}
+                title="Pick custom background color"
+              />
+            </>
+          )}
           <button
             type="button"
             className={`preview-canvas__onion-btn${onionSkin ? " preview-canvas__onion-btn--on" : ""}`}
