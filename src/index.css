@@ -40,6 +40,19 @@ body {
   background: var(--bg);
 }
 
+/* Custom theme background image overlay — rendered behind all UI. */
+html.has-bg-image::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image: var(--bg-image);
+  background-size: cover;
+  background-position: center;
+  opacity: var(--bg-image-opacity, 0.15);
+  pointer-events: none;
+  z-index: 0;
+}
+
 #root {
   height: 100vh;
   display: flex;

@@ -1,5 +1,10 @@
-import { useState } from "react";
-import { useTheme, THEMES } from "../../../contexts/ThemeContext";
+import { useState, useRef } from "react";
+import {
+  useTheme,
+  THEMES,
+  CUSTOM_VAR_FIELDS,
+  DEFAULT_CUSTOM_VARS,
+} from "../../../contexts/ThemeContext";
 import { EXPORT_FORMATS } from "../../../services/exportService";
 import { Page } from "../../../ui/Page";
 import { Panel } from "../../../ui/Panel";
@@ -8,6 +13,142 @@ import "./SettingsPage.css";
 
 const PREFS_KEY = "dj-prefs";
 const DEFAULT_PREFS = { frameW: 32, frameH: 32, exportFormat: "generic" };
+
+// ── Custom theme editor ───────────────────────────────────
+
+function CustomThemeEditor() {
+  const {
+    customVars,
+    setCustomVars,
+    customBgUrl,
+    setCustomBgDataUrl,
+    customBgOpacity,
+    setCustomBgOpacity,
+  } = useTheme();
+  const bgInputRef = useRef(null);
+
+  function handleVarChange(key, value) {
+    setCustomVars({ ...customVars, [key]: value });
+  }
+
+  function copyFrom(themeId) {
+    const srcVars = THEMES[themeId]?.vars;
+    if (!srcVars) return;
+    const picked = Object.fromEntries(
+      CUSTOM_VAR_FIELDS.map(({ key }) => [
+        key,
+        srcVars[key] ?? customVars[key],
+      ]),
+    );
+    setCustomVars(picked);
+  }
+
+  function handleBgUpload(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      alert("Image too large — please use an image under 2 MB.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => setCustomBgDataUrl(ev.target.result);
+    reader.readAsDataURL(file);
+  }
+
+  return (
+    <div className="custom-theme-editor">
+      {/* Color pickers */}
+      <div className="custom-theme-editor__header">
+        <span className="settings-label">Customize Colors</span>
+        <div className="custom-theme-editor__copy-row">
+          <span className="custom-theme-editor__copy-label">Copy from:</span>
+          {["dark", "light", "synthwave"].map((id) => (
+            <button
+              key={id}
+              className="custom-theme-editor__copy-btn"
+              onClick={() => copyFrom(id)}
+            >
+              {THEMES[id].label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="custom-theme-editor__grid">
+        {CUSTOM_VAR_FIELDS.map(({ key, label }) => (
+          <div key={key} className="custom-theme-editor__field">
+            <input
+              type="color"
+              id={`ctv-${key}`}
+              value={customVars[key] ?? DEFAULT_CUSTOM_VARS[key] ?? "#000000"}
+              onChange={(e) => handleVarChange(key, e.target.value)}
+              className="custom-theme-editor__color-input"
+            />
+            <label
+              htmlFor={`ctv-${key}`}
+              className="custom-theme-editor__field-label"
+            >
+              {label}
+            </label>
+          </div>
+        ))}
+      </div>
+
+      {/* Background image */}
+      <div className="custom-theme-editor__bg-section">
+        <span className="settings-label">Background / Overlay Image</span>
+        <p className="settings-helper">
+          Applied as a full-screen overlay behind the app UI. Max 2 MB.
+        </p>
+        <div className="custom-theme-editor__bg-row">
+          <input
+            ref={bgInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleBgUpload}
+            style={{ display: "none" }}
+          />
+          <button
+            className="custom-theme-editor__upload-btn"
+            onClick={() => bgInputRef.current?.click()}
+          >
+            {customBgUrl ? "Replace Image" : "Upload Image"}
+          </button>
+          {customBgUrl && (
+            <button
+              className="custom-theme-editor__clear-btn"
+              onClick={() => setCustomBgDataUrl(null)}
+            >
+              Remove
+            </button>
+          )}
+          {customBgUrl && (
+            <img
+              src={customBgUrl}
+              className="custom-theme-editor__bg-preview"
+              alt="Background preview"
+            />
+          )}
+        </div>
+        {customBgUrl && (
+          <div className="custom-theme-editor__opacity-row">
+            <label className="custom-theme-editor__field-label">
+              Opacity: {Math.round(customBgOpacity * 100)}%
+            </label>
+            <input
+              type="range"
+              min="0.05"
+              max="1"
+              step="0.05"
+              value={customBgOpacity}
+              onChange={(e) => setCustomBgOpacity(parseFloat(e.target.value))}
+              className="custom-theme-editor__opacity-slider"
+            />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function loadPrefs() {
   try {
@@ -48,7 +189,7 @@ const SHORTCUTS = [
 ];
 
 export function SettingsPage() {
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, customVars } = useTheme();
   const [prefs, setPrefs] = useState(loadPrefs);
 
   function updatePref(key, value) {
@@ -74,12 +215,18 @@ export function SettingsPage() {
                 >
                   <span
                     className="settings-theme-swatch"
-                    style={{ background: def.swatch }}
+                    style={{
+                      background:
+                        id === "custom"
+                          ? `linear-gradient(135deg, ${customVars["--bg"]} 50%, ${customVars["--accent"]} 50%)`
+                          : def.swatch,
+                    }}
                   />
                   <span className="settings-theme-name">{def.label}</span>
                 </button>
               ))}
             </div>
+            {theme === "custom" && <CustomThemeEditor />}
           </div>
         </Panel>
 
