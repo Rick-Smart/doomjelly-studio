@@ -175,6 +175,37 @@ export function buildPackedAtlas(srcImg, animations, frameConfig, options) {
  *     frames: [{ index, x, y, w, h, ticks, dx, dy }, …]
  *   }
  */
+/**
+ * Generate a small thumbnail (square PNG data URL) from the first frame of
+ * the first animation. Returns null if no image/animation/frame is available.
+ *
+ * @param {string} imageUrl - Object URL or data URL of the sprite sheet.
+ * @param {object} frameConfig - { frameW, frameH, offsetX, offsetY, gutterX, gutterY }
+ * @param {Array}  animations  - Project animations array.
+ * @param {number} [size=48]   - Square output size in pixels.
+ */
+export async function generateThumbnail(
+  imageUrl,
+  frameConfig,
+  animations,
+  size = 48,
+) {
+  if (!imageUrl || !animations.length || !animations[0].frames.length)
+    return null;
+  const firstFrame = animations[0].frames[0];
+  const img = await loadImage(imageUrl);
+  const { frameW, frameH, offsetX, offsetY, gutterX, gutterY } = frameConfig;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  ctx.imageSmoothingEnabled = false;
+  const sx = offsetX + firstFrame.col * (frameW + gutterX);
+  const sy = offsetY + firstFrame.row * (frameH + gutterY);
+  ctx.drawImage(img, sx, sy, frameW, frameH, 0, 0, size, size);
+  return canvas.toDataURL("image/png");
+}
+
 export function buildAnimStrips(srcImg, animations, frameConfig, options) {
   const anims = pickAnimations(animations, options);
   const { frameW, frameH } = frameConfig;

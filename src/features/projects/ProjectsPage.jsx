@@ -13,6 +13,7 @@ import {
   downloadProject,
   renameProject,
 } from "../../services/projectService";
+import { generateThumbnail } from "../../services/imageExportService";
 import { ConfirmDialog } from "../../ui/ConfirmDialog";
 import "./ProjectsPage.css";
 
@@ -114,11 +115,25 @@ export function ProjectsPage() {
     URL.revokeObjectURL(url);
   }
 
-  function handleSaveCurrent() {
-    const data = serialiseProject(state);
-    if (!state.id) dispatch({ type: "SET_PROJECT_ID", payload: data.id });
-    saveProjectToStorage(data).then(refresh);
-    downloadProject(state);
+  async function handleSaveCurrent() {
+    try {
+      const data = serialiseProject(state);
+      if (!state.id) dispatch({ type: "SET_PROJECT_ID", payload: data.id });
+      const imageUrl = state.spriteSheet?.objectUrl ?? null;
+      const thumbnail = imageUrl
+        ? await generateThumbnail(
+            imageUrl,
+            state.frameConfig,
+            state.animations,
+          ).catch(() => undefined)
+        : undefined;
+      await saveProjectToStorage(data, thumbnail);
+      downloadProject(state);
+      refresh();
+    } catch (err) {
+      console.error("Failed to save current project:", err);
+      showToast("Failed to save project.", "error");
+    }
   }
 
   function startNew() {
@@ -238,55 +253,77 @@ export function ProjectsPage() {
             </p>
           </div>
         ) : (
-          <ul className="projects-list">
-            {projects.map((p) => (
-              <li key={p.id} className="projects-card">
-                <div className="projects-card__info">
-                  {renamingId === p.id ? (
-                    <input
-                      ref={renameRef}
-                      className="projects-rename-input"
-                      value={renameDraft}
-                      onChange={(e) => setRenameDraft(e.target.value)}
-                      onBlur={() => commitRename(p.id)}
-                      onKeyDown={(e) => onRenameKey(e, p.id)}
-                    />
-                  ) : (
-                    <span className="projects-card__name">{p.name}</span>
-                  )}
-                  <span className="projects-card__date">{fmt(p.savedAt)}</span>
-                </div>
-                <div className="projects-card__actions">
-                  <button
-                    className="projects-btn projects-btn--sm"
-                    onClick={() => startRename(p)}
-                    title="Rename project"
-                  >
-                    Rename
-                  </button>
-                  <button
-                    className="projects-btn projects-btn--sm"
-                    onClick={() => handleDownload(p.id)}
-                    title="Download .doomjelly.json"
-                  >
-                    ↓ Export
-                  </button>
-                  <button
-                    className="projects-btn projects-btn--sm projects-btn--danger"
-                    onClick={() => setDeleteTarget(p)}
-                  >
-                    Delete
-                  </button>
-                  <button
-                    className="projects-btn projects-btn--sm projects-btn--primary"
-                    onClick={() => handleOpen(p.id)}
-                  >
-                    Open
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
+          <>
+            <div className="projects-section-heading">Recent</div>
+            <ul className="projects-list">
+              {[...projects]
+                .sort((a, b) => new Date(b.savedAt) - new Date(a.savedAt))
+                .map((p) => (
+                  <li key={p.id} className="projects-card">
+                    {p.thumbnail && (
+                      <img
+                        className="projects-card__thumbnail"
+                        src={p.thumbnail}
+                        alt=""
+                        aria-hidden="true"
+                      />
+                    )}
+                    <div className="projects-card__info">
+                      {renamingId === p.id ? (
+                        <input
+                          ref={renameRef}
+                          className="projects-rename-input"
+                          value={renameDraft}
+                          onChange={(e) => setRenameDraft(e.target.value)}
+                          onBlur={() => commitRename(p.id)}
+                          onKeyDown={(e) => onRenameKey(e, p.id)}
+                        />
+                      ) : (
+                        <span className="projects-card__name">{p.name}</span>
+                      )}
+                      <span className="projects-card__date">
+                        {fmt(p.savedAt)}
+                      </span>
+                      {(p.animCount != null || p.frameCount != null) && (
+                        <span className="projects-card__stats">
+                          {p.animCount ?? 0} animation
+                          {p.animCount !== 1 ? "s" : ""} · {p.frameCount ?? 0}{" "}
+                          frame{p.frameCount !== 1 ? "s" : ""}
+                        </span>
+                      )}
+                    </div>
+                    <div className="projects-card__actions">
+                      <button
+                        className="projects-btn projects-btn--sm"
+                        onClick={() => startRename(p)}
+                        title="Rename project"
+                      >
+                        Rename
+                      </button>
+                      <button
+                        className="projects-btn projects-btn--sm"
+                        onClick={() => handleDownload(p.id)}
+                        title="Download .doomjelly.json"
+                      >
+                        ↓ Export
+                      </button>
+                      <button
+                        className="projects-btn projects-btn--sm projects-btn--danger"
+                        onClick={() => setDeleteTarget(p)}
+                      >
+                        Delete
+                      </button>
+                      <button
+                        className="projects-btn projects-btn--sm projects-btn--primary"
+                        onClick={() => handleOpen(p.id)}
+                      >
+                        Open
+                      </button>
+                    </div>
+                  </li>
+                ))}
+            </ul>
+          </>
         )}
 
         {deleteTarget && (

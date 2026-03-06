@@ -135,10 +135,28 @@ export async function listProjects() {
 /**
  * Saves a full project into localStorage and updates the index.
  * Pass the serialised project object (from serialiseProject).
+ *
+ * @param {object} data - Serialised project.
+ * @param {string|null|undefined} thumbnail - Base64 PNG dataURL for the card
+ *   thumbnail. Pass a string to set, null to clear, or undefined to keep the
+ *   existing thumbnail (e.g. when the sprite sheet isn't loaded this session).
  */
-export async function saveProjectToStorage(data) {
-  const entry = { id: data.id, name: data.name, savedAt: data.savedAt };
+export async function saveProjectToStorage(data, thumbnail = undefined) {
   const index = readIndex();
+  const existing = index.find((p) => p.id === data.id);
+  const animCount = Array.isArray(data.animations) ? data.animations.length : 0;
+  const frameCount = Array.isArray(data.animations)
+    ? data.animations.reduce((s, a) => s + (a.frames?.length ?? 0), 0)
+    : 0;
+  const entry = {
+    id: data.id,
+    name: data.name,
+    savedAt: data.savedAt,
+    animCount,
+    frameCount,
+    thumbnail:
+      thumbnail !== undefined ? thumbnail : (existing?.thumbnail ?? null),
+  };
   const i = index.findIndex((p) => p.id === data.id);
   if (i >= 0) {
     index[i] = entry;

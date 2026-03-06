@@ -1,19 +1,35 @@
 # DoomJelly Studio — Project Roadmap
 
-**Last updated:** 2026-03-06 (M15 complete)
+**Last updated:** 2026-03-06 (M16 complete)
 **Status key:** ✅ Done · 🔄 In Progress · 🔵 Next · ⬜ Pending · 💭 Wishlist
 
 ---
 
 ## ⚡ NEXT SESSION — Start Here
 
-**P2 items worth tackling next:**
+Remaining P2 wishlist items (all others now complete):
 
-- Responsive to window resize (Editor Layout)
-- Export all animations as zip (now done via image strip export — JSON zip still pending)
-- Drag & drop `.doomjelly.json` onto Projects page
-- Rename project
-- Preview panel resizable
+- Export all animations as zip (JSON + image strip zip combined into one download)
+- Full "Recent" tab or dedicated quick-access section on the landing page
+
+---
+
+## M16: UX Polish — Card Stats, Thumbnails, Collapsible Panel (complete)
+
+- **Project thumbnails** — first frame of the first animation rendered onto a 40×40 canvas at save
+  time, stored as a base64 PNG dataURL in the projects index; displayed on each project card
+  - `generateThumbnail(imageUrl, frameConfig, animations, size)` added to `imageExportService.js`
+  - Thumbnail only generated when sprite sheet objectUrl is available (survives page refresh as stored data)
+  - `saveProjectToStorage(data, thumbnail?)` updated: pass string to set, `undefined` to preserve existing
+- **Animation + frame count on project cards** — index now stores `animCount` and `frameCount`
+  - Computed from `data.animations` at save time; shown as "N animations · N frames" on each card
+  - Backward compatible — old index entries without these fields just show nothing
+- **"Recent" section heading** — project cards sorted most-recently-saved first; "Recent" label above list
+- **Collapsible FrameConfigPanel** — click heading to expand/collapse the frame config inputs
+  - Heading is now a `<button>` with ▾/▸ chevron and `aria-expanded`
+  - Starts open; collapse state is local (resets to open on mount — intentional for discoverability)
+- **Warn on refresh (sprite sheet)** — already implemented in M14/SpriteImporter ✅
+- **Preview canvas max-height** — handled by M15 resize handle ✅
 
 ---
 

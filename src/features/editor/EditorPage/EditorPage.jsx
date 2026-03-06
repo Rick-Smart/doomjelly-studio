@@ -21,6 +21,7 @@ import {
 } from "../../../services/projectService";
 import { ExportPanel } from "../../export/ExportPanel";
 import { KeyboardHelp } from "../KeyboardHelp";
+import { generateThumbnail } from "../../../services/imageExportService";
 import "./EditorPage.css";
 
 /**
@@ -263,7 +264,11 @@ export function EditorPage() {
     try {
       const data = serialiseProject(state);
       if (!state.id) dispatch({ type: "SET_PROJECT_ID", payload: data.id });
-      await saveProjectToStorage(data);
+      const imageUrl = state.spriteSheet?.objectUrl ?? null;
+      const thumbnail = imageUrl
+        ? await generateThumbnail(imageUrl, state.frameConfig, state.animations).catch(() => undefined)
+        : undefined;
+      await saveProjectToStorage(data, thumbnail);
       setSaved(true);
       showToast("Project saved.", "success", 2500);
       setTimeout(() => setSaved(false), 2000);
