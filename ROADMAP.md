@@ -1,6 +1,6 @@
 # DoomJelly Studio — Project Roadmap
 
-**Last updated:** 2026-03-06 (M9 complete)  
+**Last updated:** 2026-03-06 (M10 complete)
 **Status key:** ✅ Done · 🔄 In Progress · 🔵 Next · ⬜ Pending · 💭 Wishlist
 
 ---
@@ -9,9 +9,18 @@
 
 **P2 items worth tackling next:**
 
-- Resizable panel dividers (ResizablePanel component)
 - Preview background custom color picker
 - Drag-to-reorder frames (SequenceBuilder)
+
+---
+
+## M10: Resizable Panel Dividers (complete)
+
+- Drag handle between left panel and canvas area — resize left panel (160–480px)
+- Drag handle between canvas area and right panel — resize right panel (260–560px)
+- Panel widths persisted to localStorage via `useLocalStorage` (`dj-panel-left`, `dj-panel-right`)
+- Full-screen transparent drag overlay prevents canvas stealing pointer events during drag
+- Collapse button on left panel still works independently of resize
 
 ---
 

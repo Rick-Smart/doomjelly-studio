@@ -110,12 +110,10 @@
   width: 220px;
   flex-shrink: 0;
   background: var(--surface);
-  border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
   overflow: hidden;
   position: relative;
-  transition: width 0.2s;
 }
 
 .editor__left--collapsed {
@@ -177,7 +175,6 @@
   width: 380px;
   flex-shrink: 0;
   background: var(--surface);
-  border-left: 1px solid var(--border);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -187,4 +184,29 @@
   height: 1px;
   background: var(--border);
   flex-shrink: 0;
+}
+
+/* ── Resize handles ─────────────────────────────────────── */
+
+.editor__resize-handle {
+  width: 4px;
+  flex-shrink: 0;
+  background: var(--border);
+  cursor: col-resize;
+  transition: background 0.15s;
+  position: relative;
+  z-index: 5;
+}
+
+.editor__resize-handle:hover {
+  background: var(--accent);
+}
+
+/* Full-screen invisible overlay during drag — prevents the
+   canvas or other elements from stealing pointer events. */
+.editor__drag-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  cursor: col-resize;
 }

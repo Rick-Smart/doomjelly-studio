@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useLocalStorage } from "../../../hooks/useLocalStorage";
 import { useProject } from "../../../contexts/ProjectContext";
 import { useNotification } from "../../../contexts/NotificationContext";
 import {
@@ -154,7 +155,46 @@ export function EditorPage() {
   const navigate = useNavigate();
   const imageUrl = state.spriteSheet?.objectUrl ?? null;
   const [leftOpen, setLeftOpen] = useState(true);
+  const [leftWidth, setLeftWidth] = useLocalStorage("dj-panel-left", 220);
+  const [rightWidth, setRightWidth] = useLocalStorage("dj-panel-right", 380);
+  const [dragging, setDragging] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  function startLeftResize(e) {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startW = leftWidth;
+    setDragging(true);
+    function onMove(e) {
+      setLeftWidth(Math.min(480, Math.max(160, startW + (e.clientX - startX))));
+    }
+    function onUp() {
+      setDragging(false);
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    }
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  }
+
+  function startRightResize(e) {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startW = rightWidth;
+    setDragging(true);
+    function onMove(e) {
+      setRightWidth(
+        Math.min(560, Math.max(260, startW + (startX - e.clientX))),
+      );
+    }
+    function onUp() {
+      setDragging(false);
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    }
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  }
   const [saved, setSaved] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
@@ -245,10 +285,14 @@ export function EditorPage() {
       scrollable={false}
       padding={false}
     >
+      {/* Full-screen drag overlay prevents canvas stealing pointer events */}
+      {dragging && <div className="editor__drag-overlay" />}
+
       <div className="editor">
         {/* ── Left panel: importer + frame config ── */}
         <aside
           className={`editor__left${leftOpen ? "" : " editor__left--collapsed"}`}
+          style={leftOpen ? { width: leftWidth } : undefined}
         >
           <button
             className="editor__collapse-btn"
@@ -268,13 +312,24 @@ export function EditorPage() {
           )}
         </aside>
 
+        {/* ── Resize handle: left ↔ canvas ── */}
+        {leftOpen && (
+          <div
+            className="editor__resize-handle"
+            onMouseDown={startLeftResize}
+          />
+        )}
+
         {/* ── Main: sheet viewer canvas ── */}
         <div className="editor__canvas-area">
           <SheetViewerCanvas imageUrl={imageUrl} />
         </div>
 
+        {/* ── Resize handle: canvas ↔ right ── */}
+        <div className="editor__resize-handle" onMouseDown={startRightResize} />
+
         {/* ── Right panel: preview + animations + sequence ── */}
-        <aside className="editor__right">
+        <aside className="editor__right" style={{ width: rightWidth }}>
           <PlaybackProvider>
             <KeyboardHandler
               onSave={handleSave}
