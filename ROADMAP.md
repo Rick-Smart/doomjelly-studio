@@ -1,24 +1,49 @@
 # DoomJelly Studio — Project Roadmap
 
-**Last updated:** 2026-03-06 (M17 complete)
+**Last updated:** 2026-03-06 (M17 complete, M18 planned)
 **Status key:** ✅ Done · 🔄 In Progress · 🔵 Next · ⬜ Pending · 💭 Wishlist
 
 ---
 
 ## ⚡ NEXT SESSION — Start Here
 
-All planned P2 items are now complete. Remaining ideas (P3 / wishlist):
+**M18 — Sprite Creator**: built-in pixel art canvas for drawing sprite sheets directly
+in the app, so users don't need an external tool before animating.
 
-- Undo/redo stack (complex — requires command pattern in reducer)
-- Frame reordering via drag within SequenceBuilder
-- Onion skinning overlay in SheetViewer
-- Keyboard shortcut cheat sheet printout
-- Export to GIF (requires gif.js or similar)
-- Multi-project bulk export
+See M18 spec below.
 
 ---
 
-## M17: Export Bundle + Home Landing Page (complete)
+## 🔵 M18: Sprite Creator (planned)
+
+A dedicated `/sprite-creator` route and nav item giving users a pixel art drawing
+surface so they can create (or edit) sprite sheets without leaving DoomJelly Studio.
+
+**Scope:**
+
+- Pixel canvas with configurable dimensions (width × height in tiles, tile size)
+- Drawing tools: pencil, eraser, flood fill, eyedropper
+- Colour palette — a small fixed set + custom picker + "used colours" row
+- Grid overlay toggle (shows tile/cell boundaries)
+- Undo/redo (dedicated stack, separate from the Animator undo)
+- Export as PNG → auto-imports into the current project's Animator (or prompts to
+  create a new project)
+- Layers are a stretch goal — start single-layer
+- Persistence: save canvas state to localStorage alongside the project
+
+**Integration points:**
+
+- Projects page: "New sprite" button → Sprite Creator with blank canvas tied to that project
+- Animator: "Edit sprite" button in SpriteImporter when a sheet is loaded → opens Creator
+  with the current sheet pre-loaded for editing
+- On export from Creator → sprite sheet objectUrl is set in ProjectContext so Animator
+  can use it immediately (no file-drop needed)
+
+**Nav label:** "Sprite Creator" or "Draw"
+
+---
+
+## M17: Export Bundle + Nav Rename (complete)
 
 - **Export All bundle tab** — new "Export All" tab in the Export modal
   - Downloads `{name}_bundle.zip` containing everything in one click:
@@ -27,15 +52,10 @@ All planned P2 items are now complete. Remaining ideas (P3 / wishlist):
     - `strips/{anim}.png` + `strips/{anim}.json` × N — per-animation strips (if sprite sheet loaded)
   - Scope selector hidden (always exports all animations)
   - Muted display + inline notice when sprite sheet not available — JSON still bundled
-- **Home landing page** — dedicated `/` route replacing the old redirect to `/editor`
-  - Shows last 5 most-recently-saved projects as quick-open cards
-  - Cards show thumbnail, name, anim/frame stats (same data as Projects page)
-  - Card placeholders (🪼) when no thumbnail yet
-  - "Open Editor" + "New Project" primary CTA buttons
-  - "All projects →" shortcut to `/projects`
-  - Welcome message when no projects saved yet
-- **AppShell logo as home link** — 🪼 DoomJelly Studio title now NavLinks to `/`
-  - Hover accent color hint on title text
+- **Nav "Editor" renamed to "Animator"** — more fitting label for the sprite sheet animation tool
+- **Projects as landing page** — `/` redirects to `/projects`; login sends users directly there;
+  the home page concept was dropped — projects page is the natural starting point
+- **Logo links to Projects** — 🪼 DoomJelly Studio header link navigates to `/projects`
 
 ---
 

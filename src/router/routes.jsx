@@ -1,7 +1,6 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import { ProtectedRoute } from "./ProtectedRoute";
 import { AppShell } from "../features/layout/AppShell";
-import { HomePage } from "../features/home/HomePage";
 import { EditorPage } from "../features/editor/EditorPage";
 import { ProjectsPage } from "../features/projects/ProjectsPage";
 import { LoginPage } from "../features/auth/LoginPage";
@@ -19,7 +18,7 @@ export function AppRoutes() {
           </ProtectedRoute>
         }
       >
-        <Route index element={<HomePage />} />
+        <Route index element={<Navigate to="/projects" replace />} />
         <Route path="editor" element={<EditorPage />} />
         <Route path="projects" element={<ProjectsPage />} />
         <Route path="settings" element={<SettingsPage />} />

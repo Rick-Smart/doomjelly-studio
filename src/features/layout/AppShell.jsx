@@ -5,7 +5,7 @@ import { THEMES } from "../../contexts/ThemeContext";
 import "./AppShell.css";
 
 const NAV_ITEMS = [
-  { to: "/editor", label: "Editor" },
+  { to: "/editor", label: "Animator" },
   { to: "/projects", label: "Projects" },
   { to: "/settings", label: "Settings" },
 ];
@@ -17,7 +17,11 @@ export function AppShell() {
   return (
     <div className="shell">
       <header className="shell-header">
-        <NavLink to="/" className="shell-logo-link" aria-label="Home">
+        <NavLink
+          to="/projects"
+          className="shell-logo-link"
+          aria-label="Projects"
+        >
           <span className="shell-logo" aria-hidden="true">
             🪼
           </span>
