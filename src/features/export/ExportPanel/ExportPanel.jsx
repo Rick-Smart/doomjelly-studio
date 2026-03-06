@@ -1,8 +1,31 @@
 import { useState, useMemo } from "react";
+import JSZip from "jszip";
 import { useProject } from "../../../contexts/ProjectContext";
 import { Modal } from "../../../ui/Modal";
 import { EXPORT_FORMATS } from "../../../services/exportService";
+import {
+  loadImage,
+  buildPackedAtlas,
+  buildAnimStrips,
+  canvasToBlob,
+} from "../../../services/imageExportService";
 import "./ExportPanel.css";
+
+const EXPORT_TYPES = [
+  { id: "json", label: "JSON" },
+  { id: "atlas", label: "Packed Atlas" },
+  { id: "strips", label: "Animation Strips" },
+];
+
+function slugify(str) {
+  return str.replace(/[^a-z0-9_\-]/gi, "_");
+}
+
+function pickSelected(animations, target, activeAnimationId) {
+  if (target === "active")
+    return animations.filter((a) => a.id === activeAnimationId);
+  return animations;
+}
 
 /**
  * Export modal — triggered from the Editor toolbar.
@@ -14,18 +37,31 @@ export function ExportPanel({ isOpen, onClose }) {
     animations,
     activeAnimationId,
     frameConfig,
+    spriteSheet,
     name: projectName,
   } = state;
 
+  const [exportType, setExportType] = useState("json");
   const [formatId, setFormatId] = useState("generic");
   const [target, setTarget] = useState("active");
   const [copied, setCopied] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportError, setExportError] = useState(null);
 
   const activeAnim = animations.find((a) => a.id === activeAnimationId);
   const format = EXPORT_FORMATS.find((f) => f.id === formatId);
+  const hasImage = !!spriteSheet?.objectUrl;
+  const hasAnims = animations.length > 0;
 
+  const selectedAnims = useMemo(
+    () => pickSelected(animations, target, activeAnimationId),
+    [animations, target, activeAnimationId],
+  );
+
+  // ── JSON preview ──────────────────────────────────────────
   const generated = useMemo(() => {
-    if (!format || animations.length === 0) return null;
+    if (exportType !== "json" || !format || animations.length === 0)
+      return null;
     try {
       return format.generate(animations, frameConfig, {
         target,
@@ -34,7 +70,7 @@ export function ExportPanel({ isOpen, onClose }) {
     } catch {
       return null;
     }
-  }, [format, animations, frameConfig, target, activeAnimationId]);
+  }, [exportType, format, animations, frameConfig, target, activeAnimationId]);
 
   const preview = useMemo(() => {
     if (!generated || !format) return "";
@@ -43,23 +79,36 @@ export function ExportPanel({ isOpen, onClose }) {
       : JSON.stringify(generated, null, 2);
   }, [generated, format]);
 
-  async function handleCopy() {
-    if (!preview) return;
-    await navigator.clipboard.writeText(preview);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1800);
-  }
+  // ── Atlas info (sync, no image load needed) ───────────────
+  const atlasInfo = useMemo(() => {
+    if (exportType !== "atlas") return null;
+    const { frameW, frameH } = frameConfig;
+    const seen = new Set();
+    for (const anim of selectedAnims)
+      for (const f of anim.frames) seen.add(`${f.col},${f.row}`);
+    const count = seen.size;
+    if (count === 0) return null;
+    const cols = Math.ceil(Math.sqrt(count));
+    const rows = Math.ceil(count / cols);
+    return { count, cols, rows, w: cols * frameW, h: rows * frameH };
+  }, [exportType, selectedAnims, frameConfig]);
 
-  function handleDownload() {
-    if (!generated || !format) return;
-    const suffix =
-      target === "active" ? (activeAnim?.name ?? "animation") : "all";
-    const ext = format.ext ?? "json";
-    const filename = `${projectName.replace(/[^a-z0-9_\-]/gi, "_")}_${suffix}_${format.id}.${ext}`;
-    const text = format.serialize
-      ? format.serialize(generated)
-      : JSON.stringify(generated, null, 2);
-    const blob = new Blob([text], { type: "text/plain" });
+  // ── Strips info (sync) ────────────────────────────────────
+  const stripsInfo = useMemo(() => {
+    if (exportType !== "strips") return null;
+    const { frameW, frameH } = frameConfig;
+    return selectedAnims
+      .filter((a) => a.frames.length > 0)
+      .map((anim) => ({
+        name: anim.name,
+        frameCount: anim.frames.length,
+        w: anim.frames.length * frameW,
+        h: frameH,
+      }));
+  }, [exportType, selectedAnims, frameConfig]);
+
+  // ── Download helpers ──────────────────────────────────────
+  function triggerDownload(blob, filename) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -68,79 +117,284 @@ export function ExportPanel({ isOpen, onClose }) {
     URL.revokeObjectURL(url);
   }
 
+  async function handleCopy() {
+    if (!preview) return;
+    await navigator.clipboard.writeText(preview);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1800);
+  }
+
+  function handleDownloadJSON() {
+    if (!generated || !format) return;
+    const suffix =
+      target === "active" ? (activeAnim?.name ?? "animation") : "all";
+    const ext = format.ext ?? "json";
+    const filename = `${slugify(projectName)}_${suffix}_${format.id}.${ext}`;
+    const text = format.serialize
+      ? format.serialize(generated)
+      : JSON.stringify(generated, null, 2);
+    triggerDownload(new Blob([text], { type: "text/plain" }), filename);
+  }
+
+  async function handleDownloadAtlas() {
+    if (!spriteSheet?.objectUrl) return;
+    setIsExporting(true);
+    setExportError(null);
+    try {
+      const img = await loadImage(spriteSheet.objectUrl);
+      const result = buildPackedAtlas(img, animations, frameConfig, {
+        target,
+        activeAnimationId,
+      });
+      if (!result)
+        throw new Error(
+          "No cells found — add frames to your animations first.",
+        );
+      const pngBlob = await canvasToBlob(result.canvas);
+      const zip = new JSZip();
+      zip.file("atlas.png", pngBlob);
+      zip.file("atlas.json", JSON.stringify(result.json, null, 2));
+      const zipBlob = await zip.generateAsync({ type: "blob" });
+      triggerDownload(zipBlob, `${slugify(projectName)}_atlas.zip`);
+    } catch (err) {
+      setExportError(err.message);
+    } finally {
+      setIsExporting(false);
+    }
+  }
+
+  async function handleDownloadStrips() {
+    if (!spriteSheet?.objectUrl) return;
+    setIsExporting(true);
+    setExportError(null);
+    try {
+      const img = await loadImage(spriteSheet.objectUrl);
+      const strips = buildAnimStrips(img, animations, frameConfig, {
+        target,
+        activeAnimationId,
+      });
+      if (!strips.length)
+        throw new Error("No animations to export — add frames first.");
+      const zip = new JSZip();
+      for (const strip of strips) {
+        const pngBlob = await canvasToBlob(strip.canvas);
+        const safeName = slugify(strip.name);
+        zip.file(`${safeName}.png`, pngBlob);
+        zip.file(`${safeName}.json`, JSON.stringify(strip.json, null, 2));
+      }
+      const suffix =
+        target === "active" && activeAnim ? slugify(activeAnim.name) : "all";
+      const zipBlob = await zip.generateAsync({ type: "blob" });
+      triggerDownload(zipBlob, `${slugify(projectName)}_strips_${suffix}.zip`);
+    } catch (err) {
+      setExportError(err.message);
+    } finally {
+      setIsExporting(false);
+    }
+  }
+
+  function switchType(id) {
+    setExportType(id);
+    setExportError(null);
+  }
+
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
       title="Export Animations"
-      width={620}
+      width={640}
     >
       <div className="export-panel">
-        {/* ── Options row ── */}
-        <div className="export-panel__options">
-          <div className="export-panel__option-group">
-            <label className="export-panel__label">Format</label>
-            <div className="export-panel__radio-row">
-              {EXPORT_FORMATS.map((f) => (
-                <button
-                  key={f.id}
-                  className={`export-panel__format-btn${formatId === f.id ? " export-panel__format-btn--active" : ""}`}
-                  onClick={() => setFormatId(f.id)}
-                >
-                  <span className="export-panel__format-name">{f.label}</span>
-                  <span className="export-panel__format-desc">
-                    {f.description}
+        {/* ── Export type tabs ── */}
+        <div className="export-panel__type-tabs">
+          {EXPORT_TYPES.map((t) => (
+            <button
+              key={t.id}
+              className={`export-panel__type-tab${exportType === t.id ? " export-panel__type-tab--active" : ""}`}
+              onClick={() => switchType(t.id)}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        {/* ── Scope — shared across all types ── */}
+        <div className="export-panel__option-group">
+          <label className="export-panel__label">Scope</label>
+          <div className="export-panel__radio-row">
+            <button
+              className={`export-panel__scope-btn${target === "active" ? " export-panel__scope-btn--active" : ""}`}
+              onClick={() => setTarget("active")}
+              disabled={!activeAnim}
+            >
+              Active — {activeAnim?.name ?? "none"}
+            </button>
+            <button
+              className={`export-panel__scope-btn${target === "all" ? " export-panel__scope-btn--active" : ""}`}
+              onClick={() => setTarget("all")}
+              disabled={!hasAnims}
+            >
+              All animations ({animations.length})
+            </button>
+          </div>
+        </div>
+
+        {/* ════════════════ JSON ════════════════ */}
+        {exportType === "json" && (
+          <>
+            <div className="export-panel__option-group">
+              <label className="export-panel__label">Format</label>
+              <div className="export-panel__radio-row">
+                {EXPORT_FORMATS.map((f) => (
+                  <button
+                    key={f.id}
+                    className={`export-panel__format-btn${formatId === f.id ? " export-panel__format-btn--active" : ""}`}
+                    onClick={() => setFormatId(f.id)}
+                  >
+                    <span className="export-panel__format-name">{f.label}</span>
+                    <span className="export-panel__format-desc">
+                      {f.description}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="export-panel__preview-wrap">
+              <pre className="export-panel__preview">
+                {preview || "// No animations to export"}
+              </pre>
+            </div>
+
+            <div className="export-panel__actions">
+              <button
+                className="export-panel__btn"
+                onClick={handleCopy}
+                disabled={!generated}
+              >
+                {copied ? "✓ Copied!" : "Copy to clipboard"}
+              </button>
+              <button
+                className="export-panel__btn export-panel__btn--primary"
+                onClick={handleDownloadJSON}
+                disabled={!generated}
+              >
+                Download .{format?.ext ?? "json"}
+              </button>
+            </div>
+          </>
+        )}
+
+        {/* ════════════════ PACKED ATLAS ════════════════ */}
+        {exportType === "atlas" && (
+          <>
+            {!hasImage ? (
+              <div className="export-panel__image-notice">
+                Re-import your sprite sheet to enable image export.
+                <br />
+                <span className="export-panel__image-notice-sub">
+                  The image file is not persisted on page refresh — re-import
+                  the PNG to continue.
+                </span>
+              </div>
+            ) : atlasInfo ? (
+              <div className="export-panel__image-info">
+                <div className="export-panel__image-info-row">
+                  <span className="export-panel__image-info-stat">
+                    {atlasInfo.count} unique{" "}
+                    {atlasInfo.count === 1 ? "cell" : "cells"} packed into a{" "}
+                    {atlasInfo.cols}×{atlasInfo.rows} grid
                   </span>
-                </button>
-              ))}
-            </div>
-          </div>
+                </div>
+                <div className="export-panel__image-info-row export-panel__image-info-row--dim">
+                  <span>atlas.png</span>
+                  <span>
+                    {atlasInfo.w}×{atlasInfo.h}px
+                  </span>
+                  <span>atlas.json</span>
+                </div>
+              </div>
+            ) : (
+              <div className="export-panel__image-notice">
+                No frames found — add frames to your animations and try again.
+              </div>
+            )}
 
-          <div className="export-panel__option-group">
-            <label className="export-panel__label">Scope</label>
-            <div className="export-panel__radio-row">
+            {exportError && (
+              <div className="export-panel__error">{exportError}</div>
+            )}
+
+            <div className="export-panel__actions">
               <button
-                className={`export-panel__scope-btn${target === "active" ? " export-panel__scope-btn--active" : ""}`}
-                onClick={() => setTarget("active")}
-                disabled={!activeAnim}
+                className="export-panel__btn export-panel__btn--primary"
+                onClick={handleDownloadAtlas}
+                disabled={!hasImage || !atlasInfo || isExporting}
               >
-                Active — {activeAnim?.name ?? "none"}
-              </button>
-              <button
-                className={`export-panel__scope-btn${target === "all" ? " export-panel__scope-btn--active" : ""}`}
-                onClick={() => setTarget("all")}
-                disabled={animations.length === 0}
-              >
-                All animations ({animations.length})
+                {isExporting ? "Building…" : "Export Atlas .zip"}
               </button>
             </div>
-          </div>
-        </div>
+          </>
+        )}
 
-        {/* ── JSON preview ── */}
-        <div className="export-panel__preview-wrap">
-          <pre className="export-panel__preview">
-            {preview || "// No animations to export"}
-          </pre>
-        </div>
+        {/* ════════════════ ANIMATION STRIPS ════════════════ */}
+        {exportType === "strips" && (
+          <>
+            {!hasImage ? (
+              <div className="export-panel__image-notice">
+                Re-import your sprite sheet to enable image export.
+                <br />
+                <span className="export-panel__image-notice-sub">
+                  The image file is not persisted on page refresh — re-import
+                  the PNG to continue.
+                </span>
+              </div>
+            ) : stripsInfo && stripsInfo.length > 0 ? (
+              <div className="export-panel__image-info">
+                <div className="export-panel__image-info-row">
+                  <span className="export-panel__image-info-stat">
+                    {stripsInfo.length}{" "}
+                    {stripsInfo.length === 1 ? "strip" : "strips"}
+                  </span>
+                </div>
+                <div className="export-panel__strips-list">
+                  {stripsInfo.map((s) => (
+                    <div key={s.name} className="export-panel__strip-row">
+                      <span className="export-panel__strip-name">
+                        {s.name}.png
+                      </span>
+                      <span className="export-panel__strip-meta">
+                        {s.frameCount}{" "}
+                        {s.frameCount === 1 ? "frame" : "frames"} · {s.w}×
+                        {s.h}px
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="export-panel__image-notice">
+                No frames found — add frames to your animations and try again.
+              </div>
+            )}
 
-        {/* ── Actions ── */}
-        <div className="export-panel__actions">
-          <button
-            className="export-panel__btn"
-            onClick={handleCopy}
-            disabled={!generated}
-          >
-            {copied ? "✓ Copied!" : "Copy to clipboard"}
-          </button>
-          <button
-            className="export-panel__btn export-panel__btn--primary"
-            onClick={handleDownload}
-            disabled={!generated}
-          >
-            Download .{format?.ext ?? "json"}
-          </button>
-        </div>
+            {exportError && (
+              <div className="export-panel__error">{exportError}</div>
+            )}
+
+            <div className="export-panel__actions">
+              <button
+                className="export-panel__btn export-panel__btn--primary"
+                onClick={handleDownloadStrips}
+                disabled={
+                  !hasImage || !stripsInfo?.length || isExporting
+                }
+              >
+                {isExporting ? "Building…" : "Export Strips .zip"}
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </Modal>
   );

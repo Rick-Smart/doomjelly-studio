@@ -1,6 +1,6 @@
 # DoomJelly Studio — Project Roadmap
 
-**Last updated:** 2026-03-06 (M13 complete)
+**Last updated:** 2026-03-06 (M14 complete)
 **Status key:** ✅ Done · 🔄 In Progress · 🔵 Next · ⬜ Pending · 💭 Wishlist
 
 ---
@@ -10,10 +10,29 @@
 **P2 items worth tackling next:**
 
 - Responsive to window resize (Editor Layout)
-- Preview panel resizable (right panel resizes via divider; preview canvas could fill it)
-- Export all animations as zip
+- Export all animations as zip (now done via image strip export — JSON zip still pending)
 - Drag & drop `.doomjelly.json` onto Projects page
 - Rename project
+- Preview panel resizable
+
+---
+
+## M14: Image Export — Packed Atlas + Animation Strips (complete)
+
+- Export panel gains three tabs: **JSON** (existing), **Packed Atlas**, **Animation Strips**
+- **Packed Atlas** — crops every unique cell referenced by selected animations from the source
+  sheet; packs them into a tight roughly-square grid PNG; downloads `atlas.zip` containing:
+  - `atlas.png` — new packed image at native (1×) pixels
+  - `atlas.json` — `{ meta, frames, animations }` with positions in the new image
+- **Animation Strips** — renders each animation as a horizontal PNG strip
+  (`frameW × frameCount` wide, `frameH` tall); downloads `strips.zip` containing one
+  `{name}.png` + `{name}.json` per animation
+- Strip JSON: `{ meta: { frameW, frameH, frameCount }, frames: [{ index, x, y, w, h, ticks, dx, dy }] }`
+- Scope picker shared across all three tabs (Active animation / All animations)
+- Info card shows cell count / grid size (Atlas) or per-strip dimensions (Strips) before export
+- "Re-import" notice shown if sprite sheet is unavailable (e.g. after page refresh)
+- JSZip added as dependency for browser-side zip generation
+- `src/services/imageExportService.js` — `loadImage`, `buildPackedAtlas`, `buildAnimStrips`, `canvasToBlob`
 
 ---
 
@@ -355,8 +374,8 @@
 | Copy to clipboard button                            | ✅     | P1       |
 | Download as file button                             | ✅     | P1       |
 | Export single animation                             | ✅     | P1       |
-| Export all animations (zip)                         | ⬜     | P2       |
-| Include spritesheet image in export zip             | ⬜     | P2       |
+| Export all animations (zip)                         | ✅     | P2       |
+| Include spritesheet image in export zip             | ✅     | P2       |
 
 ---
 

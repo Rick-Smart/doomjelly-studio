@@ -159,3 +159,136 @@
   opacity: 0.4;
   cursor: not-allowed;
 }
+
+/* ── Export type tabs ─────────────────────────────────────── */
+
+.export-panel__type-tabs {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  align-self: flex-start;
+}
+
+.export-panel__type-tab {
+  flex: 1;
+  padding: 7px 18px;
+  background: var(--surface3);
+  border: none;
+  border-right: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background 0.1s,
+    color 0.1s;
+}
+
+.export-panel__type-tab:last-child {
+  border-right: none;
+}
+
+.export-panel__type-tab:hover:not(.export-panel__type-tab--active) {
+  background: var(--surface2);
+  color: var(--text);
+}
+
+.export-panel__type-tab--active {
+  background: color-mix(in srgb, var(--accent) 14%, var(--surface3));
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* ── Image info card (Atlas / Strips) ─────────────────────── */
+
+.export-panel__image-info {
+  background: var(--surface3);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.export-panel__image-info-row {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.export-panel__image-info-row--dim {
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+  gap: 16px;
+}
+
+.export-panel__image-info-stat {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.export-panel__image-info-row--dim span {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: var(--font-mono, monospace);
+}
+
+/* Strips list inside the info card */
+.export-panel__strips-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+}
+
+.export-panel__strip-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.export-panel__strip-name {
+  font-size: 12px;
+  font-family: var(--font-mono, monospace);
+  color: var(--text);
+  font-weight: 500;
+  min-width: 140px;
+}
+
+.export-panel__strip-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* ── Notice (no image / no frames) ───────────────────────── */
+
+.export-panel__image-notice {
+  background: color-mix(in srgb, var(--surface3) 80%, transparent);
+  border: 1px dashed color-mix(in srgb, var(--border) 60%, transparent);
+  border-radius: 6px;
+  padding: 18px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.export-panel__image-notice-sub {
+  font-size: 11px;
+  opacity: 0.75;
+}
+
+/* ── Error banner ─────────────────────────────────────────── */
+
+.export-panel__error {
+  background: color-mix(in srgb, var(--danger) 10%, var(--surface3));
+  border: 1px solid color-mix(in srgb, var(--danger) 35%, transparent);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: var(--danger);
+}
