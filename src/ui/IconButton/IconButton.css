@@ -68,8 +68,11 @@
 .icon-btn--danger {
   background: none;
   color: var(--danger);
+  border: 1px solid color-mix(in srgb, var(--danger) 40%, transparent);
+  font-weight: 700;
 }
 .icon-btn--danger:hover:not(:disabled) {
   background: var(--danger);
   color: #fff;
+  border-color: var(--danger);
 }

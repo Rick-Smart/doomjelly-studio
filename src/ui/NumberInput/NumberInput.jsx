@@ -25,6 +25,7 @@ export function NumberInput({
   max,
   step = 1,
   suffix,
+  className = "",
 }) {
   const [raw, setRaw] = useState(String(value));
 
@@ -47,7 +48,7 @@ export function NumberInput({
   }
 
   return (
-    <label className="num-input">
+    <label className={`num-input${className ? ` ${className}` : ""}`}>
       <span className="num-input__label">{label}</span>
       <div className="num-input__row">
         <input
