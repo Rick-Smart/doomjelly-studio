@@ -1,21 +1,24 @@
-import { Outlet, NavLink } from 'react-router-dom'
-import { useAuth } from '../../contexts/AuthContext'
-import { useTheme } from '../../contexts/ThemeContext'
-import './AppShell.css'
+import { Outlet, NavLink } from "react-router-dom";
+import { useAuth } from "../../contexts/AuthContext";
+import { useTheme } from "../../contexts/ThemeContext";
+import { THEMES } from "../../contexts/ThemeContext";
+import "./AppShell.css";
 
 const NAV_ITEMS = [
-  { to: '/editor',   label: 'Editor' },
-  { to: '/projects', label: 'Projects' },
-]
+  { to: "/editor", label: "Editor" },
+  { to: "/projects", label: "Projects" },
+];
 
 export function AppShell() {
-  const { user, logout } = useAuth()
-  const { theme, setTheme, themes } = useTheme()
+  const { user, logout } = useAuth();
+  const { theme, setTheme, themes } = useTheme();
 
   return (
     <div className="shell">
       <header className="shell-header">
-        <span className="shell-logo" aria-hidden="true">🪼</span>
+        <span className="shell-logo" aria-hidden="true">
+          🪼
+        </span>
         <span className="shell-title">DoomJelly Studio</span>
 
         <nav className="shell-nav" aria-label="Main navigation">
@@ -23,7 +26,9 @@ export function AppShell() {
             <NavLink
               key={to}
               to={to}
-              className={({ isActive }) => `shell-nav-link${isActive ? ' active' : ''}`}
+              className={({ isActive }) =>
+                `shell-nav-link${isActive ? " active" : ""}`
+              }
             >
               {label}
             </NavLink>
@@ -31,17 +36,18 @@ export function AppShell() {
         </nav>
 
         <div className="shell-header-end">
-          <select
-            className="theme-select"
-            value={theme}
-            onChange={e => setTheme(e.target.value)}
-            title="Switch theme"
-            aria-label="Select theme"
-          >
-            {themes.map(t => (
-              <option key={t} value={t}>{t}</option>
+          <div className="theme-swatches" aria-label="Select theme">
+            {Object.entries(THEMES).map(([id, def]) => (
+              <button
+                key={id}
+                className={`theme-swatch${theme === id ? " theme-swatch--active" : ""}`}
+                style={{ "--swatch-color": def.swatch }}
+                onClick={() => setTheme(id)}
+                title={def.label}
+                aria-label={`${def.label} theme${theme === id ? " (active)" : ""}`}
+              />
             ))}
-          </select>
+          </div>
 
           <span className="shell-user" title={user?.email}>
             {user?.name ?? user?.email}
@@ -57,5 +63,5 @@ export function AppShell() {
         <Outlet />
       </main>
     </div>
-  )
+  );
 }

@@ -78,12 +78,33 @@
   flex-shrink: 0;
 }
 
-.theme-select {
-  padding: 3px 6px;
-  font-size: 12px;
-  border-radius: 4px;
-  text-transform: capitalize;
+.theme-swatches {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.theme-swatch {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--swatch-color);
+  border: 2px solid transparent;
   cursor: pointer;
+  padding: 0;
+  transition:
+    transform 0.1s,
+    border-color 0.1s;
+  flex-shrink: 0;
+}
+
+.theme-swatch:hover {
+  transform: scale(1.2);
+}
+
+.theme-swatch--active {
+  border-color: var(--text);
+  transform: scale(1.15);
 }
 
 .shell-user {
