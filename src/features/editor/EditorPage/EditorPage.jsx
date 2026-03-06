@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useProject } from "../../../contexts/ProjectContext";
 import { PlaybackProvider } from "../../../contexts/PlaybackContext";
@@ -17,6 +17,52 @@ import {
 } from "../../../services/projectService";
 import { ExportPanel } from "../../export/ExportPanel";
 import "./EditorPage.css";
+
+function EditableTitle({ value, onChange }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+  const inputRef = useRef(null);
+
+  function start() {
+    setDraft(value);
+    setEditing(true);
+    setTimeout(() => inputRef.current?.select(), 0);
+  }
+
+  function commit() {
+    const trimmed = draft.trim();
+    if (trimmed && trimmed !== value) onChange(trimmed);
+    setEditing(false);
+  }
+
+  function onKey(e) {
+    if (e.key === "Enter") commit();
+    if (e.key === "Escape") setEditing(false);
+  }
+
+  if (editing) {
+    return (
+      <input
+        ref={inputRef}
+        className="editor-title-input"
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={onKey}
+      />
+    );
+  }
+
+  return (
+    <span
+      className="editor-title-text"
+      onClick={start}
+      title="Click to rename project"
+    >
+      {value}
+    </span>
+  );
+}
 
 export function EditorPage() {
   const { state, dispatch } = useProject();
@@ -53,7 +99,14 @@ export function EditorPage() {
 
   return (
     <Page
-      title={state.name}
+      title={
+        <EditableTitle
+          value={state.name}
+          onChange={(name) =>
+            dispatch({ type: "SET_PROJECT_NAME", payload: name })
+          }
+        />
+      }
       actions={
         <>
           <button

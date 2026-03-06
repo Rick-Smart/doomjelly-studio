@@ -49,6 +49,33 @@
   cursor: not-allowed;
 }
 
+/* ── Editable project title ──────────────────────────── */
+.editor-title-text {
+  cursor: pointer;
+  border-bottom: 1px dashed transparent;
+  transition:
+    color 0.1s,
+    border-color 0.1s;
+}
+
+.editor-title-text:hover {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.editor-title-input {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+  background: var(--surface2);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  padding: 1px 8px;
+  outline: none;
+  width: 220px;
+  line-height: 1.4;
+}
+
 /* ── Shared panel heading ────────────────────────────────
    Used by SpriteImporter, FrameConfigPanel, etc.           */
 .panel-heading {

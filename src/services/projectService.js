@@ -162,3 +162,11 @@ export async function deleteProjectFromStorage(id) {
   writeIndex(readIndex().filter((p) => p.id !== id));
   localStorage.removeItem(`dj-project-${id}`);
 }
+
+/** Renames a saved project in localStorage and updates the index. */
+export async function renameProject(id, name) {
+  const data = await loadProjectFromStorage(id);
+  const updated = { ...data, name, savedAt: new Date().toISOString() };
+  await saveProjectToStorage(updated);
+  return updated;
+}

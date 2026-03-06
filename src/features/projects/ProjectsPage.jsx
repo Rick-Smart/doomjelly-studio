@@ -10,6 +10,7 @@ import {
   saveProjectToStorage,
   serialiseProject,
   downloadProject,
+  renameProject,
 } from "../../services/projectService";
 import { ConfirmDialog } from "../../ui/ConfirmDialog";
 import "./ProjectsPage.css";
@@ -22,6 +23,9 @@ export function ProjectsPage() {
   const [newNameMode, setNewNameMode] = useState(false);
   const [newName, setNewName] = useState("");
   const newNameRef = useRef(null);
+  const [renamingId, setRenamingId] = useState(null);
+  const [renameDraft, setRenameDraft] = useState("");
+  const renameRef = useRef(null);
 
   useEffect(() => {
     listProjects().then(setProjects);
@@ -77,7 +81,31 @@ export function ProjectsPage() {
   function startNew() {
     setNewName("");
     setNewNameMode(true);
+    setRenamingId(null);
     setTimeout(() => newNameRef.current?.focus(), 0);
+  }
+
+  function startRename(p) {
+    setRenamingId(p.id);
+    setRenameDraft(p.name);
+    setNewNameMode(false);
+    setTimeout(() => renameRef.current?.select(), 0);
+  }
+
+  async function commitRename(id) {
+    const name = renameDraft.trim();
+    if (name) await renameProject(id, name);
+    setRenamingId(null);
+    refresh();
+    // If this is the currently open project, sync the context name too
+    if (state.id === id && name) {
+      dispatch({ type: "SET_PROJECT_NAME", payload: name });
+    }
+  }
+
+  function onRenameKey(e, id) {
+    if (e.key === "Enter") commitRename(id);
+    if (e.key === "Escape") setRenamingId(null);
   }
 
   function confirmNew(e) {
@@ -154,10 +182,28 @@ export function ProjectsPage() {
           {projects.map((p) => (
             <li key={p.id} className="projects-card">
               <div className="projects-card__info">
-                <span className="projects-card__name">{p.name}</span>
+                {renamingId === p.id ? (
+                  <input
+                    ref={renameRef}
+                    className="projects-rename-input"
+                    value={renameDraft}
+                    onChange={(e) => setRenameDraft(e.target.value)}
+                    onBlur={() => commitRename(p.id)}
+                    onKeyDown={(e) => onRenameKey(e, p.id)}
+                  />
+                ) : (
+                  <span className="projects-card__name">{p.name}</span>
+                )}
                 <span className="projects-card__date">{fmt(p.savedAt)}</span>
               </div>
               <div className="projects-card__actions">
+                <button
+                  className="projects-btn projects-btn--sm"
+                  onClick={() => startRename(p)}
+                  title="Rename project"
+                >
+                  Rename
+                </button>
                 <button
                   className="projects-btn projects-btn--sm"
                   onClick={() => handleDownload(p.id)}

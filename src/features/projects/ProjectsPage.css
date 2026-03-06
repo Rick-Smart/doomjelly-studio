@@ -25,6 +25,19 @@
   border-color: var(--accent);
 }
 
+/* ── Per-card inline rename input ── */
+.projects-rename-input {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--surface3);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  padding: 2px 8px;
+  outline: none;
+  width: 240px;
+}
+
 /* ── Empty state ── */
 .projects-empty {
   display: flex;
