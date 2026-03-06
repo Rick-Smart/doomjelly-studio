@@ -1,5 +1,6 @@
 import { useEffect, useRef, useCallback, useState } from "react";
 import { useProject } from "../../../contexts/ProjectContext";
+import { useTheme } from "../../../contexts/ThemeContext";
 import "./SheetViewerCanvas.css";
 
 const ZOOM_MIN = 0.25;
@@ -15,6 +16,7 @@ const ZOOM_STEP = 0.15;
  */
 export function SheetViewerCanvas({ imageUrl }) {
   const { state, dispatch } = useProject();
+  const { theme } = useTheme();
   const { frameConfig, animations, activeAnimationId } = state;
   const { frameW, frameH, scale, offsetX, offsetY, gutterX, gutterY } =
     frameConfig;
@@ -138,7 +140,7 @@ export function SheetViewerCanvas({ imageUrl }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [imageUrl]);
 
-  // Redraw whenever config, hover, drag, or active animation frames change
+  // Redraw whenever config, hover, drag, active animation, zoom, or theme changes
   useEffect(() => {
     if (imgRef.current) draw();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -155,6 +157,8 @@ export function SheetViewerCanvas({ imageUrl }) {
     dragCell,
     animations,
     activeAnimationId,
+    zoom,
+    theme,
   ]);
 
   function clearCanvas() {
@@ -182,14 +186,25 @@ export function SheetViewerCanvas({ imageUrl }) {
     ctx.drawImage(img, 0, 0, scaledW, scaledH);
 
     // Draw grid overlay
-    drawGrid(ctx, img.naturalWidth, img.naturalHeight, scale, {
-      frameW,
-      frameH,
-      offsetX,
-      offsetY,
-      gutterX,
-      gutterY,
-    });
+    const gridLineColor = getComputedStyle(document.documentElement)
+      .getPropertyValue("--text")
+      .trim();
+    drawGrid(
+      ctx,
+      img.naturalWidth,
+      img.naturalHeight,
+      scale,
+      {
+        frameW,
+        frameH,
+        offsetX,
+        offsetY,
+        gutterX,
+        gutterY,
+      },
+      zoom,
+      gridLineColor,
+    );
 
     // Build usage map: "col,row" → { count, firstIndex }
     const activeAnim = animations.find((a) => a.id === activeAnimationId);
@@ -296,6 +311,8 @@ export function SheetViewerCanvas({ imageUrl }) {
     dragCell,
     animations,
     activeAnimationId,
+    zoom,
+    theme,
   ]);
 
   function canvasCoordsToCell(e) {
@@ -393,8 +410,14 @@ export function SheetViewerCanvas({ imageUrl }) {
     <div
       className="sheet-viewer"
       ref={containerRef}
-      onMouseMove={(e) => { handlePanMouseMove(e); handleMouseMove(e); }}
-      onMouseUp={(e) => { handlePanMouseUp(); handleMouseUp(e); }}
+      onMouseMove={(e) => {
+        handlePanMouseMove(e);
+        handleMouseMove(e);
+      }}
+      onMouseUp={(e) => {
+        handlePanMouseUp();
+        handleMouseUp(e);
+      }}
       onMouseLeave={handleMouseLeave}
       onMouseDown={handlePanMouseDown}
     >
@@ -416,8 +439,12 @@ export function SheetViewerCanvas({ imageUrl }) {
           ref={canvasRef}
           className="sheet-viewer__canvas"
           onMouseMove={handleMouseMove}
-          onMouseDown={(e) => { if (e.button === 0 && !spaceRef.current) handleMouseDown(e); }}
-          onMouseUp={(e) => { if (e.button === 0 && !spaceRef.current) handleMouseUp(e); }}
+          onMouseDown={(e) => {
+            if (e.button === 0 && !spaceRef.current) handleMouseDown(e);
+          }}
+          onMouseUp={(e) => {
+            if (e.button === 0 && !spaceRef.current) handleMouseUp(e);
+          }}
           onContextMenu={handleContextMenu}
         />
       </div>
@@ -426,19 +453,29 @@ export function SheetViewerCanvas({ imageUrl }) {
         <div className="sheet-viewer__zoom-controls">
           <button
             className="sheet-viewer__zoom-btn"
-            onClick={() => setZoom((z) => Math.min(ZOOM_MAX, +(z + ZOOM_STEP).toFixed(4)))}
+            onClick={() =>
+              setZoom((z) => Math.min(ZOOM_MAX, +(z + ZOOM_STEP).toFixed(4)))
+            }
             title="Zoom in (scroll up)"
-          >+</button>
+          >
+            +
+          </button>
           <button
             className="sheet-viewer__zoom-btn sheet-viewer__zoom-label"
             onClick={resetZoomPan}
             title="Reset zoom & pan"
-          >{Math.round(zoom * 100)}%</button>
+          >
+            {Math.round(zoom * 100)}%
+          </button>
           <button
             className="sheet-viewer__zoom-btn"
-            onClick={() => setZoom((z) => Math.max(ZOOM_MIN, +(z - ZOOM_STEP).toFixed(4)))}
+            onClick={() =>
+              setZoom((z) => Math.max(ZOOM_MIN, +(z - ZOOM_STEP).toFixed(4)))
+            }
             title="Zoom out (scroll down)"
-          >−</button>
+          >
+            −
+          </button>
         </div>
       )}
       {imageUrl && !activeAnimationId && (
@@ -463,7 +500,15 @@ export function SheetViewerCanvas({ imageUrl }) {
 
 // ── Grid drawing ─────────────────────────────────────────
 
-function drawGrid(ctx, imgW, imgH, scale, cfg) {
+function drawGrid(
+  ctx,
+  imgW,
+  imgH,
+  scale,
+  cfg,
+  zoom = 1,
+  lineColor = "#e2e2f0",
+) {
   const { frameW, frameH, offsetX, offsetY, gutterX, gutterY } = cfg;
   if (!frameW || !frameH) return;
 
@@ -471,9 +516,13 @@ function drawGrid(ctx, imgW, imgH, scale, cfg) {
   const scaledW = imgW * s;
   const scaledH = imgH * s;
 
+  // Scale line width up when CSS zoom is < 1 so lines stay visible
+  const lw = Math.max(1, 1.5 / zoom);
+
   ctx.save();
-  ctx.strokeStyle = "rgba(255, 255, 0, 0.55)";
-  ctx.lineWidth = 1;
+  // Use theme text color at 65% opacity — contrasts on all themes
+  ctx.strokeStyle = lineColor + "a6"; // hex alpha: a6 ≈ 65%
+  ctx.lineWidth = lw;
 
   const cellStepX = (frameW + gutterX) * s;
   const cellStepY = (frameH + gutterY) * s;
@@ -494,7 +543,8 @@ function drawGrid(ctx, imgW, imgH, scale, cfg) {
       const rx = Math.round(x + frameW * s) + 0.5;
       if (rx < scaledW) {
         ctx.save();
-        ctx.strokeStyle = "rgba(255, 100, 0, 0.4)";
+        ctx.strokeStyle = lineColor + "66"; // 40% opacity for gutter dashes
+        ctx.lineWidth = lw;
         ctx.setLineDash([2, 2]);
         ctx.beginPath();
         ctx.moveTo(rx, startY);
@@ -517,7 +567,8 @@ function drawGrid(ctx, imgW, imgH, scale, cfg) {
       const by = Math.round(y + frameH * s) + 0.5;
       if (by < scaledH) {
         ctx.save();
-        ctx.strokeStyle = "rgba(255, 100, 0, 0.4)";
+        ctx.strokeStyle = lineColor + "66"; // 40% opacity for gutter dashes
+        ctx.lineWidth = lw;
         ctx.setLineDash([2, 2]);
         ctx.beginPath();
         ctx.moveTo(startX, by);
