@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useLocalStorage } from "../../../hooks/useLocalStorage";
 import { useProject } from "../../../contexts/ProjectContext";
 import { useNotification } from "../../../contexts/NotificationContext";
@@ -22,6 +22,7 @@ import {
 import { ExportPanel } from "../../export/ExportPanel";
 import { KeyboardHelp } from "../KeyboardHelp";
 import { generateThumbnail } from "../../../services/imageExportService";
+import { SpriteForge } from "../../sprite-forge/SpriteForge";
 import "./EditorPage.css";
 
 /**
@@ -200,6 +201,14 @@ export function EditorPage() {
   );
   const [saving, setSaving] = useState(false);
 
+  const [searchParams, setSearchParams] = useSearchParams();
+  const rawTab = searchParams.get("tab");
+  const activeTab =
+    rawTab ?? (state.animations.length > 0 ? "animator" : "forge");
+  function setActiveTab(tab) {
+    setSearchParams({ tab }, { replace: true });
+  }
+
   function startLeftResize(e) {
     e.preventDefault();
     const startX = e.clientX;
@@ -266,7 +275,11 @@ export function EditorPage() {
       if (!state.id) dispatch({ type: "SET_PROJECT_ID", payload: data.id });
       const imageUrl = state.spriteSheet?.objectUrl ?? null;
       const thumbnail = imageUrl
-        ? await generateThumbnail(imageUrl, state.frameConfig, state.animations).catch(() => undefined)
+        ? await generateThumbnail(
+            imageUrl,
+            state.frameConfig,
+            state.animations,
+          ).catch(() => undefined)
         : undefined;
       await saveProjectToStorage(data, thumbnail);
       setSaved(true);
@@ -305,42 +318,47 @@ export function EditorPage() {
       }
       actions={
         <>
-          <button
-            className="editor-toolbar__btn"
-            onClick={undo}
-            disabled={!canUndo}
-            title="Undo (Ctrl+Z)"
-          >
-            ↩
-          </button>
-          <button
-            className="editor-toolbar__btn"
-            onClick={redo}
-            disabled={!canRedo}
-            title="Redo (Ctrl+Y)"
-          >
-            ↪
-          </button>
-          <span className="editor-toolbar__sep" />
-          <button
-            className="editor-toolbar__btn"
-            onClick={handleOpen}
-            title="Open .doomjelly.json file"
-          >
-            Open
-          </button>
-          <button
-            className="editor-toolbar__btn"
-            onClick={() => setExportOpen(true)}
-            title="Export animations as JSON"
-          >
-            Export
-          </button>
+          {activeTab === "animator" && (
+            <>
+              <button
+                className="editor-toolbar__btn"
+                onClick={undo}
+                disabled={!canUndo}
+                title="Undo (Ctrl+Z)"
+              >
+                ↩
+              </button>
+              <button
+                className="editor-toolbar__btn"
+                onClick={redo}
+                disabled={!canRedo}
+                title="Redo (Ctrl+Y)"
+              >
+                ↪
+              </button>
+              <span className="editor-toolbar__sep" />
+              <button
+                className="editor-toolbar__btn"
+                onClick={handleOpen}
+                title="Open .doomjelly.json file"
+              >
+                Open
+              </button>
+              <button
+                className="editor-toolbar__btn"
+                onClick={() => setExportOpen(true)}
+                title="Export animations as JSON"
+              >
+                Export
+              </button>
+              <span className="editor-toolbar__sep" />
+            </>
+          )}
           <button
             className="editor-toolbar__btn editor-toolbar__btn--primary"
             onClick={handleSave}
             disabled={saving}
-            title="Save project to Projects list"
+            title="Save project"
           >
             {saving ? "Saving…" : saved ? "Saved ✓" : "Save"}
           </button>
@@ -349,71 +367,99 @@ export function EditorPage() {
       scrollable={false}
       padding={false}
     >
-      {/* Full-screen drag overlay prevents canvas stealing pointer events */}
-      {dragging && <div className="editor__drag-overlay" />}
+      <div className="editor-workspace">
+        {/* Full-screen drag overlay prevents canvas stealing pointer events */}
+        {dragging && <div className="editor__drag-overlay" />}
 
-      <div className="editor">
-        {/* ── Left panel: importer + frame config ── */}
-        <aside
-          className={`editor__left${leftOpen ? "" : " editor__left--collapsed"}`}
-          style={leftOpen ? { width: leftWidth } : undefined}
-        >
+        <div className="editor-workspace__tabs">
           <button
-            className="editor__collapse-btn"
-            onClick={() => setLeftOpen((o) => !o)}
-            title={leftOpen ? "Collapse panel" : "Expand panel"}
-            aria-label={leftOpen ? "Collapse left panel" : "Expand left panel"}
+            className={`editor-workspace__tab${activeTab === "forge" ? " editor-workspace__tab--active" : ""}`}
+            onClick={() => setActiveTab("forge")}
           >
-            {leftOpen ? "‹" : "›"}
+            Sprite Forge
           </button>
-
-          {leftOpen && (
-            <div className="editor__left-inner">
-              <SpriteImporter />
-              <div className="editor__divider" />
-              <FrameConfigPanel />
-            </div>
-          )}
-        </aside>
-
-        {/* ── Resize handle: left ↔ canvas ── */}
-        {leftOpen && (
-          <div
-            className="editor__resize-handle"
-            onMouseDown={startLeftResize}
-          />
-        )}
-
-        {/* ── Main: sheet viewer canvas ── */}
-        <div className="editor__canvas-area">
-          <SheetViewerCanvas imageUrl={imageUrl} />
+          <button
+            className={`editor-workspace__tab${activeTab === "animator" ? " editor-workspace__tab--active" : ""}`}
+            onClick={() => setActiveTab("animator")}
+          >
+            Animator
+          </button>
         </div>
 
-        {/* ── Resize handle: canvas ↔ right ── */}
-        <div className="editor__resize-handle" onMouseDown={startRightResize} />
+        <div className="editor-workspace__body">
+          {activeTab === "forge" ? (
+            <SpriteForge onSwitchToAnimator={() => setActiveTab("animator")} />
+          ) : (
+            <div className="editor">
+              {/* ── Left panel: importer + frame config ── */}
+              <aside
+                className={`editor__left${leftOpen ? "" : " editor__left--collapsed"}`}
+                style={leftOpen ? { width: leftWidth } : undefined}
+              >
+                <button
+                  className="editor__collapse-btn"
+                  onClick={() => setLeftOpen((o) => !o)}
+                  title={leftOpen ? "Collapse panel" : "Expand panel"}
+                  aria-label={
+                    leftOpen ? "Collapse left panel" : "Expand left panel"
+                  }
+                >
+                  {leftOpen ? "‹" : "›"}
+                </button>
 
-        {/* ── Right panel: preview + animations + sequence ── */}
-        <aside className="editor__right" style={{ width: rightWidth }}>
-          <PlaybackProvider>
-            <KeyboardHandler
-              onSave={handleSave}
-              onHelp={() => setHelpOpen(true)}
-            />
-            <div
-              className="editor__preview-wrap"
-              style={{ height: previewHeight }}
-            >
-              <PreviewCanvas />
+                {leftOpen && (
+                  <div className="editor__left-inner">
+                    <SpriteImporter />
+                    <div className="editor__divider" />
+                    <FrameConfigPanel />
+                  </div>
+                )}
+              </aside>
+
+              {/* ── Resize handle: left ↔ canvas ── */}
+              {leftOpen && (
+                <div
+                  className="editor__resize-handle"
+                  onMouseDown={startLeftResize}
+                />
+              )}
+
+              {/* ── Main: sheet viewer canvas ── */}
+              <div className="editor__canvas-area">
+                <SheetViewerCanvas imageUrl={imageUrl} />
+              </div>
+
+              {/* ── Resize handle: canvas ↔ right ── */}
+              <div
+                className="editor__resize-handle"
+                onMouseDown={startRightResize}
+              />
+
+              {/* ── Right panel: preview + animations + sequence ── */}
+              <aside className="editor__right" style={{ width: rightWidth }}>
+                <PlaybackProvider>
+                  <KeyboardHandler
+                    onSave={handleSave}
+                    onHelp={() => setHelpOpen(true)}
+                  />
+                  <div
+                    className="editor__preview-wrap"
+                    style={{ height: previewHeight }}
+                  >
+                    <PreviewCanvas />
+                  </div>
+                  <div
+                    className="editor__resize-handle editor__resize-handle--v"
+                    onMouseDown={startPreviewResize}
+                  />
+                  <AnimationSidebar />
+                  <div className="editor__right-divider" />
+                  <SequenceBuilder />
+                </PlaybackProvider>
+              </aside>
             </div>
-            <div
-              className="editor__resize-handle editor__resize-handle--v"
-              onMouseDown={startPreviewResize}
-            />
-            <AnimationSidebar />
-            <div className="editor__right-divider" />
-            <SequenceBuilder />
-          </PlaybackProvider>
-        </aside>
+          )}
+        </div>
       </div>
       <ExportPanel isOpen={exportOpen} onClose={() => setExportOpen(false)} />
       <KeyboardHelp isOpen={helpOpen} onClose={() => setHelpOpen(false)} />

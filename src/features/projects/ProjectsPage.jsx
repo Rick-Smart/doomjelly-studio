@@ -172,7 +172,7 @@ export function ProjectsPage() {
     dispatch({ type: "RESET_PROJECT" });
     dispatch({ type: "SET_PROJECT_NAME", payload: name });
     setNewNameMode(false);
-    navigate("/editor");
+    navigate("/editor?tab=forge");
   }
 
   const fmt = (iso) =>

@@ -61,6 +61,7 @@ export function serialiseProject(state) {
         dy: f.dy ?? 0,
       })),
     })),
+    spriteForgeDataUrl: state.spriteForgeDataUrl ?? null,
   };
 }
 

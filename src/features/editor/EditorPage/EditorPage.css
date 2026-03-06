@@ -235,3 +235,46 @@
 .editor__resize-handle--v:hover {
   background: var(--accent);
 }
+
+/* ── Workspace tab wrapper ──────────────────────────────── */
+.editor-workspace {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.editor-workspace__tabs {
+  display: flex;
+  flex-shrink: 0;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.editor-workspace__tab {
+  padding: 8px 22px;
+  font-size: 13px;
+  font-weight: 500;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color 0.1s;
+}
+
+.editor-workspace__tab:hover {
+  color: var(--text);
+}
+
+.editor-workspace__tab--active {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+
+.editor-workspace__body {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}

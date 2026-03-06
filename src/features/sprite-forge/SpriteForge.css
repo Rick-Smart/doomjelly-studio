@@ -1,0 +1,239 @@
+.sprite-forge {
+  display: flex;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* ── Left toolbar ── */
+.sprite-forge__toolbar {
+  width: 52px;
+  flex-shrink: 0;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 0;
+  gap: 4px;
+  overflow-y: auto;
+}
+
+.sprite-forge__tool-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.sprite-forge__toolbar-sep {
+  width: 30px;
+  height: 1px;
+  background: var(--border);
+  margin: 4px 0;
+  flex-shrink: 0;
+}
+
+.sprite-forge__tool-btn {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition:
+    background 0.1s,
+    color 0.1s;
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.sprite-forge__tool-btn:hover:not(:disabled) {
+  background: var(--surface2);
+  color: var(--text);
+}
+
+.sprite-forge__tool-btn--active {
+  background: color-mix(in srgb, var(--accent) 15%, var(--surface2));
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.sprite-forge__tool-btn--danger {
+  color: var(--danger);
+}
+
+.sprite-forge__tool-btn--danger:hover:not(:disabled) {
+  background: var(--danger);
+  color: #fff;
+}
+
+.sprite-forge__tool-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.sprite-forge__zoom-label {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-align: center;
+  line-height: 2;
+}
+
+/* ── Canvas area ── */
+.sprite-forge__canvas-wrap {
+  flex: 1;
+  overflow: auto;
+  background: var(--surface2);
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  padding: 20px;
+}
+
+.sprite-forge__canvas {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  /* Checkerboard transparency indicator */
+  background-image: repeating-conic-gradient(
+    color-mix(in srgb, var(--surface3) 90%, var(--text-muted)) 0% 25%,
+    color-mix(in srgb, var(--surface2) 90%, var(--text-muted)) 0% 50%
+  );
+  background-size: 10px 10px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+  display: block;
+  flex-shrink: 0;
+}
+
+/* ── Right panel ── */
+.sprite-forge__panel {
+  width: 168px;
+  flex-shrink: 0;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sprite-forge__section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sprite-forge__section-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+/* Color controls */
+.sprite-forge__color-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sprite-forge__color-swatch {
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.sprite-forge__color-input {
+  width: 36px;
+  height: 32px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface3);
+  cursor: pointer;
+}
+
+/* Palette grid */
+.sprite-forge__palette {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 3px;
+}
+
+.sprite-forge__palette-cell {
+  aspect-ratio: 1;
+  border-radius: 3px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.08s;
+}
+
+.sprite-forge__palette-cell:hover {
+  transform: scale(1.2);
+  z-index: 1;
+  position: relative;
+}
+
+.sprite-forge__palette-cell--active {
+  border-color: var(--text);
+  box-shadow: 0 0 0 1px var(--bg);
+}
+
+/* Canvas size presets */
+.sprite-forge__size-btns {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sprite-forge__size-btn {
+  font-size: 11px;
+  padding: 4px 8px;
+  background: var(--surface3);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.1s;
+}
+
+.sprite-forge__size-btn:hover {
+  background: var(--surface2);
+}
+
+.sprite-forge__size-btn--active {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface3));
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* Use in Animator */
+.sprite-forge__use-btn {
+  width: 100%;
+  padding: 8px 12px;
+  background: var(--accent);
+  border: none;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.1s;
+}
+
+.sprite-forge__use-btn:hover {
+  opacity: 0.85;
+}
