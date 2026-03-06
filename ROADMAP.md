@@ -162,21 +162,23 @@
 **File:** `src/features/editor/SheetViewerCanvas/`  
 **Depends on:** sprite image object URL, frame config, ProjectContext
 
-| Feature                                                     | Status | Priority |
-| ----------------------------------------------------------- | ------ | -------- |
-| Render sprite sheet at configured scale                     | ✅     | P0       |
-| `imageSmoothingEnabled = false`                             | ✅     | P0       |
-| Grid overlay showing cell boundaries (gutter-aware)         | ✅     | P0       |
-| Yellow highlight on hovered cell                            | ✅     | P0       |
-| Click cell → add frame to active animation sequence         | ✅     | P0       |
-| Right-click cell → remove last occurrence of that cell      | ✅     | P0       |
-| Drag-select rectangular region → add all cells in rect      | ✅     | P1       |
-| Blue cell count badge overlay (# times cell is in sequence) | ✅     | P1       |
-| Highlighted state for cells already in sequence             | ✅     | P1       |
-| Canvas resizes with panel                                   | ⬜     | P1       |
-| Pan (click+drag on empty area) for large sheets             | ⬜     | P2       |
-| Zoom (scroll wheel)                                         | ⬜     | P2       |
-| Keyboard: `Esc` to deselect, `A` to select all              | ⬜     | P2       |
+| Feature                                                                                              | Status | Priority |
+| ---------------------------------------------------------------------------------------------------- | ------ | -------- |
+| Render sprite sheet at configured scale                                                              | ✅     | P0       |
+| `imageSmoothingEnabled = false`                                                                      | ✅     | P0       |
+| Grid overlay showing cell boundaries (gutter-aware)                                                  | ✅     | P0       |
+| Yellow highlight on hovered cell                                                                     | ✅     | P0       |
+| Click cell → add frame to active animation sequence                                                  | ✅     | P0       |
+| Right-click cell → remove last occurrence of that cell                                               | ✅     | P0       |
+| Drag-select rectangular region → add all cells in rect                                               | ✅     | P1       |
+| Blue cell count badge overlay (# times cell is in sequence)                                          | ✅     | P1       |
+| Highlighted state for cells already in sequence                                                      | ✅     | P1       |
+| Canvas resizes with panel                                                                            | ⬜     | P1       |
+| Pan (Space+drag or middle-click) for large sheets                                                    | ✅     | P2       |
+| Zoom (scroll wheel + overlay buttons, reset on click)                                                | ✅     | P2       |
+| Grid lines visible at all zoom levels and in all themes                                              | ✅     | P2       |
+| Keyboard: `Esc` to deselect, `A` to select all                                                       | ⬜     | P2       |
+| Custom Grid — drag individual grid lines to arbitrary positions for uneven/non-uniform sprite sheets | 💭     | P3       |
 
 ---
 
