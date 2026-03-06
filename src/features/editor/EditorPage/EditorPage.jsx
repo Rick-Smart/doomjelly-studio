@@ -11,7 +11,6 @@ import { SequenceBuilder } from "../SequenceBuilder";
 import { PreviewCanvas } from "../PreviewCanvas";
 import {
   serialiseProject,
-  downloadProject,
   pickAndLoadProject,
   saveProjectToStorage,
 } from "../../../services/projectService";
@@ -70,16 +69,17 @@ export function EditorPage() {
   const imageUrl = state.spriteSheet?.objectUrl ?? null;
   const [leftOpen, setLeftOpen] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
 
   async function handleSave() {
     setSaving(true);
     try {
       const data = serialiseProject(state);
-      // Ensure the project has an id in context
       if (!state.id) dispatch({ type: "SET_PROJECT_ID", payload: data.id });
       await saveProjectToStorage(data);
-      downloadProject(state);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
     } finally {
       setSaving(false);
     }
@@ -127,9 +127,9 @@ export function EditorPage() {
             className="editor-toolbar__btn editor-toolbar__btn--primary"
             onClick={handleSave}
             disabled={saving}
-            title="Save project and download .doomjelly.json"
+            title="Save project to Projects list"
           >
-            {saving ? "Saving…" : "Save"}
+            {saving ? "Saving…" : saved ? "Saved ✓" : "Save"}
           </button>
         </>
       }

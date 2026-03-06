@@ -231,11 +231,12 @@ export function ProjectsPage() {
 
       {deleteTarget && (
         <ConfirmDialog
+          isOpen={!!deleteTarget}
+          onClose={() => setDeleteTarget(null)}
           title="Delete project?"
-          message={`“${deleteTarget.name}” will be permanently removed from this browser.`}
+          message={`"${deleteTarget?.name}" will be permanently removed from this browser.`}
           confirmLabel="Delete"
           onConfirm={() => handleDelete(deleteTarget.id)}
-          onCancel={() => setDeleteTarget(null)}
         />
       )}
     </Page>
