@@ -167,6 +167,9 @@ export function EditorPage() {
       await saveProjectToStorage(data);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      console.error("Failed to save project:", err);
+      showToast("Failed to save project.", "error");
     } finally {
       setSaving(false);
     }

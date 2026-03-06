@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useProject } from "../../../contexts/ProjectContext";
 import { Modal } from "../../../ui/Modal";
-import { EXPORT_FORMATS, downloadJSON } from "../../../services/exportService";
+import { EXPORT_FORMATS } from "../../../services/exportService";
 import "./ExportPanel.css";
 
 /**
@@ -36,7 +36,12 @@ export function ExportPanel({ isOpen, onClose }) {
     }
   }, [format, animations, frameConfig, target, activeAnimationId]);
 
-  const preview = generated ? JSON.stringify(generated, null, 2) : "";
+  const preview = useMemo(() => {
+    if (!generated || !format) return "";
+    return format.serialize
+      ? format.serialize(generated)
+      : JSON.stringify(generated, null, 2);
+  }, [generated, format]);
 
   async function handleCopy() {
     if (!preview) return;
@@ -46,13 +51,21 @@ export function ExportPanel({ isOpen, onClose }) {
   }
 
   function handleDownload() {
-    if (!generated) return;
+    if (!generated || !format) return;
     const suffix =
       target === "active" ? (activeAnim?.name ?? "animation") : "all";
-    downloadJSON(
-      generated,
-      `${projectName.replace(/[^a-z0-9_\-]/gi, "_")}_${suffix}_${format.id}.json`,
-    );
+    const ext = format.ext ?? "json";
+    const filename = `${projectName.replace(/[^a-z0-9_\-]/gi, "_")}_${suffix}_${format.id}.${ext}`;
+    const text = format.serialize
+      ? format.serialize(generated)
+      : JSON.stringify(generated, null, 2);
+    const blob = new Blob([text], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   return (
@@ -125,7 +138,7 @@ export function ExportPanel({ isOpen, onClose }) {
             onClick={handleDownload}
             disabled={!generated}
           >
-            Download .json
+            Download .{format?.ext ?? "json"}
           </button>
         </div>
       </div>

@@ -99,6 +99,16 @@ export function AnimationSidebar() {
               )}
               <span className="anim-sidebar__meta">{anim.frames.length}f</span>
               <IconButton
+                icon="⎘"
+                title="Duplicate animation"
+                variant="ghost"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  dispatch({ type: "DUPLICATE_ANIMATION", payload: anim.id });
+                }}
+              />
+              <IconButton
                 icon="×"
                 title="Delete animation"
                 variant="ghost"

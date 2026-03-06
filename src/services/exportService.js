@@ -115,6 +115,38 @@ export function toPhaser3JSON(animations, frameConfig, options) {
   };
 }
 
+// ── Format: Canvas/Sprite.js (UI_TOOLS convention) ──────────────────────────
+
+/**
+ * canvas/sprite.js format — returns a plain object; serialize() converts to
+ * an ES module export string.
+ */
+export function toCanvasSpriteJS(animations, frameConfig, options) {
+  const anims = pickAnimations(animations, options);
+  const result = {};
+  for (const anim of anims) {
+    result[anim.name] = {
+      frames: anim.frames.map((f) => ({
+        col: f.col,
+        row: f.row,
+        ticks: f.ticks ?? 6,
+        dx: f.dx ?? 0,
+        dy: f.dy ?? 0,
+      })),
+      loop: true,
+      pingpong: false,
+    };
+  }
+  return result;
+}
+
+function serializeCanvasSpriteJS(data) {
+  // Convert to JS module syntax: strip quotes from identifier keys.
+  const json = JSON.stringify(data, null, 2);
+  const js = json.replace(/^(\s*)"(\w+)":/gm, "$1$2:");
+  return `export const animations = ${js};\n`;
+}
+
 // ── Format registry ───────────────────────────────────────────────────────────
 
 export const EXPORT_FORMATS = [
@@ -129,6 +161,14 @@ export const EXPORT_FORMATS = [
     label: "Phaser 3 Atlas",
     description: "Texture atlas + animation config for Phaser.Loader.atlas()",
     generate: toPhaser3JSON,
+  },
+  {
+    id: "canvas-sprite",
+    label: "Canvas/Sprite.js",
+    description: "ES module export for UI_TOOLS canvas/sprite convention",
+    generate: toCanvasSpriteJS,
+    serialize: serializeCanvasSpriteJS,
+    ext: "js",
   },
 ];
 

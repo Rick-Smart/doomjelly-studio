@@ -18,6 +18,9 @@ export function SequenceBuilder() {
   const [bulkTicks, setBulkTicks] = useState(6);
   const [viewMode, setViewMode] = useState("list"); // 'list' | 'timeline'
 
+  const totalTicks = frames.reduce((sum, f) => sum + (f.ticks ?? 6), 0);
+  const totalMs = Math.round((totalTicks / 60) * 1000);
+
   // Auto-scroll to keep the active frame visible while playing.
   const activeRowRef = useRef(null);
   useEffect(() => {
@@ -76,6 +79,14 @@ export function SequenceBuilder() {
       <div className="seq-builder__header">
         <span className="panel-heading">Frames — {activeAnim.name}</span>
         <span className="seq-builder__count">{frames.length}</span>
+        {frames.length > 0 && (
+          <span
+            className="seq-builder__duration"
+            title="Total duration at 60fps"
+          >
+            {totalTicks}t · {totalMs}ms
+          </span>
+        )}
         <div className="seq-builder__view-toggle">
           <button
             className={`seq-builder__view-btn${viewMode === "list" ? " seq-builder__view-btn--active" : ""}`}

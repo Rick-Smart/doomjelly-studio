@@ -24,6 +24,12 @@
   flex-shrink: 0;
 }
 
+.seq-builder__duration {
+  font-size: 10px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
 /* ── List / Timeline view toggle ──────────────────────── */
 .seq-builder__view-toggle {
   display: flex;

@@ -1,20 +1,37 @@
 # DoomJelly Studio — Project Roadmap
 
-**Last updated:** 2026-03-06 (M7 complete)  
+**Last updated:** 2026-03-06 (M8 complete)  
 **Status key:** ✅ Done · 🔄 In Progress · 🔵 Next · ⬜ Pending · 💭 Wishlist
 
 ---
 
 ## ⚡ NEXT SESSION — Start Here
 
-**P1 items remaining (pick any):**
+**P1 items remaining:**
 
-- Duplicate animation (AnimationSidebar)
-- Total animation duration display (SequenceBuilder)
 - Replace sprite sheet without losing animations (SpriteImporter)
-- `Toast` / `NotificationContext` — wire remaining error surfaces (e.g. save failure)
-- `canvas/sprite.js` export format (exportService)
-- Rename project (ProjectsPage)
+- Wire save-success toast in EditorPage (currently just button label feedback)
+- `useLocalStorage(key, init)` hook
+- `useDebounce(value, ms)` hook
+
+**P2 items worth tackling next:**
+
+- Resizable panel dividers (ResizablePanel component)
+- Keyboard shortcut overlay (`?`) wired — already done in M7
+- Canvas zoom / pan (SheetViewerCanvas)
+- Preview background custom color picker
+- Drag-to-reorder frames (SequenceBuilder)
+
+---
+
+## M8: Polish P1 items (complete)
+
+- `DUPLICATE_ANIMATION` reducer action (undoable, inserts copy after original, activates it)
+- Duplicate button (⎘) added to each animation row in `AnimationSidebar`
+- Total animation duration display in `SequenceBuilder` header: `Nt · Xms` at 60fps
+- `canvas/sprite.js` export format added to `exportService` — generates ES module `export const animations = {...}` with unquoted keys
+- `ExportPanel` updated to use per-format `serialize` + `ext` — download button label and filename extension are format-aware
+- Save error toast wired in `EditorPage.handleSave`
 
 ---
 
@@ -173,7 +190,7 @@
 | Add new animation button                    | ✅     | P0       |
 | Delete animation (with confirm)             | ✅     | P0       |
 | Rename animation (inline double-click edit) | ✅     | P1       |
-| Duplicate animation                         | ⬜     | P1       |
+| Duplicate animation                         | ✅     | P1       |
 | Drag to reorder animations                  | ⬜     | P2       |
 | Frame count shown per animation             | ✅     | P1       |
 | Onboarding empty state CTA                  | ✅     | P1       |
@@ -198,7 +215,7 @@
 | Drag to reorder frames                                         | ⬜     | P2       |
 | Active frame highlighted (synced with scrub slider)            | ✅     | P1       |
 | Import frames from existing JSON                               | ⬜     | P2       |
-| Total animation duration display                               | ⬜     | P1       |
+| Total animation duration display                               | ✅     | P1       |
 
 ---
 
@@ -278,7 +295,7 @@
 | Export format selector                              | ✅     | P1       |
 | Generic JSON array (`[{ x, y, w, h, duration }]`)   | ✅     | P1       |
 | Phaser 3 JSON atlas format                          | ✅     | P1       |
-| Canvas/sprite.js format (AZDES UI_TOOLS convention) | ⬜     | P2       |
+| Canvas/sprite.js format (AZDES UI_TOOLS convention) | ✅     | P2       |
 | LDtk entity definition format                       | ⬜     | P3       |
 | Preview of generated JSON in-panel                  | ✅     | P1       |
 | Copy to clipboard button                            | ✅     | P1       |

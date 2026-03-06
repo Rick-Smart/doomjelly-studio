@@ -79,6 +79,24 @@ function reducer(state, action) {
         ),
       };
 
+    case "DUPLICATE_ANIMATION": {
+      const original = state.animations.find((a) => a.id === action.payload);
+      if (!original) return state;
+      const copy = {
+        ...original,
+        id: crypto.randomUUID(),
+        name: `${original.name} (copy)`,
+        frames: original.frames.map((f) => ({ ...f })),
+      };
+      const idx = state.animations.indexOf(original);
+      const animations = [
+        ...state.animations.slice(0, idx + 1),
+        copy,
+        ...state.animations.slice(idx + 1),
+      ];
+      return { ...state, animations, activeAnimationId: copy.id };
+    }
+
     case "SET_ACTIVE_ANIMATION":
       return { ...state, activeAnimationId: action.payload };
 
@@ -111,6 +129,7 @@ function reducer(state, action) {
 const UNDOABLE_ACTIONS = new Set([
   "ADD_ANIMATION",
   "DELETE_ANIMATION",
+  "DUPLICATE_ANIMATION",
   "RENAME_ANIMATION",
   "UPDATE_ANIMATION",
   "SET_FRAME_CONFIG",
