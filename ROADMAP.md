@@ -281,22 +281,24 @@
 
 ---
 
-### ⬜ Timeline View
+### ✅ Timeline View
 
-**File:** `src/features/editor/Timeline/`  
+**File:** `src/features/editor/TimelineView/`  
 **Depends on:** active animation frames, preview canvas scrub  
-**Note:** Alternative to the vertical Sequence Builder list
+**Note:** Toggleable via List / Timeline buttons in the Frames panel header
 
 | Feature                                    | Status | Priority |
 | ------------------------------------------ | ------ | -------- |
-| Horizontal scrollable timeline             | ⬜     | P2       |
-| Frame cells with thumbnails                | ⬜     | P2       |
-| Frame width proportional to ticks          | ⬜     | P2       |
-| Playhead that scrubs with animation        | ⬜     | P2       |
-| Click frame to select + edit               | ⬜     | P2       |
+| Horizontal scrollable timeline             | ✅     | P2       |
+| Frame cells with thumbnails                | ✅     | P2       |
+| Frame width proportional to ticks          | ✅     | P2       |
+| Playhead that scrubs with animation        | ✅     | P2       |
+| Click frame to select + edit               | ✅     | P2       |
 | Drag to reorder                            | ⬜     | P3       |
 | Zoom in/out timeline                       | ⬜     | P3       |
-| Toggle between list view and timeline view | ⬜     | P2       |
+| Toggle between list view and timeline view | ✅     | P2       |
+
+> **Revisit:** Drag-to-reorder frames in timeline view (P3) and zoom in/out not yet implemented — deferred to a later session.
 
 ---
 
