@@ -48,20 +48,26 @@ export function AnimationSidebar() {
     <div className="anim-sidebar">
       <div className="anim-sidebar__header">
         <span className="panel-heading">Animations</span>
-        <IconButton
-          icon="+"
-          title="Add animation"
-          onClick={addAnimation}
-          size="sm"
-        />
+        {animations.length > 0 && (
+          <IconButton
+            icon="+"
+            title="Add animation"
+            onClick={addAnimation}
+            size="sm"
+          />
+        )}
       </div>
 
       {animations.length === 0 ? (
-        <EmptyState
-          icon="🎞"
-          title="No animations yet"
-          hint="Click + to create one"
-        />
+        <div className="anim-sidebar__onboard">
+          <p className="anim-sidebar__onboard-text">
+            Create an animation, then click cells on the sprite sheet to add
+            frames to it.
+          </p>
+          <button className="anim-sidebar__cta" onClick={addAnimation}>
+            + New Animation
+          </button>
+        </div>
       ) : (
         <ul className="anim-sidebar__list">
           {animations.map((anim) => (

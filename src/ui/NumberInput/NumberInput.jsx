@@ -57,7 +57,20 @@ export function NumberInput({
           min={min}
           max={max}
           step={step}
-          onChange={(e) => setRaw(e.target.value)}
+          onChange={(e) => {
+            const str = e.target.value;
+            setRaw(str);
+            // Commit immediately when the string is a complete valid number.
+            // This fires instantly for stepper arrows (always a complete number).
+            // Partial typing ("-", "", "3.") won't parse so they stay as raw
+            // until blur commits or reverts them.
+            if (
+              !isNaN(parseFloat(str)) &&
+              String(parseFloat(str)) === str.trim()
+            ) {
+              commit(str);
+            }
+          }}
           onBlur={(e) => commit(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter") {

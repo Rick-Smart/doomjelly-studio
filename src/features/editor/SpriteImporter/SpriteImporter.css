@@ -52,3 +52,19 @@
   font-size: 11px;
   color: var(--text-muted);
 }
+
+.sprite-importer__reimport-hint {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 8px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+.sprite-importer__reimport-label {
+  font-size: 10px;
+  color: var(--accent);
+  opacity: 0.85;
+}

@@ -18,7 +18,7 @@ function calcCellCount(imgW, imgH, config) {
   };
 }
 
-export function SpriteImporter({ onSheetLoaded }) {
+export function SpriteImporter() {
   const { state, dispatch } = useProject();
   const { spriteSheet, frameConfig } = state;
 
@@ -36,35 +36,52 @@ export function SpriteImporter({ onSheetLoaded }) {
             height: img.naturalHeight,
           },
         });
-        onSheetLoaded?.(url, img.naturalWidth, img.naturalHeight);
       };
       img.onerror = () => URL.revokeObjectURL(url);
       img.src = url;
     },
-    [dispatch, onSheetLoaded],
+    [dispatch],
   );
 
   const handleReplace = useCallback(() => {
-    // Revoke old object URL before replacing
     if (spriteSheet?.objectUrl) URL.revokeObjectURL(spriteSheet.objectUrl);
     dispatch({ type: "SET_SPRITE_SHEET", payload: null });
   }, [spriteSheet, dispatch]);
 
-  const cells = spriteSheet
+  const cells = spriteSheet?.width
     ? calcCellCount(spriteSheet.width, spriteSheet.height, frameConfig)
     : null;
+
+  // After a refresh, objectUrl is stripped from localStorage.
+  // Show a re-import prompt that retains the previous filename as a hint.
+  const needsReimport = spriteSheet && !spriteSheet.objectUrl;
 
   return (
     <div className="sprite-importer">
       <div className="panel-heading">Sprite Sheet</div>
 
-      {!spriteSheet ? (
-        <FileDropZone
-          accept="image/png"
-          onFile={handleFile}
-          label="Drop a PNG here"
-          hint="or click to browse"
-        />
+      {!spriteSheet || needsReimport ? (
+        <>
+          {needsReimport && (
+            <div className="sprite-importer__reimport-hint">
+              <span
+                className="sprite-importer__filename"
+                title={spriteSheet.filename}
+              >
+                {spriteSheet.filename}
+              </span>
+              <span className="sprite-importer__reimport-label">
+                Re-import required after refresh
+              </span>
+            </div>
+          )}
+          <FileDropZone
+            accept="image/png"
+            onFile={handleFile}
+            label="Drop a PNG here"
+            hint="or click to browse"
+          />
+        </>
       ) : (
         <div className="sprite-importer__loaded">
           <div className="sprite-importer__preview-wrap">

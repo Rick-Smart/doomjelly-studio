@@ -34,11 +34,22 @@ export function SheetViewerCanvas({ imageUrl }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [imageUrl]);
 
-  // Redraw whenever config or hover changes (image already loaded)
+  // Redraw whenever config, hover, or active animation frames change
   useEffect(() => {
     if (imgRef.current) draw();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [frameW, frameH, scale, offsetX, offsetY, gutterX, gutterY, hoveredCell]);
+  }, [
+    frameW,
+    frameH,
+    scale,
+    offsetX,
+    offsetY,
+    gutterX,
+    gutterY,
+    hoveredCell,
+    animations,
+    activeAnimationId,
+  ]);
 
   function clearCanvas() {
     const canvas = canvasRef.current;
@@ -74,7 +85,57 @@ export function SheetViewerCanvas({ imageUrl }) {
       gutterY,
     });
 
-    // Draw hover highlight
+    // Build usage map: "col,row" → { count, firstIndex }
+    const activeAnim = animations.find((a) => a.id === activeAnimationId);
+    const usageMap = new Map();
+    if (activeAnim) {
+      activeAnim.frames.forEach((f, i) => {
+        const key = `${f.col},${f.row}`;
+        if (!usageMap.has(key))
+          usageMap.set(key, { count: 0, firstIndex: i + 1 });
+        usageMap.get(key).count++;
+      });
+    }
+
+    // Draw used-cell highlights + badges
+    usageMap.forEach(({ count, firstIndex }, key) => {
+      const [col, row] = key.split(",").map(Number);
+      const cellX = Math.round((offsetX + col * (frameW + gutterX)) * scale);
+      const cellY = Math.round((offsetY + row * (frameH + gutterY)) * scale);
+      const cw = frameW * scale;
+      const ch = frameH * scale;
+
+      // Tinted fill — brighter when also hovered
+      const isHovered = hoveredCell?.col === col && hoveredCell?.row === row;
+      ctx.fillStyle = isHovered
+        ? "rgba(59, 130, 246, 0.45)"
+        : "rgba(59, 130, 246, 0.25)";
+      ctx.fillRect(cellX, cellY, cw, ch);
+
+      // Badge pill: top-left corner, shows firstIndex / count
+      const label = count > 1 ? `${firstIndex} ×${count}` : `${firstIndex}`;
+      const badgePad = 3;
+      const badgeH = Math.max(12, Math.round(scale * 7));
+      const fontSize = badgeH - 2;
+      ctx.font = `bold ${fontSize}px monospace`;
+      const textW = ctx.measureText(label).width;
+      const badgeW = textW + badgePad * 2;
+      const bx = cellX + 2;
+      const by = cellY + 2;
+
+      // Pill background
+      ctx.fillStyle = "rgba(10, 10, 20, 0.75)";
+      ctx.beginPath();
+      ctx.roundRect(bx, by, badgeW, badgeH, 3);
+      ctx.fill();
+
+      // Label
+      ctx.fillStyle = "#ffffff";
+      ctx.textBaseline = "middle";
+      ctx.fillText(label, bx + badgePad, by + badgeH / 2);
+    });
+
+    // Draw hover highlight (on top of everything)
     if (hoveredCell) {
       const cellX = Math.round(
         (offsetX + hoveredCell.col * (frameW + gutterX)) * scale,
@@ -82,10 +143,8 @@ export function SheetViewerCanvas({ imageUrl }) {
       const cellY = Math.round(
         (offsetY + hoveredCell.row * (frameH + gutterY)) * scale,
       );
-      ctx.fillStyle = "rgba(255, 255, 0, 0.25)";
-      ctx.fillRect(cellX, cellY, frameW * scale, frameH * scale);
-      ctx.strokeStyle = "rgba(255, 255, 255, 0.8)";
-      ctx.lineWidth = 1;
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.9)";
+      ctx.lineWidth = 1.5;
       ctx.strokeRect(
         cellX + 0.5,
         cellY + 0.5,
@@ -93,7 +152,18 @@ export function SheetViewerCanvas({ imageUrl }) {
         frameH * scale - 1,
       );
     }
-  }, [frameW, frameH, scale, offsetX, offsetY, gutterX, gutterY, hoveredCell]);
+  }, [
+    frameW,
+    frameH,
+    scale,
+    offsetX,
+    offsetY,
+    gutterX,
+    gutterY,
+    hoveredCell,
+    animations,
+    activeAnimationId,
+  ]);
 
   function canvasCoordsToCell(e) {
     const canvas = canvasRef.current;
@@ -158,6 +228,22 @@ export function SheetViewerCanvas({ imageUrl }) {
         onMouseLeave={handleMouseLeave}
         onClick={handleClick}
       />
+      {imageUrl && !activeAnimationId && (
+        <div className="sheet-viewer__hint sheet-viewer__hint--no-anim">
+          → Create an animation in the right panel, then click cells to add
+          frames
+        </div>
+      )}
+      {imageUrl &&
+        activeAnimationId &&
+        (() => {
+          const activeAnim = animations.find((a) => a.id === activeAnimationId);
+          return activeAnim && activeAnim.frames.length === 0 ? (
+            <div className="sheet-viewer__hint sheet-viewer__hint--no-frames">
+              Click any cell to add it to “{activeAnim.name}”
+            </div>
+          ) : null;
+        })()}
     </div>
   );
 }
@@ -183,7 +269,8 @@ function drawGrid(ctx, imgW, imgH, scale, cfg) {
 
   // Vertical lines (left edge of each column, plus final right edge)
   for (let x = startX; x <= scaledW + 0.5; x += cellStepX) {
-    const px = Math.round(x) + 0.5;
+    // Clamp closing line to last pixel — Math.round(scaledW)+0.5 would be off-canvas
+    const px = Math.min(Math.round(x) + 0.5, scaledW - 0.5);
     ctx.beginPath();
     ctx.moveTo(px, startY);
     ctx.lineTo(px, scaledH);
@@ -207,7 +294,7 @@ function drawGrid(ctx, imgW, imgH, scale, cfg) {
 
   // Horizontal lines (top edge of each row, plus final bottom edge)
   for (let y = startY; y <= scaledH + 0.5; y += cellStepY) {
-    const py = Math.round(y) + 0.5;
+    const py = Math.min(Math.round(y) + 0.5, scaledH - 0.5);
     ctx.beginPath();
     ctx.moveTo(startX, py);
     ctx.lineTo(scaledW, py);

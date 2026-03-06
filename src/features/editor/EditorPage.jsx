@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useProject } from "../../contexts/ProjectContext";
 import { SpriteImporter } from "./SpriteImporter";
 import { FrameConfigPanel } from "./FrameConfigPanel";
 import { SheetViewerCanvas } from "./SheetViewerCanvas";
@@ -8,7 +9,9 @@ import { PreviewCanvas } from "./PreviewCanvas";
 import "./EditorPage.css";
 
 export function EditorPage() {
-  const [imageUrl, setImageUrl] = useState(null);
+  // Derive imageUrl from context so it survives navigation to other pages.
+  const { state } = useProject();
+  const imageUrl = state.spriteSheet?.objectUrl ?? null;
   const [leftOpen, setLeftOpen] = useState(true);
 
   return (
@@ -28,7 +31,7 @@ export function EditorPage() {
 
         {leftOpen && (
           <div className="editor__left-inner">
-            <SpriteImporter onSheetLoaded={(url) => setImageUrl(url)} />
+            <SpriteImporter />
             <div className="editor__divider" />
             <FrameConfigPanel />
           </div>
