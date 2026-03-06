@@ -66,3 +66,22 @@
   padding: 2px 20px 2px 6px;
   height: 26px;
 }
+
+.preview-canvas__onion-btn {
+  height: 26px;
+  padding: 0 6px;
+  font-size: 14px;
+  background: var(--surface3);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--text-muted);
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.preview-canvas__onion-btn--on {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+  filter: drop-shadow(0 0 4px var(--accent));
+}

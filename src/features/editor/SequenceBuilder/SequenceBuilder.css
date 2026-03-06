@@ -84,6 +84,11 @@
   flex-shrink: 0;
 }
 
+/* dx/dy offset inputs are slightly narrower */
+.seq-frame .seq-frame__offset-input.num-input {
+  width: 36px;
+}
+
 .seq-frame .num-input__label,
 .seq-builder__bulk .num-input__label {
   display: none;
@@ -95,6 +100,18 @@
   font-size: 11px;
   padding: 1px 2px;
   height: 22px;
+}
+
+/* Highlight rows with a non-zero offset */
+.seq-frame--offset {
+  border-left: 2px solid var(--accent);
+}
+
+/* Highlight the actively playing frame */
+.seq-frame--active {
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  outline: 1px solid color-mix(in srgb, var(--accent) 50%, transparent);
+  outline-offset: -1px;
 }
 
 .seq-builder__bulk {

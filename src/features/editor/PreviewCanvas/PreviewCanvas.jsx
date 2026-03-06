@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState } from "react";
 import { useProject } from "../../../contexts/ProjectContext";
 import { useAnimationLoop } from "../../../hooks/useAnimationLoop";
+import { usePlayback } from "../../../contexts/PlaybackContext";
 import { IconButton } from "../../../ui/IconButton";
 import { Select } from "../../../ui/Select";
 import { Slider } from "../../../ui/Slider";
@@ -45,6 +46,7 @@ export function PreviewCanvas() {
   const [speed, setSpeed] = useState(1);
   const [scale, setScale] = useState("2");
   const [bg, setBg] = useState("checker");
+  const [onionSkin, setOnionSkin] = useState(false);
   // Bumped when the source image finishes loading so the draw effect re-runs.
   const [imgVer, setImgVer] = useState(0);
 
@@ -52,6 +54,12 @@ export function PreviewCanvas() {
     frames,
     { mode, speed, ticksPerSecond: 60, resetKey: activeAnimationId },
   );
+
+  // Publish frameIndex to PlaybackContext so SequenceBuilder can highlight it.
+  const { setFrameIndex } = usePlayback();
+  useEffect(() => {
+    setFrameIndex(frameIndex);
+  }, [frameIndex, setFrameIndex]);
 
   const canvasRef = useRef(null);
   const imgRef = useRef(null);
@@ -91,8 +99,32 @@ export function PreviewCanvas() {
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
+    if (!imgRef.current) return;
+
+    // Onion skin: ghost of the previous frame at 30% opacity.
+    if (onionSkin && frameIndex > 0) {
+      const prev = frames[frameIndex - 1];
+      if (prev) {
+        ctx.globalAlpha = 0.3;
+        const px = offsetX + prev.col * (frameW + gutterX) + (prev.dx ?? 0);
+        const py = offsetY + prev.row * (frameH + gutterY) + (prev.dy ?? 0);
+        ctx.drawImage(
+          imgRef.current,
+          px,
+          py,
+          frameW,
+          frameH,
+          0,
+          0,
+          canvas.width,
+          canvas.height,
+        );
+        ctx.globalAlpha = 1;
+      }
+    }
+
     const frame = frames[frameIndex];
-    if (!imgRef.current || !frame) return;
+    if (!frame) return;
 
     const srcX = offsetX + frame.col * (frameW + gutterX) + (frame.dx ?? 0);
     const srcY = offsetY + frame.row * (frameH + gutterY) + (frame.dy ?? 0);
@@ -108,7 +140,7 @@ export function PreviewCanvas() {
       canvas.height,
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [frameIndex, bg, scale, frameConfig, frames, imgVer]);
+  }, [frameIndex, bg, scale, frameConfig, frames, imgVer, onionSkin]);
 
   const hasFrames = frames.length > 0;
 
@@ -161,7 +193,7 @@ export function PreviewCanvas() {
           />
         )}
 
-        {/* Scale + background row */}
+        {/* Scale + background + onion skin row */}
         <div className="preview-canvas__row">
           <Select
             value={scale}
@@ -175,6 +207,14 @@ export function PreviewCanvas() {
             options={BG_OPTIONS}
             className="preview-canvas__compact-select"
           />
+          <button
+            type="button"
+            className={`preview-canvas__onion-btn${onionSkin ? " preview-canvas__onion-btn--on" : ""}`}
+            onClick={() => setOnionSkin((v) => !v)}
+            title="Toggle onion skin (prev frame ghost)"
+          >
+            🧅
+          </button>
         </div>
 
         {/* Speed */}

@@ -17,6 +17,8 @@ export function SheetViewerCanvas({ imageUrl }) {
   const canvasRef = useRef(null);
   const imgRef = useRef(null);
   const [hoveredCell, setHoveredCell] = useState(null);
+  const [dragStartCell, setDragStartCell] = useState(null);
+  const [dragCell, setDragCell] = useState(null);
 
   // Load / reload the image whenever the URL changes
   useEffect(() => {
@@ -34,7 +36,7 @@ export function SheetViewerCanvas({ imageUrl }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [imageUrl]);
 
-  // Redraw whenever config, hover, or active animation frames change
+  // Redraw whenever config, hover, drag, or active animation frames change
   useEffect(() => {
     if (imgRef.current) draw();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -47,6 +49,8 @@ export function SheetViewerCanvas({ imageUrl }) {
     gutterX,
     gutterY,
     hoveredCell,
+    dragStartCell,
+    dragCell,
     animations,
     activeAnimationId,
   ]);
@@ -135,6 +139,31 @@ export function SheetViewerCanvas({ imageUrl }) {
       ctx.fillText(label, bx + badgePad, by + badgeH / 2);
     });
 
+    // Draw drag-select rectangle overlay
+    if (dragStartCell && dragCell) {
+      const minCol = Math.min(dragStartCell.col, dragCell.col);
+      const maxCol = Math.max(dragStartCell.col, dragCell.col);
+      const minRow = Math.min(dragStartCell.row, dragCell.row);
+      const maxRow = Math.max(dragStartCell.row, dragCell.row);
+      const rx1 = Math.round((offsetX + minCol * (frameW + gutterX)) * scale);
+      const ry1 = Math.round((offsetY + minRow * (frameH + gutterY)) * scale);
+      const rx2 = Math.round(
+        (offsetX + (maxCol + 1) * (frameW + gutterX) - gutterX) * scale,
+      );
+      const ry2 = Math.round(
+        (offsetY + (maxRow + 1) * (frameH + gutterY) - gutterY) * scale,
+      );
+      const rw = rx2 - rx1;
+      const rh = ry2 - ry1;
+      ctx.fillStyle = "rgba(59, 130, 246, 0.18)";
+      ctx.fillRect(rx1, ry1, rw, rh);
+      ctx.strokeStyle = "rgba(99, 179, 237, 0.95)";
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([4, 3]);
+      ctx.strokeRect(rx1 + 0.5, ry1 + 0.5, rw - 1, rh - 1);
+      ctx.setLineDash([]);
+    }
+
     // Draw hover highlight (on top of everything)
     if (hoveredCell) {
       const cellX = Math.round(
@@ -161,6 +190,8 @@ export function SheetViewerCanvas({ imageUrl }) {
     gutterX,
     gutterY,
     hoveredCell,
+    dragStartCell,
+    dragCell,
     animations,
     activeAnimationId,
   ]);
@@ -189,27 +220,69 @@ export function SheetViewerCanvas({ imageUrl }) {
 
   function handleMouseMove(e) {
     if (!imageUrl) return;
-    setHoveredCell(canvasCoordsToCell(e));
+    const cell = canvasCoordsToCell(e);
+    setHoveredCell(cell);
+    if (dragStartCell) setDragCell(cell);
   }
 
   function handleMouseLeave() {
     setHoveredCell(null);
+    if (!dragStartCell) return; // preserve drag if button still held
   }
 
-  function handleClick(e) {
+  function handleMouseDown(e) {
+    if (e.button !== 0) return;
+    if (!imageUrl) return;
     const cell = canvasCoordsToCell(e);
     if (!cell) return;
+    setDragStartCell(cell);
+    setDragCell(cell);
+  }
+
+  function handleMouseUp(e) {
+    if (e.button !== 0 || !dragStartCell) return;
+    const endCell = canvasCoordsToCell(e) ?? dragCell;
+    setDragStartCell(null);
+    setDragCell(null);
+    if (!endCell) return;
     const activeAnim = animations.find((a) => a.id === activeAnimationId);
     if (!activeAnim) return;
+    const minCol = Math.min(dragStartCell.col, endCell.col);
+    const maxCol = Math.max(dragStartCell.col, endCell.col);
+    const minRow = Math.min(dragStartCell.row, endCell.row);
+    const maxRow = Math.max(dragStartCell.row, endCell.row);
+    const newFrames = [];
+    for (let row = minRow; row <= maxRow; row++) {
+      for (let col = minCol; col <= maxCol; col++) {
+        newFrames.push({ col, row, ticks: 6, dx: 0, dy: 0 });
+      }
+    }
+    if (newFrames.length === 0) return;
     dispatch({
       type: "UPDATE_ANIMATION",
       payload: {
         id: activeAnim.id,
-        frames: [
-          ...activeAnim.frames,
-          { col: cell.col, row: cell.row, ticks: 6, dx: 0, dy: 0 },
-        ],
+        frames: [...activeAnim.frames, ...newFrames],
       },
+    });
+  }
+
+  function handleContextMenu(e) {
+    e.preventDefault();
+    const cell = canvasCoordsToCell(e);
+    if (!cell) return;
+    const activeAnim = animations.find((a) => a.id === activeAnimationId);
+    if (!activeAnim) return;
+    // Find the last frame matching this cell and remove it.
+    const lastIdx = activeAnim.frames.reduce(
+      (found, f, i) => (f.col === cell.col && f.row === cell.row ? i : found),
+      -1,
+    );
+    if (lastIdx === -1) return;
+    const updated = activeAnim.frames.filter((_, i) => i !== lastIdx);
+    dispatch({
+      type: "UPDATE_ANIMATION",
+      payload: { id: activeAnim.id, frames: updated },
     });
   }
 
@@ -226,7 +299,9 @@ export function SheetViewerCanvas({ imageUrl }) {
         style={{ display: imageUrl ? "block" : "none" }}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
-        onClick={handleClick}
+        onMouseDown={handleMouseDown}
+        onMouseUp={handleMouseUp}
+        onContextMenu={handleContextMenu}
       />
       {imageUrl && !activeAnimationId && (
         <div className="sheet-viewer__hint sheet-viewer__hint--no-anim">

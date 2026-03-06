@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useProject } from "../../contexts/ProjectContext";
+import { PlaybackProvider } from "../../contexts/PlaybackContext";
 import { SpriteImporter } from "./SpriteImporter";
 import { FrameConfigPanel } from "./FrameConfigPanel";
 import { SheetViewerCanvas } from "./SheetViewerCanvas";
@@ -45,11 +46,13 @@ export function EditorPage() {
 
       {/* ── Right panel: preview + animations + sequence ── */}
       <aside className="editor__right">
-        <PreviewCanvas />
-        <div className="editor__right-divider" />
-        <AnimationSidebar />
-        <div className="editor__right-divider" />
-        <SequenceBuilder />
+        <PlaybackProvider>
+          <PreviewCanvas />
+          <div className="editor__right-divider" />
+          <AnimationSidebar />
+          <div className="editor__right-divider" />
+          <SequenceBuilder />
+        </PlaybackProvider>
       </aside>
     </div>
   );
