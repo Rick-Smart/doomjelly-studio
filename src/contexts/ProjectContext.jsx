@@ -1,4 +1,12 @@
-import { createContext, useContext, useReducer, useEffect } from "react";
+import {
+  createContext,
+  useContext,
+  useReducer,
+  useEffect,
+  useRef,
+  useState,
+  useCallback,
+} from "react";
 
 /**
  * Project state shape:
@@ -88,6 +96,9 @@ function reducer(state, action) {
     case "SET_PROJECT_ID":
       return { ...state, id: action.payload };
 
+    case "RESTORE_SNAPSHOT":
+      return { ...state, ...action.payload };
+
     case "RESET_PROJECT":
       return { ...initialState, id: crypto.randomUUID() };
 
@@ -96,10 +107,28 @@ function reducer(state, action) {
   }
 }
 
+// Actions that should push a history entry before applying.
+const UNDOABLE_ACTIONS = new Set([
+  "ADD_ANIMATION",
+  "DELETE_ANIMATION",
+  "RENAME_ANIMATION",
+  "UPDATE_ANIMATION",
+  "SET_FRAME_CONFIG",
+]);
+
+// Snapshot only the content fields that undoable actions modify.
+function snapshot(state) {
+  return {
+    animations: state.animations,
+    activeAnimationId: state.activeAnimationId,
+    frameConfig: { ...state.frameConfig },
+  };
+}
+
 const ProjectContext = createContext(null);
 
 export function ProjectProvider({ children }) {
-  const [state, dispatch] = useReducer(reducer, initialState, (init) => {
+  const [state, rawDispatch] = useReducer(reducer, initialState, (init) => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       return saved ? { ...init, ...JSON.parse(saved) } : init;
@@ -107,6 +136,62 @@ export function ProjectProvider({ children }) {
       return init;
     }
   });
+
+  // Stable ref to current state so history callbacks never go stale.
+  const stateRef = useRef(state);
+  stateRef.current = state;
+
+  // History is stored in a ref (no re-renders needed) + two booleans in state
+  // (drive canUndo/canRedo without exposing the full stack).
+  const histRef = useRef({ past: [], future: [] });
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
+
+  const dispatch = useCallback((action) => {
+    if (UNDOABLE_ACTIONS.has(action.type)) {
+      const h = histRef.current;
+      histRef.current = {
+        past: [...h.past.slice(-49), snapshot(stateRef.current)],
+        future: [],
+      };
+      setCanUndo(true);
+      setCanRedo(false);
+    } else if (
+      action.type === "LOAD_PROJECT" ||
+      action.type === "RESET_PROJECT"
+    ) {
+      histRef.current = { past: [], future: [] };
+      setCanUndo(false);
+      setCanRedo(false);
+    }
+    rawDispatch(action);
+  }, []);
+
+  const undo = useCallback(() => {
+    const h = histRef.current;
+    if (h.past.length === 0) return;
+    const prev = h.past[h.past.length - 1];
+    histRef.current = {
+      past: h.past.slice(0, -1),
+      future: [snapshot(stateRef.current), ...h.future.slice(0, 49)],
+    };
+    setCanUndo(h.past.length > 1);
+    setCanRedo(true);
+    rawDispatch({ type: "RESTORE_SNAPSHOT", payload: prev });
+  }, []);
+
+  const redo = useCallback(() => {
+    const h = histRef.current;
+    if (h.future.length === 0) return;
+    const next = h.future[0];
+    histRef.current = {
+      past: [...h.past.slice(-49), snapshot(stateRef.current)],
+      future: h.future.slice(1),
+    };
+    setCanUndo(true);
+    setCanRedo(h.future.length > 1);
+    rawDispatch({ type: "RESTORE_SNAPSHOT", payload: next });
+  }, []);
 
   useEffect(() => {
     // Don't persist dataUrl blobs — they can be huge and don't survive sessions well.
@@ -126,7 +211,9 @@ export function ProjectProvider({ children }) {
   }, [state]);
 
   return (
-    <ProjectContext.Provider value={{ state, dispatch }}>
+    <ProjectContext.Provider
+      value={{ state, dispatch, undo, redo, canUndo, canRedo }}
+    >
       {children}
     </ProjectContext.Provider>
   );

@@ -49,6 +49,14 @@
   cursor: not-allowed;
 }
 
+.editor-toolbar__sep {
+  width: 1px;
+  height: 18px;
+  background: var(--border);
+  margin: 0 2px;
+  flex-shrink: 0;
+}
+
 /* ── Editable project title ──────────────────────────── */
 .editor-title-text {
   cursor: pointer;

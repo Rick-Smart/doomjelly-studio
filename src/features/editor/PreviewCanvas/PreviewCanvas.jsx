@@ -56,13 +56,20 @@ export function PreviewCanvas() {
   );
 
   // Publish frameIndex + controls to PlaybackContext.
-  const { setFrameIndex, registerControls } = usePlayback();
+  const {
+    setFrameIndex,
+    setIsPlaying: setIsPlayingCtx,
+    registerControls,
+  } = usePlayback();
   useEffect(() => {
     setFrameIndex(frameIndex);
   }, [frameIndex, setFrameIndex]);
   useEffect(() => {
-    registerControls(seek, pause);
-  }, [seek, pause, registerControls]);
+    setIsPlayingCtx(isPlaying);
+  }, [isPlaying, setIsPlayingCtx]);
+  useEffect(() => {
+    registerControls(play, pause, seek);
+  }, [play, pause, seek, registerControls]);
 
   const canvasRef = useRef(null);
   const imgRef = useRef(null);
