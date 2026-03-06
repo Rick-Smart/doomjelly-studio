@@ -24,6 +24,57 @@
   flex-shrink: 0;
 }
 
+.seq-builder__col-headers {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 1px 8px 3px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.seq-builder__col-hdr {
+  font-size: 9px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.5;
+  flex-shrink: 0;
+  text-align: center;
+}
+
+/* Spacers — mirror fixed-width frame row columns */
+.seq-builder__col--idx {
+  width: 14px;
+  flex-shrink: 0;
+}
+.seq-builder__col--thumb {
+  width: 32px;
+  flex-shrink: 0;
+}
+.seq-builder__col--cell {
+  width: 22px;
+}
+
+/* Group headers — transparent border mirrors seq-frame__group border-left */
+.seq-builder__col--ticks {
+  border-left: 1px solid transparent;
+  padding-left: 8px;
+  width: 44px;
+}
+
+.seq-builder__col--offset {
+  border-left: 1px solid transparent;
+  padding-left: 8px;
+  width: 102px;
+}
+
+.seq-builder__col--order {
+  margin-left: auto;
+  border-left: 1px solid transparent;
+  padding-left: 8px;
+}
+
 .seq-builder__list {
   list-style: none;
   margin: 0;
@@ -33,88 +84,7 @@
   min-height: 0;
 }
 
-.seq-frame {
-  display: flex;
-  flex-wrap: nowrap;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 8px;
-  border-bottom: 1px solid var(--border);
-  overflow: hidden;
-}
-
-.seq-frame:hover {
-  background: var(--surface2);
-}
-
-.seq-frame__index {
-  font-size: 10px;
-  color: var(--text-muted);
-  width: 14px;
-  text-align: right;
-  flex-shrink: 0;
-}
-
-.seq-frame__thumb {
-  width: 32px;
-  height: 32px;
-  flex-shrink: 0;
-  border-radius: 2px;
-  image-rendering: pixelated;
-  /* checkerboard behind transparent sprites */
-  background: repeating-conic-gradient(#333 0% 25%, #555 0% 50%) 0 0 / 8px 8px;
-}
-
-.seq-frame__coords {
-  font-size: 9px;
-  color: var(--text-muted);
-  width: 22px;
-  text-align: center;
-  flex-shrink: 0;
-}
-
-.seq-frame__tick-label {
-  font-size: 10px;
-  color: var(--text-muted);
-  flex-shrink: 0;
-}
-
-/* Compact NumberInput override for inline use */
-.seq-frame .num-input,
-.seq-builder__bulk .num-input {
-  width: 44px;
-  flex-shrink: 0;
-}
-
-/* dx/dy offset inputs are slightly narrower */
-.seq-frame .seq-frame__offset-input.num-input {
-  width: 36px;
-}
-
-.seq-frame .num-input__label,
-.seq-builder__bulk .num-input__label {
-  display: none;
-}
-
-.seq-frame .num-input__field,
-.seq-builder__bulk .num-input__field {
-  width: 100%;
-  font-size: 11px;
-  padding: 1px 2px;
-  height: 22px;
-}
-
-/* Highlight rows with a non-zero offset */
-.seq-frame--offset {
-  border-left: 2px solid var(--accent);
-}
-
-/* Highlight the actively playing frame */
-.seq-frame--active {
-  background: color-mix(in srgb, var(--accent) 15%, transparent);
-  outline: 1px solid color-mix(in srgb, var(--accent) 50%, transparent);
-  outline-offset: -1px;
-}
+/* ── Bulk edit bar ── */
 
 .seq-builder__bulk {
   display: flex;
@@ -146,4 +116,21 @@
   background: var(--accent);
   color: #fff;
   border-color: var(--accent);
+}
+
+/* Compact NumberInput overrides for bulk row */
+.seq-builder__bulk .num-input {
+  width: 44px;
+  flex-shrink: 0;
+}
+
+.seq-builder__bulk .num-input__label {
+  display: none;
+}
+
+.seq-builder__bulk .num-input__field {
+  width: 100%;
+  font-size: 11px;
+  padding: 1px 2px;
+  height: 22px;
 }

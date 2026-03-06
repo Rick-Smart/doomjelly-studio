@@ -5,6 +5,7 @@ import { EmptyState } from "../../../ui/EmptyState";
 import { IconButton } from "../../../ui/IconButton";
 import { NumberInput } from "../../../ui/NumberInput";
 import { FrameRow } from "./FrameRow";
+import "./SequenceBuilder.css";
 
 export function SequenceBuilder() {
   const { state, dispatch } = useProject();
@@ -83,6 +84,22 @@ export function SequenceBuilder() {
         />
       ) : (
         <>
+          <div className="seq-builder__col-headers" aria-hidden="true">
+            <span className="seq-builder__col--idx" />
+            <span className="seq-builder__col--thumb" />
+            <span className="seq-builder__col-hdr seq-builder__col--cell">
+              cell
+            </span>
+            <span className="seq-builder__col-hdr seq-builder__col--ticks">
+              ticks
+            </span>
+            <span className="seq-builder__col-hdr seq-builder__col--offset">
+              dx · dy
+            </span>
+            <span className="seq-builder__col-hdr seq-builder__col--order">
+              order
+            </span>
+          </div>
           <ul className="seq-builder__list">
             {frames.map((frame, i) => (
               <FrameRow

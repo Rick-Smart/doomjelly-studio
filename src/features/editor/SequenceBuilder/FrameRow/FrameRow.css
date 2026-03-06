@@ -1,0 +1,135 @@
+.seq-frame {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: flex-end;
+  gap: 6px;
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.seq-frame:hover {
+  background: var(--surface2);
+}
+
+/* Input group: ticks, offset */
+.seq-frame__group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex-shrink: 0;
+  border-left: 1px solid var(--border);
+  padding-left: 8px;
+}
+
+/* Inner row for multi-input groups */
+.seq-frame__group-row {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+/* Paired offset inputs — dx label | [dx][dy] | dy label */
+.seq-frame__offset-pair {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.seq-frame__inputs-joined {
+  display: flex;
+  gap: 0;
+}
+
+.seq-frame__offset-pair .seq-frame__axis-label:last-child {
+  text-align: left;
+}
+
+.seq-frame .seq-frame__offset-input--left .num-input__field {
+  border-radius: 3px 0 0 3px;
+  border-right: none;
+}
+
+.seq-frame .seq-frame__offset-input--right .num-input__field {
+  border-radius: 0 3px 3px 0;
+}
+
+/* Axis labels: dx / dy */
+.seq-frame__axis-label {
+  font-size: 10px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  width: 12px;
+  text-align: right;
+}
+
+/* Actions group pushed to the right */
+.seq-frame__actions {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: auto;
+  border-left: 1px solid var(--border);
+  padding-left: 8px;
+  flex-shrink: 0;
+}
+
+.seq-frame__index {
+  font-size: 10px;
+  color: var(--text-muted);
+  width: 14px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.seq-frame__thumb {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 2px;
+  image-rendering: pixelated;
+  /* checkerboard behind transparent sprites */
+  background: repeating-conic-gradient(#333 0% 25%, #555 0% 50%) 0 0 / 8px 8px;
+}
+
+.seq-frame__coords {
+  font-size: 9px;
+  color: var(--text-muted);
+  width: 22px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+/* Compact NumberInput overrides */
+.seq-frame .num-input {
+  width: 44px;
+  flex-shrink: 0;
+}
+
+/* dx/dy offset inputs are slightly narrower */
+.seq-frame .seq-frame__offset-input.num-input {
+  width: 36px;
+}
+
+.seq-frame .num-input__label {
+  display: none;
+}
+
+.seq-frame .num-input__field {
+  width: 100%;
+  font-size: 11px;
+  padding: 1px 2px;
+  height: 22px;
+}
+
+/* Highlight rows with a non-zero offset */
+.seq-frame--offset {
+  border-left: 2px solid var(--accent);
+}
+
+/* Highlight the actively playing frame */
+.seq-frame--active {
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  outline: 1px solid color-mix(in srgb, var(--accent) 50%, transparent);
+  outline-offset: -1px;
+}

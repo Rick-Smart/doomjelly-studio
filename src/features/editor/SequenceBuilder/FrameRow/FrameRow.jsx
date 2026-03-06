@@ -1,7 +1,7 @@
 import { useRef, useEffect } from "react";
-import { IconButton } from "../../../ui/IconButton";
-import { NumberInput } from "../../../ui/NumberInput";
-import "./SequenceBuilder.css";
+import { IconButton } from "../../../../ui/IconButton";
+import { NumberInput } from "../../../../ui/NumberInput";
+import "./FrameRow.css";
 
 const THUMB = 32;
 
@@ -104,56 +104,71 @@ export function FrameRow({
       <span className="seq-frame__coords">
         {frame.col},{frame.row}
       </span>
-      <NumberInput
-        label=""
-        value={frame.ticks}
-        onChange={(v) => onUpdate({ ticks: v })}
-        min={1}
-        max={999}
-        step={1}
-      />
-      <span className="seq-frame__tick-label">t</span>
-      <NumberInput
-        label=""
-        value={frame.dx ?? 0}
-        onChange={(v) => onUpdate({ dx: v })}
-        min={-999}
-        max={999}
-        step={1}
-        className="seq-frame__offset-input"
-      />
-      <span className="seq-frame__tick-label">dx</span>
-      <NumberInput
-        label=""
-        value={frame.dy ?? 0}
-        onChange={(v) => onUpdate({ dy: v })}
-        min={-999}
-        max={999}
-        step={1}
-        className="seq-frame__offset-input"
-      />
-      <span className="seq-frame__tick-label">dy</span>
-      <IconButton
-        icon="↑"
-        title="Move up"
-        size="sm"
-        onClick={onMoveUp}
-        disabled={isFirst}
-      />
-      <IconButton
-        icon="↓"
-        title="Move down"
-        size="sm"
-        onClick={onMoveDown}
-        disabled={isLast}
-      />
-      <IconButton
-        icon="✕"
-        title="Remove frame"
-        size="sm"
-        variant="danger"
-        onClick={onDelete}
-      />
+
+      {/* ── Ticks group ── */}
+      <div className="seq-frame__group">
+        <NumberInput
+          label=""
+          value={frame.ticks}
+          onChange={(v) => onUpdate({ ticks: v })}
+          min={1}
+          max={999}
+          step={1}
+        />
+      </div>
+
+      {/* ── Offset group ── */}
+      <div className="seq-frame__group">
+        <div className="seq-frame__offset-pair">
+          <span className="seq-frame__axis-label">dx</span>
+          <div className="seq-frame__inputs-joined">
+            <NumberInput
+              label=""
+              value={frame.dx ?? 0}
+              onChange={(v) => onUpdate({ dx: v })}
+              min={-999}
+              max={999}
+              step={1}
+              className="seq-frame__offset-input seq-frame__offset-input--left"
+            />
+            <NumberInput
+              label=""
+              value={frame.dy ?? 0}
+              onChange={(v) => onUpdate({ dy: v })}
+              min={-999}
+              max={999}
+              step={1}
+              className="seq-frame__offset-input seq-frame__offset-input--right"
+            />
+          </div>
+          <span className="seq-frame__axis-label">dy</span>
+        </div>
+      </div>
+
+      {/* ── Actions ── */}
+      <div className="seq-frame__actions">
+        <IconButton
+          icon="↑"
+          title="Move up"
+          size="sm"
+          onClick={onMoveUp}
+          disabled={isFirst}
+        />
+        <IconButton
+          icon="↓"
+          title="Move down"
+          size="sm"
+          onClick={onMoveDown}
+          disabled={isLast}
+        />
+        <IconButton
+          icon="✕"
+          title="Remove frame"
+          size="sm"
+          variant="danger"
+          onClick={onDelete}
+        />
+      </div>
     </li>
   );
 }
