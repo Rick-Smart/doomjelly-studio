@@ -28,6 +28,8 @@ export function ProjectsPage() {
   const [renamingId, setRenamingId] = useState(null);
   const [renameDraft, setRenameDraft] = useState("");
   const renameRef = useRef(null);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const dragCounterRef = useRef(0);
 
   useEffect(() => {
     listProjects().then(setProjects);
@@ -59,6 +61,43 @@ export function ProjectsPage() {
       if (err.message !== "No file selected") console.error(err);
       if (err.message !== "No file selected")
         showToast("Failed to import project file.", "error");
+    }
+  }
+
+  function handleDragEnter(e) {
+    e.preventDefault();
+    dragCounterRef.current++;
+    setIsDragOver(true);
+  }
+
+  function handleDragLeave() {
+    dragCounterRef.current--;
+    if (dragCounterRef.current <= 0) {
+      dragCounterRef.current = 0;
+      setIsDragOver(false);
+    }
+  }
+
+  async function handleDrop(e) {
+    e.preventDefault();
+    dragCounterRef.current = 0;
+    setIsDragOver(false);
+    const file = Array.from(e.dataTransfer.files).find(
+      (f) => f.name.endsWith(".doomjelly.json") || f.name.endsWith(".json"),
+    );
+    if (!file) {
+      showToast("Drop a .doomjelly.json file to import.", "error");
+      return;
+    }
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      await saveProjectToStorage(data);
+      dispatch({ type: "LOAD_PROJECT", payload: data });
+      navigate("/editor");
+    } catch (err) {
+      console.error(err);
+      showToast("Failed to import project file.", "error");
     }
   }
 
@@ -150,99 +189,117 @@ export function ProjectsPage() {
         </>
       }
     >
-      {newNameMode && (
-        <form className="projects-new-form" onSubmit={confirmNew}>
-          <input
-            ref={newNameRef}
-            className="projects-new-input"
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            placeholder="Project name…"
+      <div
+        className={`projects-drop-root${isDragOver ? " projects-drop-root--over" : ""}`}
+        onDragEnter={handleDragEnter}
+        onDragOver={(e) => e.preventDefault()}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
+        {isDragOver && (
+          <div className="projects-drop-overlay">
+            <span className="projects-drop-overlay__label">
+              Drop .doomjelly.json to import
+            </span>
+          </div>
+        )}
+        {newNameMode && (
+          <form className="projects-new-form" onSubmit={confirmNew}>
+            <input
+              ref={newNameRef}
+              className="projects-new-input"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              placeholder="Project name…"
+            />
+            <button
+              type="submit"
+              className="projects-btn projects-btn--primary"
+            >
+              Create
+            </button>
+            <button
+              type="button"
+              className="projects-btn"
+              onClick={() => setNewNameMode(false)}
+            >
+              Cancel
+            </button>
+          </form>
+        )}
+
+        {projects.length === 0 ? (
+          <div className="projects-empty">
+            <p className="projects-empty__icon">🪄</p>
+            <p className="projects-empty__title">No saved projects yet</p>
+            <p className="projects-empty__hint">
+              Save your current project or open a .doomjelly.json file to get
+              started.
+            </p>
+          </div>
+        ) : (
+          <ul className="projects-list">
+            {projects.map((p) => (
+              <li key={p.id} className="projects-card">
+                <div className="projects-card__info">
+                  {renamingId === p.id ? (
+                    <input
+                      ref={renameRef}
+                      className="projects-rename-input"
+                      value={renameDraft}
+                      onChange={(e) => setRenameDraft(e.target.value)}
+                      onBlur={() => commitRename(p.id)}
+                      onKeyDown={(e) => onRenameKey(e, p.id)}
+                    />
+                  ) : (
+                    <span className="projects-card__name">{p.name}</span>
+                  )}
+                  <span className="projects-card__date">{fmt(p.savedAt)}</span>
+                </div>
+                <div className="projects-card__actions">
+                  <button
+                    className="projects-btn projects-btn--sm"
+                    onClick={() => startRename(p)}
+                    title="Rename project"
+                  >
+                    Rename
+                  </button>
+                  <button
+                    className="projects-btn projects-btn--sm"
+                    onClick={() => handleDownload(p.id)}
+                    title="Download .doomjelly.json"
+                  >
+                    ↓ Export
+                  </button>
+                  <button
+                    className="projects-btn projects-btn--sm projects-btn--danger"
+                    onClick={() => setDeleteTarget(p)}
+                  >
+                    Delete
+                  </button>
+                  <button
+                    className="projects-btn projects-btn--sm projects-btn--primary"
+                    onClick={() => handleOpen(p.id)}
+                  >
+                    Open
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {deleteTarget && (
+          <ConfirmDialog
+            isOpen={!!deleteTarget}
+            onClose={() => setDeleteTarget(null)}
+            title="Delete project?"
+            message={`"${deleteTarget?.name}" will be permanently removed from this browser.`}
+            confirmLabel="Delete"
+            onConfirm={() => handleDelete(deleteTarget.id)}
           />
-          <button type="submit" className="projects-btn projects-btn--primary">
-            Create
-          </button>
-          <button
-            type="button"
-            className="projects-btn"
-            onClick={() => setNewNameMode(false)}
-          >
-            Cancel
-          </button>
-        </form>
-      )}
-
-      {projects.length === 0 ? (
-        <div className="projects-empty">
-          <p className="projects-empty__icon">🪄</p>
-          <p className="projects-empty__title">No saved projects yet</p>
-          <p className="projects-empty__hint">
-            Save your current project or open a .doomjelly.json file to get
-            started.
-          </p>
-        </div>
-      ) : (
-        <ul className="projects-list">
-          {projects.map((p) => (
-            <li key={p.id} className="projects-card">
-              <div className="projects-card__info">
-                {renamingId === p.id ? (
-                  <input
-                    ref={renameRef}
-                    className="projects-rename-input"
-                    value={renameDraft}
-                    onChange={(e) => setRenameDraft(e.target.value)}
-                    onBlur={() => commitRename(p.id)}
-                    onKeyDown={(e) => onRenameKey(e, p.id)}
-                  />
-                ) : (
-                  <span className="projects-card__name">{p.name}</span>
-                )}
-                <span className="projects-card__date">{fmt(p.savedAt)}</span>
-              </div>
-              <div className="projects-card__actions">
-                <button
-                  className="projects-btn projects-btn--sm"
-                  onClick={() => startRename(p)}
-                  title="Rename project"
-                >
-                  Rename
-                </button>
-                <button
-                  className="projects-btn projects-btn--sm"
-                  onClick={() => handleDownload(p.id)}
-                  title="Download .doomjelly.json"
-                >
-                  ↓ Export
-                </button>
-                <button
-                  className="projects-btn projects-btn--sm projects-btn--danger"
-                  onClick={() => setDeleteTarget(p)}
-                >
-                  Delete
-                </button>
-                <button
-                  className="projects-btn projects-btn--sm projects-btn--primary"
-                  onClick={() => handleOpen(p.id)}
-                >
-                  Open
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      {deleteTarget && (
-        <ConfirmDialog
-          isOpen={!!deleteTarget}
-          onClose={() => setDeleteTarget(null)}
-          title="Delete project?"
-          message={`"${deleteTarget?.name}" will be permanently removed from this browser.`}
-          confirmLabel="Delete"
-          onConfirm={() => handleDelete(deleteTarget.id)}
-        />
-      )}
+        )}
+      </div>
     </Page>
   );
 }

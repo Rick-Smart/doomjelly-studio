@@ -193,6 +193,10 @@ export function EditorPage() {
   const [leftWidth, setLeftWidth] = useLocalStorage("dj-panel-left", 220);
   const [rightWidth, setRightWidth] = useLocalStorage("dj-panel-right", 380);
   const [dragging, setDragging] = useState(false);
+  const [previewHeight, setPreviewHeight] = useLocalStorage(
+    "dj-panel-preview",
+    220,
+  );
   const [saving, setSaving] = useState(false);
 
   function startLeftResize(e) {
@@ -230,6 +234,26 @@ export function EditorPage() {
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
   }
+
+  function startPreviewResize(e) {
+    e.preventDefault();
+    const startY = e.clientY;
+    const startH = previewHeight;
+    setDragging(true);
+    function onMove(e) {
+      setPreviewHeight(
+        Math.min(480, Math.max(100, startH + (e.clientY - startY))),
+      );
+    }
+    function onUp() {
+      setDragging(false);
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    }
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  }
+
   const [saved, setSaved] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
@@ -370,8 +394,16 @@ export function EditorPage() {
               onSave={handleSave}
               onHelp={() => setHelpOpen(true)}
             />
-            <PreviewCanvas />
-            <div className="editor__right-divider" />
+            <div
+              className="editor__preview-wrap"
+              style={{ height: previewHeight }}
+            >
+              <PreviewCanvas />
+            </div>
+            <div
+              className="editor__resize-handle editor__resize-handle--v"
+              onMouseDown={startPreviewResize}
+            />
             <AnimationSidebar />
             <div className="editor__right-divider" />
             <SequenceBuilder />

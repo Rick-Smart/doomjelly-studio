@@ -157,3 +157,31 @@
   border-color: var(--danger);
   color: #fff;
 }
+
+/* ── Drag & drop import ── */
+.projects-drop-root {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  min-height: 0;
+}
+
+.projects-drop-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--accent) 10%, var(--bg) 90%);
+  border: 2px dashed var(--accent);
+  border-radius: 8px;
+  pointer-events: none;
+}
+
+.projects-drop-overlay__label {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--accent);
+}

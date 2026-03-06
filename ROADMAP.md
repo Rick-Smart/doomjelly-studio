@@ -1,6 +1,6 @@
 # DoomJelly Studio — Project Roadmap
 
-**Last updated:** 2026-03-06 (M14 complete)
+**Last updated:** 2026-03-06 (M15 complete)
 **Status key:** ✅ Done · 🔄 In Progress · 🔵 Next · ⬜ Pending · 💭 Wishlist
 
 ---
@@ -14,6 +14,25 @@
 - Drag & drop `.doomjelly.json` onto Projects page
 - Rename project
 - Preview panel resizable
+
+---
+
+## M15: Preview Resize + Responsive Layout + Projects Drag & Drop (complete)
+
+- **Preview panel resizable** — vertical drag handle between preview canvas and animation list
+  - Drag to set preview height (100–480px); persisted to `dj-panel-preview` localStorage
+  - `editor__preview-wrap` height-controlled wrapper; `preview-canvas` fills it via `height: 100%`
+  - Viewport uses `flex: 1; min-height: 0` so it expands/contracts as height changes
+- **Responsive to window resize** — pure CSS `max-width: min(Xpx, Yvw)` clamp on panels
+  - Left panel: `max-width: min(480px, 22vw)` — panel can’t exceed 22% of viewport
+  - Right panel: `max-width: min(560px, 35vw)` — panel can’t exceed 35% of viewport
+  - Canvas area: `min-width: 240px` — always has at least 240px of workspace
+- **Drag & drop `.doomjelly.json` onto Projects page** — drop a save file anywhere on the page
+  - Drag counter ref prevents flicker from child `dragleave` events
+  - Full-page drop overlay with accent dashed border + label appears on drag-over
+  - On drop: reads file, parses JSON, saves to storage, loads into context, navigates to editor
+  - Falls back to `showToast("error")` if file is invalid or not a JSON file
+- **Rename project** — confirmed already implemented (M15 tracks it as complete from earlier work)
 
 ---
 
@@ -315,7 +334,7 @@
 | Background: solid white                                        | ✅     | P0       |
 | Background: custom color picker                                | ✅     | P2       |
 | Preview scale control (1×, 2×, 4×)                             | ✅     | P1       |
-| Preview panel resizable                                        | ⬜     | P2       |
+| Preview panel resizable                                        | ✅     | P2       |
 
 ---
 
@@ -328,7 +347,7 @@
 | Three-column layout: sidebar / sheet viewer / sequence+preview | ✅     | P0       |
 | Collapsible left panel (sprite importer + frame config)        | ✅     | P1       |
 | Resizable panel dividers                                       | ✅     | P2       |
-| Responsive to window resize                                    | ⬜     | P1       |
+| Responsive to window resize                                    | ✅     | P1       |
 | Keyboard shortcuts: Space = play/pause, arrow keys = scrub     | ⬜     | P2       |
 
 ---
@@ -344,14 +363,14 @@
 | List all saved projects                                         | ✅     | P1       |
 | Create new project (name prompt)                                | ✅     | P1       |
 | Open project (loads into ProjectContext + redirects to /editor) | ✅     | P1       |
-| Rename project                                                  | ⬜     | P1       |
+| Rename project                                                  | ✅     | P1       |
 | Delete project with confirmation                                | ✅     | P1       |
 | Last modified date per project                                  | ✅     | P1       |
 | Animation count + frame count per project                       | ⬜     | P2       |
 | Project thumbnail (first frame of first animation)              | ⬜     | P2       |
 | Save current project to .doomjelly.json (download file)         | ✅     | P1       |
 | Load .doomjelly.json from file picker                           | ✅     | P1       |
-| Drag & drop .doomjelly.json onto page to load                   | ⬜     | P2       |
+| Drag & drop .doomjelly.json onto page to load                   | ✅     | P2       |
 | Empty state (no projects yet CTA)                               | ✅     | P1       |
 | Recent projects (quick-access, localStorage)                    | ⬜     | P2       |
 
