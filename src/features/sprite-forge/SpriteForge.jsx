@@ -403,6 +403,42 @@ export function SpriteForge({ onSwitchToAnimator }) {
     onSwitchToAnimator?.();
   }
 
+  async function importFromAnimator() {
+    const sh = state.spriteSheet;
+    if (!sh?.objectUrl) return;
+    let src = sh.objectUrl;
+    if (!src.startsWith("data:")) {
+      try {
+        const img = new Image();
+        await new Promise((res, rej) => {
+          img.onload = res;
+          img.onerror = rej;
+          img.src = src;
+        });
+        const cvs = document.createElement("canvas");
+        cvs.width = sh.width;
+        cvs.height = sh.height;
+        cvs.getContext("2d").drawImage(img, 0, 0);
+        src = cvs.toDataURL("image/png");
+      } catch {
+        return;
+      }
+    }
+    const w = canvasW;
+    const h = canvasH;
+    const loadImg = new Image();
+    loadImg.onload = () => {
+      const ctx = offscreenRef.current.getContext("2d");
+      ctx.clearRect(0, 0, w, h);
+      ctx.drawImage(loadImg, 0, 0, w, h);
+      pixelsRef.current.set(ctx.getImageData(0, 0, w, h).data);
+      pushHistoryEntry();
+      redraw();
+      saveToProject();
+    };
+    loadImg.src = src;
+  }
+
   function changeSize(w, h) {
     if (w === canvasW && h === canvasH) return;
     const hasContent =
@@ -572,8 +608,16 @@ export function SpriteForge({ onSwitchToAnimator }) {
         </div>
 
         <div className="sprite-forge__section">
+          {state.spriteSheet && (
+            <button
+              className="sprite-forge__import-btn"
+              onClick={importFromAnimator}
+            >
+              ← From Animator
+            </button>
+          )}
           <button className="sprite-forge__use-btn" onClick={useInAnimator}>
-            Use in Animator →
+            Send to Animator →
           </button>
         </div>
       </div>

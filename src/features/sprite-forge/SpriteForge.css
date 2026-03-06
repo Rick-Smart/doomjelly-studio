@@ -237,3 +237,25 @@
 .sprite-forge__use-btn:hover {
   opacity: 0.85;
 }
+
+/* Import from Animator */
+.sprite-forge__import-btn {
+  width: 100%;
+  margin-bottom: 6px;
+  padding: 7px 12px;
+  background: var(--surface-raised, var(--surface));
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    border-color 0.1s,
+    color 0.1s;
+}
+
+.sprite-forge__import-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
