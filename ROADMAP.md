@@ -1,24 +1,32 @@
 # DoomJelly Studio — Project Roadmap
 
-**Last updated:** 2026-03-06 (M4 complete)  
+**Last updated:** 2026-03-06 (M7 complete)  
 **Status key:** ✅ Done · 🔄 In Progress · 🔵 Next · ⬜ Pending · 💭 Wishlist
 
 ---
 
 ## ⚡ NEXT SESSION — Start Here
 
-**M5: Export Panel**
+**P1 items remaining (pick any):**
 
-1. Export panel — modal or drawer accessible from the Editor toolbar
-2. Format selector: Generic JSON / Phaser 3 atlas
-3. Preview of generated JSON in-panel
-4. Copy to clipboard + Download as file buttons
-5. Export single animation (active) or all animations
-6. Update roadmap, commit + push
+- Duplicate animation (AnimationSidebar)
+- Total animation duration display (SequenceBuilder)
+- Replace sprite sheet without losing animations (SpriteImporter)
+- `Toast` / `NotificationContext` — wire remaining error surfaces (e.g. save failure)
+- `canvas/sprite.js` export format (exportService)
+- Rename project (ProjectsPage)
 
 ---
 
-## M4: Projects (complete)
+## M7: Settings Page + Notifications (complete)
+
+- `NotificationContext` + `ToastList` UI component — `showToast(message, type, duration)`
+- `NotificationProvider` wraps full app in `App.jsx`; toasts render globally fixed bottom-right
+- `?` keyboard shortcut wired in `EditorPage` → opens `KeyboardHelp` modal
+- `KeyboardHelp` imported and rendered in `EditorPage`
+- Error toasts wired in `EditorPage` (load failure) and `ProjectsPage` (import failure)
+- `/settings` route added; **Settings** nav link in `AppShell`
+- `SettingsPage` — three panels: Appearance (theme cards), Editor Defaults (frame size + export format, persisted to `dj-prefs`), Keyboard Shortcuts reference
 
 - `projectService.js` — serialise/deserialise `.doomjelly.json`, download, file picker load, localStorage index
 - `ProjectContext` — added `SET_PROJECT_ID` action
@@ -85,7 +93,7 @@
 | React Router protected routes         | ✅     | P0       |
 | `VITE_AUTH_BYPASS` dev mode           | ✅     | P0       |
 | GitHub Actions deploy-pages.yml       | ✅     | P0       |
-| Keyboard shortcut overlay (press `?`) | ⬜     | P2       |
+| Keyboard shortcut overlay (press `?`) | ✅     | P2       |
 | Notification / toast system           | ⬜     | P2       |
 | Global error boundary                 | ⬜     | P2       |
 
@@ -334,17 +342,17 @@
 
 ---
 
-### ⬜ User Settings Page
+### ✅ User Settings Page
 
 **Route:** `/settings`  
 **File:** `src/features/settings/`
 
 | Feature                             | Status | Priority |
 | ----------------------------------- | ------ | -------- |
-| Theme picker (all available themes) | ⬜     | P2       |
-| Default frame size preferences      | ⬜     | P2       |
-| Default export format preference    | ⬜     | P2       |
-| Keyboard shortcut reference list    | ⬜     | P2       |
+| Theme picker (all available themes) | ✅     | P2       |
+| Default frame size preferences      | ✅     | P2       |
+| Default export format preference    | ✅     | P2       |
+| Keyboard shortcut reference list    | ✅     | P2       |
 | Account info display (email, name)  | ⬜     | P3       |
 | Change password                     | ⬜     | P3       |
 | Delete account                      | ⬜     | P3       |
@@ -374,7 +382,7 @@ These are shared, theme-aware, reusable components. Build them as needed by feat
 | `Toolbar`                 | ✅     | P1       | + ToolbarGroup, ToolbarSeparator                     |
 | `Modal`                   | ✅     | P1       | portal, focus trap, Esc to close                     |
 | `ConfirmDialog`           | ✅     | P1       | built on Modal + Button                              |
-| `Toast` / `Notifications` | ⬜     | P1       | success/error/info, auto-dismiss                     |
+| `Toast` / `Notifications` | ✅     | P1       | success/error/info, auto-dismiss                     |
 | `ContextMenu`             | ⬜     | P1       | right-click menu for canvas cells                    |
 | `ColorPicker`             | ⬜     | P2       | for preview background custom color                  |
 | `Tabs`                    | ⬜     | P2       | tab bar pattern                                      |
@@ -393,7 +401,7 @@ These are shared, theme-aware, reusable components. Build them as needed by feat
 | `AuthContext`                         | `src/contexts/AuthContext.jsx`         | ✅ (stub) | P0       |
 | `ProjectContext`                      | `src/contexts/ProjectContext.jsx`      | ✅        | P0       |
 | `PlaybackContext`                     | `src/contexts/PlaybackContext.jsx`     | ✅        | P1       |
-| `NotificationContext`                 | `src/contexts/NotificationContext.jsx` | ⬜        | P1       |
+| `NotificationContext`                 | `src/contexts/NotificationContext.jsx` | ✅        | P1       |
 | `KeyboardContext` (shortcut registry) | `src/contexts/KeyboardContext.jsx`     | ⬜        | P2       |
 | `db` service (localStorage)           | `src/services/db.js`                   | ✅ (stub) | P0       |
 | `db` service (Supabase)               | `src/services/db.js`                   | ⬜        | P3       |

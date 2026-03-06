@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useProject } from "../../../contexts/ProjectContext";
+import { useNotification } from "../../../contexts/NotificationContext";
 import {
   PlaybackProvider,
   usePlayback,
@@ -18,13 +19,14 @@ import {
   saveProjectToStorage,
 } from "../../../services/projectService";
 import { ExportPanel } from "../../export/ExportPanel";
+import { KeyboardHelp } from "../KeyboardHelp";
 import "./EditorPage.css";
 
 /**
  * Keyboard shortcuts — lives inside PlaybackProvider so it can access both
  * PlaybackContext (play/pause/seek) and ProjectContext (undo/redo/save).
  */
-function KeyboardHandler({ onSave }) {
+function KeyboardHandler({ onSave, onHelp }) {
   const { state, undo, redo, canUndo, canRedo } = useProject();
   const { frameIndex, isPlaying, playPlayback, pausePlayback, seekTo } =
     usePlayback();
@@ -73,6 +75,11 @@ function KeyboardHandler({ onSave }) {
       if ((e.ctrlKey || e.metaKey) && e.key === "s") {
         e.preventDefault();
         onSave();
+        return;
+      }
+      if (e.key === "?") {
+        e.preventDefault();
+        onHelp?.();
       }
     }
 
@@ -143,12 +150,14 @@ function EditableTitle({ value, onChange }) {
 
 export function EditorPage() {
   const { state, dispatch, undo, redo, canUndo, canRedo } = useProject();
+  const { showToast } = useNotification();
   const navigate = useNavigate();
   const imageUrl = state.spriteSheet?.objectUrl ?? null;
   const [leftOpen, setLeftOpen] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
 
   async function handleSave() {
     setSaving(true);
@@ -171,6 +180,7 @@ export function EditorPage() {
     } catch (err) {
       if (err.message !== "No file selected") {
         console.error("Failed to load project:", err);
+        showToast("Failed to load project file.", "error");
       }
     }
   }
@@ -262,7 +272,10 @@ export function EditorPage() {
         {/* ── Right panel: preview + animations + sequence ── */}
         <aside className="editor__right">
           <PlaybackProvider>
-            <KeyboardHandler onSave={handleSave} />
+            <KeyboardHandler
+              onSave={handleSave}
+              onHelp={() => setHelpOpen(true)}
+            />
             <PreviewCanvas />
             <div className="editor__right-divider" />
             <AnimationSidebar />
@@ -272,6 +285,7 @@ export function EditorPage() {
         </aside>
       </div>
       <ExportPanel isOpen={exportOpen} onClose={() => setExportOpen(false)} />
+      <KeyboardHelp isOpen={helpOpen} onClose={() => setHelpOpen(false)} />
     </Page>
   );
 }

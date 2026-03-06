@@ -7,6 +7,7 @@ import "./AppShell.css";
 const NAV_ITEMS = [
   { to: "/editor", label: "Editor" },
   { to: "/projects", label: "Projects" },
+  { to: "/settings", label: "Settings" },
 ];
 
 export function AppShell() {

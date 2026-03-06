@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useProject } from "../../contexts/ProjectContext";
+import { useNotification } from "../../contexts/NotificationContext";
 import { Page } from "../../ui/Page";
 import {
   listProjects,
@@ -17,6 +18,7 @@ import "./ProjectsPage.css";
 
 export function ProjectsPage() {
   const { state, dispatch } = useProject();
+  const { showToast } = useNotification();
   const navigate = useNavigate();
   const [projects, setProjects] = useState([]);
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -55,6 +57,8 @@ export function ProjectsPage() {
       navigate("/editor");
     } catch (err) {
       if (err.message !== "No file selected") console.error(err);
+      if (err.message !== "No file selected")
+        showToast("Failed to import project file.", "error");
     }
   }
 
