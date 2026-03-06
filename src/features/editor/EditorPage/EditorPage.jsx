@@ -15,6 +15,7 @@ import {
   pickAndLoadProject,
   saveProjectToStorage,
 } from "../../../services/projectService";
+import { ExportPanel } from "../../export/ExportPanel";
 import "./EditorPage.css";
 
 export function EditorPage() {
@@ -23,6 +24,7 @@ export function EditorPage() {
   const imageUrl = state.spriteSheet?.objectUrl ?? null;
   const [leftOpen, setLeftOpen] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
 
   async function handleSave() {
     setSaving(true);
@@ -60,6 +62,13 @@ export function EditorPage() {
             title="Open .doomjelly.json file"
           >
             Open
+          </button>
+          <button
+            className="editor-toolbar__btn"
+            onClick={() => setExportOpen(true)}
+            title="Export animations as JSON"
+          >
+            Export
           </button>
           <button
             className="editor-toolbar__btn editor-toolbar__btn--primary"
@@ -113,6 +122,7 @@ export function EditorPage() {
           </PlaybackProvider>
         </aside>
       </div>
+      <ExportPanel isOpen={exportOpen} onClose={() => setExportOpen(false)} />
     </Page>
   );
 }

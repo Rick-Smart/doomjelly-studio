@@ -1,0 +1,161 @@
+.export-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ── Options ── */
+.export-panel__options {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.export-panel__option-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.export-panel__label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.export-panel__radio-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* Format buttons */
+.export-panel__format-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 8px 12px;
+  background: var(--surface3);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: left;
+  transition:
+    border-color 0.1s,
+    background 0.1s;
+  flex: 1;
+  min-width: 160px;
+}
+
+.export-panel__format-btn:hover {
+  background: var(--surface2);
+}
+
+.export-panel__format-btn--active {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface3));
+}
+
+.export-panel__format-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.export-panel__format-desc {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-family: var(--font-mono, monospace);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+/* Scope buttons */
+.export-panel__scope-btn {
+  font-size: 12px;
+  padding: 5px 12px;
+  background: var(--surface3);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.export-panel__scope-btn:hover:not(:disabled) {
+  background: var(--surface2);
+}
+
+.export-panel__scope-btn--active {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface3));
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.export-panel__scope-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ── JSON preview ── */
+.export-panel__preview-wrap {
+  background: var(--surface3);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.export-panel__preview {
+  margin: 0;
+  padding: 12px 14px;
+  font-size: 11px;
+  font-family: var(--font-mono, monospace);
+  line-height: 1.55;
+  color: var(--text-muted);
+  white-space: pre;
+}
+
+/* ── Action row ── */
+.export-panel__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.export-panel__btn {
+  font-size: 12px;
+  padding: 6px 14px;
+  background: var(--surface3);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.export-panel__btn:hover:not(:disabled) {
+  background: var(--surface2);
+}
+
+.export-panel__btn--primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.export-panel__btn--primary:hover:not(:disabled) {
+  opacity: 0.85;
+}
+
+.export-panel__btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
