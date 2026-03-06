@@ -85,6 +85,9 @@ function reducer(state, action) {
     case "SET_PROJECT_NAME":
       return { ...state, name: action.payload };
 
+    case "SET_PROJECT_ID":
+      return { ...state, id: action.payload };
+
     case "RESET_PROJECT":
       return { ...initialState, id: crypto.randomUUID() };
 

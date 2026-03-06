@@ -1,0 +1,146 @@
+/* ── New-project inline form ── */
+.projects-new-form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.projects-new-input {
+  flex: 1;
+  max-width: 280px;
+  font-size: 13px;
+  padding: 5px 10px;
+  background: var(--surface3);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+}
+
+.projects-new-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+/* ── Empty state ── */
+.projects-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex: 1;
+  padding: 40px 20px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.projects-empty__icon {
+  font-size: 40px;
+  margin: 0;
+}
+
+.projects-empty__title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
+}
+
+.projects-empty__hint {
+  font-size: 13px;
+  margin: 0;
+}
+
+/* ── Project list ── */
+.projects-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.projects-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.1s;
+}
+
+.projects-card:hover {
+  background: var(--surface2);
+}
+
+.projects-card__info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+}
+
+.projects-card__name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.projects-card__date {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.projects-card__actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* ── Buttons ── */
+.projects-btn {
+  font-size: 12px;
+  padding: 4px 12px;
+  background: var(--surface3);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.projects-btn:hover {
+  background: var(--surface2);
+}
+
+.projects-btn--sm {
+  font-size: 11px;
+  padding: 3px 9px;
+}
+
+.projects-btn--primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.projects-btn--primary:hover {
+  opacity: 0.85;
+}
+
+.projects-btn--danger {
+  border-color: color-mix(in srgb, var(--danger) 50%, transparent);
+  color: var(--danger);
+}
+
+.projects-btn--danger:hover {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+}
