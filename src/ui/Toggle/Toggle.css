@@ -1,0 +1,67 @@
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.toggle--disabled {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+/* Visually hidden but still focusable */
+.toggle__input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  margin: 0;
+}
+
+.toggle__track {
+  position: relative;
+  width: 32px;
+  height: 18px;
+  background: var(--surface3);
+  border-radius: 9px;
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+  transition:
+    background 0.2s,
+    border-color 0.2s;
+}
+
+.toggle__thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform 0.2s;
+  pointer-events: none;
+}
+
+/* Checked state — input precedes track in DOM so ~ works */
+.toggle__input:checked ~ .toggle__track {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.toggle__input:checked ~ .toggle__track .toggle__thumb {
+  transform: translateX(14px);
+}
+
+/* Focus ring on the visual track */
+.toggle__input:focus-visible ~ .toggle__track {
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.35);
+}
+
+.toggle__label {
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.4;
+}

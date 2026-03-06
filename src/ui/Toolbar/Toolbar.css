@@ -1,0 +1,43 @@
+.toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 5px 10px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.toolbar--start {
+  justify-content: flex-start;
+}
+.toolbar--center {
+  justify-content: center;
+}
+.toolbar--end {
+  justify-content: flex-end;
+}
+.toolbar--between {
+  justify-content: space-between;
+}
+
+.toolbar--gap-sm {
+  gap: 4px;
+}
+.toolbar--gap-md {
+  gap: 8px;
+}
+
+.toolbar__group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.toolbar__sep {
+  width: 1px;
+  height: 20px;
+  background: var(--border);
+  margin: 0 6px;
+  flex-shrink: 0;
+}

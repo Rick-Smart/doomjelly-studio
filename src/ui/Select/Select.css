@@ -1,0 +1,51 @@
+.select-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.select-wrap__label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.select-wrap__control {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.select-field {
+  width: 100%;
+  padding: 6px 28px 6px 10px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-size: 13px;
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.select-field:focus {
+  border-color: var(--accent);
+}
+
+.select-field:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.select-wrap__arrow {
+  position: absolute;
+  right: 8px;
+  font-size: 10px;
+  color: var(--text-muted);
+  pointer-events: none;
+}

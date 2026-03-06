@@ -1,0 +1,93 @@
+.tooltip-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Tooltip bubble */
+.tooltip-wrap::before {
+  content: attr(data-tooltip);
+  position: absolute;
+  white-space: nowrap;
+  font-size: 11px;
+  padding: 4px 8px;
+  background: var(--surface3);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s 0.3s;
+  z-index: 200;
+}
+
+/* Arrow */
+.tooltip-wrap::after {
+  content: "";
+  position: absolute;
+  border: 5px solid transparent;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s 0.3s;
+  z-index: 200;
+}
+
+.tooltip-wrap:hover::before,
+.tooltip-wrap:hover::after {
+  opacity: 1;
+}
+
+/* top (default) */
+.tooltip-wrap[data-tip-pos="top"]::before,
+.tooltip-wrap:not([data-tip-pos])::before {
+  bottom: calc(100% + 7px);
+  left: 50%;
+  transform: translateX(-50%);
+}
+.tooltip-wrap[data-tip-pos="top"]::after,
+.tooltip-wrap:not([data-tip-pos])::after {
+  bottom: calc(100% + 2px);
+  left: 50%;
+  transform: translateX(-50%);
+  border-top-color: var(--border);
+}
+
+/* bottom */
+.tooltip-wrap[data-tip-pos="bottom"]::before {
+  top: calc(100% + 7px);
+  left: 50%;
+  transform: translateX(-50%);
+}
+.tooltip-wrap[data-tip-pos="bottom"]::after {
+  top: calc(100% + 2px);
+  left: 50%;
+  transform: translateX(-50%);
+  border-bottom-color: var(--border);
+}
+
+/* left */
+.tooltip-wrap[data-tip-pos="left"]::before {
+  right: calc(100% + 7px);
+  top: 50%;
+  transform: translateY(-50%);
+}
+.tooltip-wrap[data-tip-pos="left"]::after {
+  right: calc(100% + 2px);
+  top: 50%;
+  transform: translateY(-50%);
+  border-left-color: var(--border);
+}
+
+/* right */
+.tooltip-wrap[data-tip-pos="right"]::before {
+  left: calc(100% + 7px);
+  top: 50%;
+  transform: translateY(-50%);
+}
+.tooltip-wrap[data-tip-pos="right"]::after {
+  left: calc(100% + 2px);
+  top: 50%;
+  transform: translateY(-50%);
+  border-right-color: var(--border);
+}
