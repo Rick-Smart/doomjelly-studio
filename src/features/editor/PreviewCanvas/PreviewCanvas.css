@@ -1,0 +1,68 @@
+.preview-canvas {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.preview-canvas__viewport {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface3);
+  min-height: 80px;
+  padding: 8px;
+}
+
+.preview-canvas__canvas {
+  display: block;
+  image-rendering: pixelated;
+  max-width: 100%;
+}
+
+.preview-canvas__empty {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.preview-canvas__controls {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 8px;
+}
+
+.preview-canvas__playbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.preview-canvas__counter {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  flex: 1;
+  text-align: center;
+}
+
+.preview-canvas__row {
+  display: flex;
+  gap: 4px;
+}
+
+/* Compact select variant — hides label, reduces height */
+.preview-canvas__compact-select {
+  flex: 1;
+}
+
+.preview-canvas__compact-select .select-wrap__label {
+  display: none;
+}
+
+.preview-canvas__compact-select .select-field {
+  font-size: 11px;
+  padding: 2px 20px 2px 6px;
+  height: 26px;
+}

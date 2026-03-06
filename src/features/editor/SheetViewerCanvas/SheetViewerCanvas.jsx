@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import { useProject } from "../../../contexts/ProjectContext";
 import "./SheetViewerCanvas.css";
 
@@ -9,13 +9,14 @@ import "./SheetViewerCanvas.css";
  * Hover highlight and click-to-add will be layered on top in a later pass.
  */
 export function SheetViewerCanvas({ imageUrl }) {
-  const { state } = useProject();
-  const { frameConfig } = state;
+  const { state, dispatch } = useProject();
+  const { frameConfig, animations, activeAnimationId } = state;
   const { frameW, frameH, scale, offsetX, offsetY, gutterX, gutterY } =
     frameConfig;
 
   const canvasRef = useRef(null);
   const imgRef = useRef(null);
+  const [hoveredCell, setHoveredCell] = useState(null);
 
   // Load / reload the image whenever the URL changes
   useEffect(() => {
@@ -33,11 +34,11 @@ export function SheetViewerCanvas({ imageUrl }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [imageUrl]);
 
-  // Redraw whenever config changes (image already loaded)
+  // Redraw whenever config or hover changes (image already loaded)
   useEffect(() => {
     if (imgRef.current) draw();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [frameW, frameH, scale, offsetX, offsetY, gutterX, gutterY]);
+  }, [frameW, frameH, scale, offsetX, offsetY, gutterX, gutterY, hoveredCell]);
 
   function clearCanvas() {
     const canvas = canvasRef.current;
@@ -72,7 +73,75 @@ export function SheetViewerCanvas({ imageUrl }) {
       gutterX,
       gutterY,
     });
-  }, [frameW, frameH, scale, offsetX, offsetY, gutterX, gutterY]);
+
+    // Draw hover highlight
+    if (hoveredCell) {
+      const cellX = Math.round(
+        (offsetX + hoveredCell.col * (frameW + gutterX)) * scale,
+      );
+      const cellY = Math.round(
+        (offsetY + hoveredCell.row * (frameH + gutterY)) * scale,
+      );
+      ctx.fillStyle = "rgba(255, 255, 0, 0.25)";
+      ctx.fillRect(cellX, cellY, frameW * scale, frameH * scale);
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.8)";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(
+        cellX + 0.5,
+        cellY + 0.5,
+        frameW * scale - 1,
+        frameH * scale - 1,
+      );
+    }
+  }, [frameW, frameH, scale, offsetX, offsetY, gutterX, gutterY, hoveredCell]);
+
+  function canvasCoordsToCell(e) {
+    const canvas = canvasRef.current;
+    if (!canvas || !frameW || !frameH) return null;
+    const rect = canvas.getBoundingClientRect();
+    const cssScaleX = canvas.width / rect.width;
+    const cssScaleY = canvas.height / rect.height;
+    const imgX = ((e.clientX - rect.left) * cssScaleX) / scale;
+    const imgY = ((e.clientY - rect.top) * cssScaleY) / scale;
+    const relX = imgX - offsetX;
+    const relY = imgY - offsetY;
+    if (relX < 0 || relY < 0) return null;
+    const stepX = frameW + gutterX;
+    const stepY = frameH + gutterY;
+    if (stepX <= 0 || stepY <= 0) return null;
+    const col = Math.floor(relX / stepX);
+    const row = Math.floor(relY / stepY);
+    // Reject clicks inside the gutter zone
+    if (relX - col * stepX >= frameW) return null;
+    if (relY - row * stepY >= frameH) return null;
+    return { col, row };
+  }
+
+  function handleMouseMove(e) {
+    if (!imageUrl) return;
+    setHoveredCell(canvasCoordsToCell(e));
+  }
+
+  function handleMouseLeave() {
+    setHoveredCell(null);
+  }
+
+  function handleClick(e) {
+    const cell = canvasCoordsToCell(e);
+    if (!cell) return;
+    const activeAnim = animations.find((a) => a.id === activeAnimationId);
+    if (!activeAnim) return;
+    dispatch({
+      type: "UPDATE_ANIMATION",
+      payload: {
+        id: activeAnim.id,
+        frames: [
+          ...activeAnim.frames,
+          { col: cell.col, row: cell.row, ticks: 6, dx: 0, dy: 0 },
+        ],
+      },
+    });
+  }
 
   return (
     <div className="sheet-viewer">
@@ -85,6 +154,9 @@ export function SheetViewerCanvas({ imageUrl }) {
         ref={canvasRef}
         className="sheet-viewer__canvas"
         style={{ display: imageUrl ? "block" : "none" }}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
+        onClick={handleClick}
       />
     </div>
   );

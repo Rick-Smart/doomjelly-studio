@@ -2,6 +2,9 @@ import { useState } from "react";
 import { SpriteImporter } from "./SpriteImporter";
 import { FrameConfigPanel } from "./FrameConfigPanel";
 import { SheetViewerCanvas } from "./SheetViewerCanvas";
+import { AnimationSidebar } from "./AnimationSidebar";
+import { SequenceBuilder } from "./SequenceBuilder";
+import { PreviewCanvas } from "./PreviewCanvas";
 import "./EditorPage.css";
 
 export function EditorPage() {
@@ -37,12 +40,13 @@ export function EditorPage() {
         <SheetViewerCanvas imageUrl={imageUrl} />
       </div>
 
-      {/* ── Right panel: sequence builder + preview (coming M2) ── */}
+      {/* ── Right panel: preview + animations + sequence ── */}
       <aside className="editor__right">
-        <div className="editor__right-placeholder">
-          <span>Sequence &amp; Preview</span>
-          <span className="editor__right-hint">Coming in M2</span>
-        </div>
+        <PreviewCanvas />
+        <div className="editor__right-divider" />
+        <AnimationSidebar />
+        <div className="editor__right-divider" />
+        <SequenceBuilder />
       </aside>
     </div>
   );
