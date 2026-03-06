@@ -6,18 +6,10 @@ import { ProjectsPage } from "../features/projects/ProjectsPage";
 import { LoginPage } from "../features/auth/LoginPage";
 import { SettingsPage } from "../features/settings/SettingsPage";
 
-// TEMP: set to false when real auth is wired up
-const AUTH_BYPASS = true;
-
 export function AppRoutes() {
   return (
     <Routes>
-      <Route
-        path="/login"
-        element={
-          AUTH_BYPASS ? <Navigate to="/editor" replace /> : <LoginPage />
-        }
-      />
+      <Route path="/login" element={<LoginPage />} />
       <Route
         path="/"
         element={
