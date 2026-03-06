@@ -1,7 +1,10 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Navigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import "./LoginPage.css";
+
+// TEMP: bypass for production testing — remove when real auth is wired up
+const AUTH_BYPASS = true;
 
 export function LoginPage() {
   const { login, isAuthenticated } = useAuth();
@@ -11,9 +14,8 @@ export function LoginPage() {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  if (isAuthenticated) {
-    navigate("/editor", { replace: true });
-    return null;
+  if (AUTH_BYPASS || isAuthenticated) {
+    return <Navigate to="/editor" replace />;
   }
 
   async function handleSubmit(e) {
