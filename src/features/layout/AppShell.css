@@ -20,6 +20,18 @@
   min-width: 0;
 }
 
+.shell-logo-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
+.shell-logo-link:hover .shell-title {
+  color: var(--accent);
+}
+
 .shell-logo {
   font-size: 22px;
   line-height: 1;

@@ -3,6 +3,7 @@ import JSZip from "jszip";
 import { useProject } from "../../../contexts/ProjectContext";
 import { Modal } from "../../../ui/Modal";
 import { EXPORT_FORMATS } from "../../../services/exportService";
+import { serialiseProject } from "../../../services/projectService";
 import {
   loadImage,
   buildPackedAtlas,
@@ -15,6 +16,7 @@ const EXPORT_TYPES = [
   { id: "json", label: "JSON" },
   { id: "atlas", label: "Packed Atlas" },
   { id: "strips", label: "Animation Strips" },
+  { id: "bundle", label: "Export All" },
 ];
 
 function slugify(str) {
@@ -193,6 +195,59 @@ export function ExportPanel({ isOpen, onClose }) {
     }
   }
 
+  async function handleDownloadBundle() {
+    setIsExporting(true);
+    setExportError(null);
+    try {
+      const zip = new JSZip();
+
+      // Always include the project JSON
+      const data = serialiseProject(state);
+      zip.file(
+        `${slugify(projectName)}.doomjelly.json`,
+        JSON.stringify(data, null, 2),
+      );
+
+      if (spriteSheet?.objectUrl) {
+        const img = await loadImage(spriteSheet.objectUrl);
+
+        // Packed atlas — all animations
+        const atlasResult = buildPackedAtlas(img, animations, frameConfig, {
+          target: "all",
+        });
+        if (atlasResult) {
+          const atlasPng = await canvasToBlob(atlasResult.canvas);
+          zip.file("atlas/atlas.png", atlasPng);
+          zip.file(
+            "atlas/atlas.json",
+            JSON.stringify(atlasResult.json, null, 2),
+          );
+        }
+
+        // Animation strips — one per animation
+        const strips = buildAnimStrips(img, animations, frameConfig, {
+          target: "all",
+        });
+        for (const strip of strips) {
+          const pngBlob = await canvasToBlob(strip.canvas);
+          const safeName = slugify(strip.name);
+          zip.file(`strips/${safeName}.png`, pngBlob);
+          zip.file(
+            `strips/${safeName}.json`,
+            JSON.stringify(strip.json, null, 2),
+          );
+        }
+      }
+
+      const zipBlob = await zip.generateAsync({ type: "blob" });
+      triggerDownload(zipBlob, `${slugify(projectName)}_bundle.zip`);
+    } catch (err) {
+      setExportError(err.message);
+    } finally {
+      setIsExporting(false);
+    }
+  }
+
   function switchType(id) {
     setExportType(id);
     setExportError(null);
@@ -219,26 +274,28 @@ export function ExportPanel({ isOpen, onClose }) {
           ))}
         </div>
 
-        {/* ── Scope — shared across all types ── */}
-        <div className="export-panel__option-group">
-          <label className="export-panel__label">Scope</label>
-          <div className="export-panel__radio-row">
-            <button
-              className={`export-panel__scope-btn${target === "active" ? " export-panel__scope-btn--active" : ""}`}
-              onClick={() => setTarget("active")}
-              disabled={!activeAnim}
-            >
-              Active — {activeAnim?.name ?? "none"}
-            </button>
-            <button
-              className={`export-panel__scope-btn${target === "all" ? " export-panel__scope-btn--active" : ""}`}
-              onClick={() => setTarget("all")}
-              disabled={!hasAnims}
-            >
-              All animations ({animations.length})
-            </button>
+        {/* ── Scope — shared across all types (hidden for bundle) ── */}
+        {exportType !== "bundle" && (
+          <div className="export-panel__option-group">
+            <label className="export-panel__label">Scope</label>
+            <div className="export-panel__radio-row">
+              <button
+                className={`export-panel__scope-btn${target === "active" ? " export-panel__scope-btn--active" : ""}`}
+                onClick={() => setTarget("active")}
+                disabled={!activeAnim}
+              >
+                Active — {activeAnim?.name ?? "none"}
+              </button>
+              <button
+                className={`export-panel__scope-btn${target === "all" ? " export-panel__scope-btn--active" : ""}`}
+                onClick={() => setTarget("all")}
+                disabled={!hasAnims}
+              >
+                All animations ({animations.length})
+              </button>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* ════════════════ JSON ════════════════ */}
         {exportType === "json" && (
@@ -364,9 +421,8 @@ export function ExportPanel({ isOpen, onClose }) {
                         {s.name}.png
                       </span>
                       <span className="export-panel__strip-meta">
-                        {s.frameCount}{" "}
-                        {s.frameCount === 1 ? "frame" : "frames"} · {s.w}×
-                        {s.h}px
+                        {s.frameCount} {s.frameCount === 1 ? "frame" : "frames"}{" "}
+                        · {s.w}×{s.h}px
                       </span>
                     </div>
                   ))}
@@ -386,11 +442,71 @@ export function ExportPanel({ isOpen, onClose }) {
               <button
                 className="export-panel__btn export-panel__btn--primary"
                 onClick={handleDownloadStrips}
-                disabled={
-                  !hasImage || !stripsInfo?.length || isExporting
-                }
+                disabled={!hasImage || !stripsInfo?.length || isExporting}
               >
                 {isExporting ? "Building…" : "Export Strips .zip"}
+              </button>
+            </div>
+          </>
+        )}
+        {/* ════════════════ EXPORT ALL BUNDLE ════════════════ */}
+        {exportType === "bundle" && (
+          <>
+            <div className="export-panel__image-info">
+              <div className="export-panel__image-info-row">
+                <span className="export-panel__image-info-stat">
+                  Downloads a single .zip with all project files
+                </span>
+              </div>
+              <div className="export-panel__strips-list">
+                <div className="export-panel__strip-row">
+                  <span className="export-panel__strip-name">
+                    {slugify(projectName)}.doomjelly.json
+                  </span>
+                  <span className="export-panel__strip-meta">Project data</span>
+                </div>
+                <div
+                  className={`export-panel__strip-row${!hasImage ? " export-panel__strip-row--muted" : ""}`}
+                >
+                  <span className="export-panel__strip-name">
+                    atlas/atlas.png + atlas.json
+                  </span>
+                  <span className="export-panel__strip-meta">
+                    {hasImage ? "Packed sprite atlas" : "requires sprite sheet"}
+                  </span>
+                </div>
+                <div
+                  className={`export-panel__strip-row${!hasImage ? " export-panel__strip-row--muted" : ""}`}
+                >
+                  <span className="export-panel__strip-name">
+                    strips/{"{name}"}.png + .json × {animations.length}
+                  </span>
+                  <span className="export-panel__strip-meta">
+                    {hasImage
+                      ? "Per-animation strips"
+                      : "requires sprite sheet"}
+                  </span>
+                </div>
+              </div>
+              {!hasImage && (
+                <div className="export-panel__image-notice export-panel__image-notice--inline">
+                  Re-import your sprite sheet to include image files — the
+                  project JSON will still be bundled.
+                </div>
+              )}
+            </div>
+
+            {exportError && (
+              <div className="export-panel__error">{exportError}</div>
+            )}
+
+            <div className="export-panel__actions">
+              <button
+                className="export-panel__btn export-panel__btn--primary"
+                onClick={handleDownloadBundle}
+                disabled={!hasAnims || isExporting}
+              >
+                {isExporting ? "Building…" : "Download bundle.zip"}
               </button>
             </div>
           </>

@@ -1,16 +1,41 @@
 # DoomJelly Studio — Project Roadmap
 
-**Last updated:** 2026-03-06 (M16 complete)
+**Last updated:** 2026-03-06 (M17 complete)
 **Status key:** ✅ Done · 🔄 In Progress · 🔵 Next · ⬜ Pending · 💭 Wishlist
 
 ---
 
 ## ⚡ NEXT SESSION — Start Here
 
-Remaining P2 wishlist items (all others now complete):
+All planned P2 items are now complete. Remaining ideas (P3 / wishlist):
 
-- Export all animations as zip (JSON + image strip zip combined into one download)
-- Full "Recent" tab or dedicated quick-access section on the landing page
+- Undo/redo stack (complex — requires command pattern in reducer)
+- Frame reordering via drag within SequenceBuilder
+- Onion skinning overlay in SheetViewer
+- Keyboard shortcut cheat sheet printout
+- Export to GIF (requires gif.js or similar)
+- Multi-project bulk export
+
+---
+
+## M17: Export Bundle + Home Landing Page (complete)
+
+- **Export All bundle tab** — new "Export All" tab in the Export modal
+  - Downloads `{name}_bundle.zip` containing everything in one click:
+    - `{name}.doomjelly.json` — project data (always included)
+    - `atlas/atlas.png` + `atlas/atlas.json` — packed sprite atlas (if sprite sheet loaded)
+    - `strips/{anim}.png` + `strips/{anim}.json` × N — per-animation strips (if sprite sheet loaded)
+  - Scope selector hidden (always exports all animations)
+  - Muted display + inline notice when sprite sheet not available — JSON still bundled
+- **Home landing page** — dedicated `/` route replacing the old redirect to `/editor`
+  - Shows last 5 most-recently-saved projects as quick-open cards
+  - Cards show thumbnail, name, anim/frame stats (same data as Projects page)
+  - Card placeholders (🪼) when no thumbnail yet
+  - "Open Editor" + "New Project" primary CTA buttons
+  - "All projects →" shortcut to `/projects`
+  - Welcome message when no projects saved yet
+- **AppShell logo as home link** — 🪼 DoomJelly Studio title now NavLinks to `/`
+  - Hover accent color hint on title text
 
 ---
 

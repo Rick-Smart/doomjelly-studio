@@ -17,10 +17,12 @@ export function AppShell() {
   return (
     <div className="shell">
       <header className="shell-header">
-        <span className="shell-logo" aria-hidden="true">
-          🪼
-        </span>
-        <span className="shell-title">DoomJelly Studio</span>
+        <NavLink to="/" className="shell-logo-link" aria-label="Home">
+          <span className="shell-logo" aria-hidden="true">
+            🪼
+          </span>
+          <span className="shell-title">DoomJelly Studio</span>
+        </NavLink>
 
         <nav className="shell-nav" aria-label="Main navigation">
           {NAV_ITEMS.map(({ to, label }) => (
