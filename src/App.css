@@ -1,3 +1,31 @@
+/* ── Placeholder pages (feature stubs) ───────────────── */
+
+.page-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 10px;
+  padding: 40px;
+  text-align: center;
+}
+
+.placeholder-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
+}
+
+.placeholder-hint {
+  font-size: 13px;
+  color: var(--text-muted);
+  max-width: 300px;
+  line-height: 1.6;
+  margin: 0;
+}
+
 /* ── App shell layout ─────────────────────────────────── */
 
 .app {

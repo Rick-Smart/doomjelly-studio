@@ -1,0 +1,124 @@
+.shell {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ── Header ───────────────────────────────────────────── */
+
+.shell-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 48px;
+  padding: 0 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  user-select: none;
+  min-width: 0;
+}
+
+.shell-logo {
+  font-size: 22px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.shell-title {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--text);
+  white-space: nowrap;
+  margin-right: 4px;
+  flex-shrink: 0;
+}
+
+/* ── Nav ──────────────────────────────────────────────── */
+
+.shell-nav {
+  display: flex;
+  align-items: stretch;
+  height: 100%;
+}
+
+.shell-nav-link {
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
+}
+
+.shell-nav-link:hover {
+  color: var(--text);
+}
+
+.shell-nav-link.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+/* ── Header end ───────────────────────────────────────── */
+
+.shell-header-end {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.theme-select {
+  padding: 3px 6px;
+  font-size: 12px;
+  border-radius: 4px;
+  text-transform: capitalize;
+  cursor: pointer;
+}
+
+.shell-user {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px;
+}
+
+.shell-signout {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: 4px;
+  white-space: nowrap;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
+}
+
+.shell-signout:hover {
+  color: var(--text);
+  border-color: var(--text-muted);
+}
+
+/* ── Main ─────────────────────────────────────────────── */
+
+.shell-main {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
