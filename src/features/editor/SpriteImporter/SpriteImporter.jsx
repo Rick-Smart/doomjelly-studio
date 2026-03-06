@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import { useProject } from "../../../contexts/ProjectContext";
 import { FileDropZone } from "../../../ui/FileDropZone";
 import { Button } from "../../../ui/Button";
@@ -21,9 +21,12 @@ function calcCellCount(imgW, imgH, config) {
 export function SpriteImporter() {
   const { state, dispatch } = useProject();
   const { spriteSheet, frameConfig } = state;
+  const replaceInputRef = useRef(null);
 
   const handleFile = useCallback(
     (file) => {
+      // Revoke any existing object URL before creating a new one
+      if (spriteSheet?.objectUrl) URL.revokeObjectURL(spriteSheet.objectUrl);
       const url = URL.createObjectURL(file);
       const img = new Image();
       img.onload = () => {
@@ -40,13 +43,22 @@ export function SpriteImporter() {
       img.onerror = () => URL.revokeObjectURL(url);
       img.src = url;
     },
-    [dispatch],
+    [dispatch, spriteSheet],
   );
 
-  const handleReplace = useCallback(() => {
-    if (spriteSheet?.objectUrl) URL.revokeObjectURL(spriteSheet.objectUrl);
-    dispatch({ type: "SET_SPRITE_SHEET", payload: null });
-  }, [spriteSheet, dispatch]);
+  const handleReplaceClick = useCallback(() => {
+    replaceInputRef.current?.click();
+  }, []);
+
+  const handleReplaceInput = useCallback(
+    (e) => {
+      const file = e.target.files?.[0];
+      if (file) handleFile(file);
+      // Reset so same file triggers onChange again if needed
+      e.target.value = "";
+    },
+    [handleFile],
+  );
 
   const cells = spriteSheet?.width
     ? calcCellCount(spriteSheet.width, spriteSheet.height, frameConfig)
@@ -107,9 +119,17 @@ export function SpriteImporter() {
               </span>
             )}
           </div>
-          <Button variant="ghost" size="sm" onClick={handleReplace}>
+          <Button variant="ghost" size="sm" onClick={handleReplaceClick}>
             Replace sheet
           </Button>
+          {/* Hidden file input for replace-in-place */}
+          <input
+            ref={replaceInputRef}
+            type="file"
+            accept="image/png"
+            className="sprite-importer__replace-input"
+            onChange={handleReplaceInput}
+          />
         </div>
       )}
     </div>

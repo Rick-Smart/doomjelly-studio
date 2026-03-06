@@ -1,26 +1,28 @@
 # DoomJelly Studio — Project Roadmap
 
-**Last updated:** 2026-03-06 (M8 complete)  
+**Last updated:** 2026-03-06 (M9 complete)  
 **Status key:** ✅ Done · 🔄 In Progress · 🔵 Next · ⬜ Pending · 💭 Wishlist
 
 ---
 
 ## ⚡ NEXT SESSION — Start Here
 
-**P1 items remaining:**
-
-- Replace sprite sheet without losing animations (SpriteImporter)
-- Wire save-success toast in EditorPage (currently just button label feedback)
-- `useLocalStorage(key, init)` hook
-- `useDebounce(value, ms)` hook
-
 **P2 items worth tackling next:**
 
 - Resizable panel dividers (ResizablePanel component)
-- Keyboard shortcut overlay (`?`) wired — already done in M7
-- Canvas zoom / pan (SheetViewerCanvas)
 - Preview background custom color picker
 - Drag-to-reorder frames (SequenceBuilder)
+
+---
+
+## M9: Polish P1 + Canvas Zoom/Pan (complete)
+
+- Save-success toast wired in `EditorPage.handleSave`
+- `useLocalStorage(key, init)` hook — `useState` backed by localStorage, JSON serialised
+- `useDebounce(value, ms)` hook — debounced value with configurable delay
+- Replace sprite sheet without clearing animations (hidden file input in `SpriteImporter`)
+- Canvas zoom (scroll wheel, + / − buttons) and pan (Space+drag or middle-click drag) in `SheetViewerCanvas`
+- Zoom controls UI overlay (bottom-right: +, %, −) with reset-on-click
 
 ---
 

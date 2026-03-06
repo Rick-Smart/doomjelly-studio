@@ -62,3 +62,50 @@
     transform: translateX(-50%) translateY(0);
   }
 }
+
+/* ── Zoom / pan ─────────────────────────────────────────── */
+
+.sheet-viewer__viewport {
+  position: relative;
+  will-change: transform;
+}
+
+.sheet-viewer__zoom-controls {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  z-index: 10;
+}
+
+.sheet-viewer__zoom-btn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--surface) 90%, transparent);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+}
+
+.sheet-viewer__zoom-btn:hover {
+  background: var(--surface-hover, var(--surface));
+  border-color: var(--accent);
+}
+
+.sheet-viewer__zoom-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}

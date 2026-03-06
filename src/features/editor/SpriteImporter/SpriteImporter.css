@@ -68,3 +68,7 @@
   color: var(--accent);
   opacity: 0.85;
 }
+
+.sprite-importer__replace-input {
+  display: none;
+}

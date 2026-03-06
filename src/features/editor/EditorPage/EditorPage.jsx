@@ -166,6 +166,7 @@ export function EditorPage() {
       if (!state.id) dispatch({ type: "SET_PROJECT_ID", payload: data.id });
       await saveProjectToStorage(data);
       setSaved(true);
+      showToast("Project saved.", "success", 2500);
       setTimeout(() => setSaved(false), 2000);
     } catch (err) {
       console.error("Failed to save project:", err);

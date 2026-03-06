@@ -2,11 +2,16 @@ import { useEffect, useRef, useCallback, useState } from "react";
 import { useProject } from "../../../contexts/ProjectContext";
 import "./SheetViewerCanvas.css";
 
+const ZOOM_MIN = 0.25;
+const ZOOM_MAX = 8;
+const ZOOM_STEP = 0.15;
+
 /**
  * Renders the sprite sheet image at the configured scale with a
  * pixel-perfect grid overlay showing frame cell boundaries.
  *
  * Hover highlight and click-to-add will be layered on top in a later pass.
+ * Supports scroll-to-zoom and space+drag (or middle-click drag) to pan.
  */
 export function SheetViewerCanvas({ imageUrl }) {
   const { state, dispatch } = useProject();
@@ -15,12 +20,109 @@ export function SheetViewerCanvas({ imageUrl }) {
     frameConfig;
 
   const canvasRef = useRef(null);
+  const containerRef = useRef(null);
   const imgRef = useRef(null);
   const [hoveredCell, setHoveredCell] = useState(null);
   const [dragStartCell, setDragStartCell] = useState(null);
   const [dragCell, setDragCell] = useState(null);
 
+  // ── Zoom / pan state ──────────────────────────────────────
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const panRef = useRef({
+    panning: false,
+    startX: 0,
+    startY: 0,
+    originX: 0,
+    originY: 0,
+  });
+  const spaceRef = useRef(false);
+
   // Load / reload the image whenever the URL changes
+  // ── Zoom: scroll wheel ────────────────────────────────────
+  const handleWheel = useCallback(
+    (e) => {
+      if (!imageUrl) return;
+      e.preventDefault();
+      const delta = e.deltaY < 0 ? ZOOM_STEP : -ZOOM_STEP;
+      setZoom((z) =>
+        Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, +(z + delta).toFixed(4))),
+      );
+    },
+    [imageUrl],
+  );
+
+  // Attach wheel as non-passive so we can preventDefault
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    el.addEventListener("wheel", handleWheel, { passive: false });
+    return () => el.removeEventListener("wheel", handleWheel);
+  }, [handleWheel]);
+
+  // ── Pan: Space+LMB or Middle-click drag ───────────────────
+  useEffect(() => {
+    function onKeyDown(e) {
+      if (
+        e.code === "Space" &&
+        !["INPUT", "TEXTAREA", "SELECT"].includes(
+          document.activeElement?.tagName,
+        )
+      ) {
+        e.preventDefault();
+        spaceRef.current = true;
+        if (containerRef.current) containerRef.current.style.cursor = "grab";
+      }
+    }
+    function onKeyUp(e) {
+      if (e.code === "Space") {
+        spaceRef.current = false;
+        if (containerRef.current) containerRef.current.style.cursor = "";
+        panRef.current.panning = false;
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
+    };
+  }, []);
+
+  function handlePanMouseDown(e) {
+    const isMiddle = e.button === 1;
+    const isSpaceLMB = e.button === 0 && spaceRef.current;
+    if (!isMiddle && !isSpaceLMB) return;
+    e.preventDefault();
+    panRef.current = {
+      panning: true,
+      startX: e.clientX,
+      startY: e.clientY,
+      originX: pan.x,
+      originY: pan.y,
+    };
+    if (containerRef.current) containerRef.current.style.cursor = "grabbing";
+  }
+
+  function handlePanMouseMove(e) {
+    if (!panRef.current.panning) return;
+    const dx = e.clientX - panRef.current.startX;
+    const dy = e.clientY - panRef.current.startY;
+    setPan({ x: panRef.current.originX + dx, y: panRef.current.originY + dy });
+  }
+
+  function handlePanMouseUp() {
+    if (!panRef.current.panning) return;
+    panRef.current.panning = false;
+    if (containerRef.current)
+      containerRef.current.style.cursor = spaceRef.current ? "grab" : "";
+  }
+
+  function resetZoomPan() {
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
+  }
+
   useEffect(() => {
     if (!imageUrl) {
       imgRef.current = null;
@@ -200,6 +302,7 @@ export function SheetViewerCanvas({ imageUrl }) {
     const canvas = canvasRef.current;
     if (!canvas || !frameW || !frameH) return null;
     const rect = canvas.getBoundingClientRect();
+    // Account for the CSS zoom transform applied to the canvas element
     const cssScaleX = canvas.width / rect.width;
     const cssScaleY = canvas.height / rect.height;
     const imgX = ((e.clientX - rect.left) * cssScaleX) / scale;
@@ -287,22 +390,57 @@ export function SheetViewerCanvas({ imageUrl }) {
   }
 
   return (
-    <div className="sheet-viewer">
+    <div
+      className="sheet-viewer"
+      ref={containerRef}
+      onMouseMove={(e) => { handlePanMouseMove(e); handleMouseMove(e); }}
+      onMouseUp={(e) => { handlePanMouseUp(); handleMouseUp(e); }}
+      onMouseLeave={handleMouseLeave}
+      onMouseDown={handlePanMouseDown}
+    >
       {!imageUrl && (
         <div className="sheet-viewer__empty">
           Import a sprite sheet to get started
         </div>
       )}
-      <canvas
-        ref={canvasRef}
-        className="sheet-viewer__canvas"
-        style={{ display: imageUrl ? "block" : "none" }}
-        onMouseMove={handleMouseMove}
-        onMouseLeave={handleMouseLeave}
-        onMouseDown={handleMouseDown}
-        onMouseUp={handleMouseUp}
-        onContextMenu={handleContextMenu}
-      />
+      {/* Zoomable / pannable viewport */}
+      <div
+        className="sheet-viewer__viewport"
+        style={{
+          transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+          transformOrigin: "0 0",
+          display: imageUrl ? "inline-block" : "none",
+        }}
+      >
+        <canvas
+          ref={canvasRef}
+          className="sheet-viewer__canvas"
+          onMouseMove={handleMouseMove}
+          onMouseDown={(e) => { if (e.button === 0 && !spaceRef.current) handleMouseDown(e); }}
+          onMouseUp={(e) => { if (e.button === 0 && !spaceRef.current) handleMouseUp(e); }}
+          onContextMenu={handleContextMenu}
+        />
+      </div>
+      {/* Zoom controls */}
+      {imageUrl && (
+        <div className="sheet-viewer__zoom-controls">
+          <button
+            className="sheet-viewer__zoom-btn"
+            onClick={() => setZoom((z) => Math.min(ZOOM_MAX, +(z + ZOOM_STEP).toFixed(4)))}
+            title="Zoom in (scroll up)"
+          >+</button>
+          <button
+            className="sheet-viewer__zoom-btn sheet-viewer__zoom-label"
+            onClick={resetZoomPan}
+            title="Reset zoom & pan"
+          >{Math.round(zoom * 100)}%</button>
+          <button
+            className="sheet-viewer__zoom-btn"
+            onClick={() => setZoom((z) => Math.max(ZOOM_MIN, +(z - ZOOM_STEP).toFixed(4)))}
+            title="Zoom out (scroll down)"
+          >−</button>
+        </div>
+      )}
       {imageUrl && !activeAnimationId && (
         <div className="sheet-viewer__hint sheet-viewer__hint--no-anim">
           → Create an animation in the right panel, then click cells to add
@@ -315,7 +453,7 @@ export function SheetViewerCanvas({ imageUrl }) {
           const activeAnim = animations.find((a) => a.id === activeAnimationId);
           return activeAnim && activeAnim.frames.length === 0 ? (
             <div className="sheet-viewer__hint sheet-viewer__hint--no-frames">
-              Click any cell to add it to “{activeAnim.name}”
+              Click any cell to add it to "{activeAnim.name}"
             </div>
           ) : null;
         })()}
