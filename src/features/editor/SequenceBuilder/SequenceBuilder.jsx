@@ -17,6 +17,8 @@ export function SequenceBuilder() {
 
   const [bulkTicks, setBulkTicks] = useState(6);
   const [viewMode, setViewMode] = useState("list"); // 'list' | 'timeline'
+  const [dragIdx, setDragIdx] = useState(null);
+  const [dropIdx, setDropIdx] = useState(null);
 
   const totalTicks = frames.reduce((sum, f) => sum + (f.ticks ?? 6), 0);
   const totalMs = Math.round((totalTicks / 60) * 1000);
@@ -48,6 +50,14 @@ export function SequenceBuilder() {
     if (target < 0 || target >= frames.length) return;
     const updated = [...frames];
     [updated[index], updated[target]] = [updated[target], updated[index]];
+    updateFrames(updated);
+  }
+
+  function reorderFrames(from, to) {
+    if (from === null || to === null || from === to) return;
+    const updated = [...frames];
+    const [moved] = updated.splice(from, 1);
+    updated.splice(to, 0, moved);
     updateFrames(updated);
   }
 
@@ -152,6 +162,22 @@ export function SequenceBuilder() {
                 onDelete={() => deleteFrame(i)}
                 onMoveUp={() => moveFrame(i, -1)}
                 onMoveDown={() => moveFrame(i, 1)}
+                isDragging={dragIdx === i}
+                isDropTarget={dropIdx === i && dragIdx !== i}
+                onDragStart={() => setDragIdx(i)}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setDropIdx(i);
+                }}
+                onDrop={() => {
+                  reorderFrames(dragIdx, dropIdx);
+                  setDragIdx(null);
+                  setDropIdx(null);
+                }}
+                onDragEnd={() => {
+                  setDragIdx(null);
+                  setDropIdx(null);
+                }}
               />
             ))}
           </ul>

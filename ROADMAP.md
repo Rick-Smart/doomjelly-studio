@@ -1,6 +1,6 @@
 # DoomJelly Studio — Project Roadmap
 
-**Last updated:** 2026-03-06 (M10 complete)
+**Last updated:** 2026-03-06 (M11 complete)
 **Status key:** ✅ Done · 🔄 In Progress · 🔵 Next · ⬜ Pending · 💭 Wishlist
 
 ---
@@ -9,8 +9,19 @@
 
 **P2 items worth tackling next:**
 
-- Preview background custom color picker
-- Drag-to-reorder frames (SequenceBuilder)
+- Canvas resizes with panel (SheetViewerCanvas responds to panel width changes)
+- Keyboard: `Esc` to deselect, `A` to select all cells
+- Drag to reorder animations (AnimationSidebar)
+
+---
+
+## M11: Drag-to-Reorder Frames (complete)
+
+- Native HTML5 drag-and-drop in `SequenceBuilder` list view
+- Grab handle (`⠿`) appears on row hover, cursor changes to grab/grabbing
+- Dragged row fades to 35%; drop target shows 2px accent top border
+- On drop: `splice` + re-insert dispatches `UPDATE_ANIMATION` (undoable)
+- Up/down arrow buttons retained for keyboard accessibility
 
 ---
 
@@ -332,7 +343,7 @@
 | Frame width proportional to ticks          | ✅     | P2       |
 | Playhead that scrubs with animation        | ✅     | P2       |
 | Click frame to select + edit               | ✅     | P2       |
-| Drag to reorder                            | ⬜     | P3       |
+| Drag-to-reorder frames in list view        | ✅     | P3       |
 | Zoom in/out timeline                       | ⬜     | P3       |
 | Toggle between list view and timeline view | ✅     | P2       |
 

@@ -81,14 +81,33 @@ export function FrameRow({
   onDelete,
   onMoveUp,
   onMoveDown,
+  isDragging,
+  isDropTarget,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  onDragEnd,
 }) {
   const hasOffset = (frame.dx ?? 0) !== 0 || (frame.dy ?? 0) !== 0;
   let cls = "seq-frame";
   if (isActive) cls += " seq-frame--active";
   if (hasOffset) cls += " seq-frame--offset";
+  if (isDragging) cls += " seq-frame--dragging";
+  if (isDropTarget) cls += " seq-frame--drop-target";
 
   return (
-    <li ref={innerRef} className={cls}>
+    <li
+      ref={innerRef}
+      className={cls}
+      draggable
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+      onDragEnd={onDragEnd}
+    >
+      <span className="seq-frame__drag-handle" title="Drag to reorder">
+        ⠿
+      </span>
       <span className="seq-frame__index">{index}</span>
       <FrameThumb
         src={src}

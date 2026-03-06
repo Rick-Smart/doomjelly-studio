@@ -6,10 +6,44 @@
   padding: 5px 8px;
   border-bottom: 1px solid var(--border);
   overflow: hidden;
+  cursor: default;
 }
 
 .seq-frame:hover {
   background: var(--surface2);
+}
+
+/* ── Drag handle ─────────────────────────────────────────── */
+
+.seq-frame__drag-handle {
+  font-size: 14px;
+  color: var(--text-muted);
+  cursor: grab;
+  user-select: none;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.1s;
+  line-height: 1;
+  align-self: center;
+}
+
+.seq-frame:hover .seq-frame__drag-handle {
+  opacity: 1;
+}
+
+.seq-frame__drag-handle:active {
+  cursor: grabbing;
+}
+
+/* ── Drag states ─────────────────────────────────────────── */
+
+.seq-frame--dragging {
+  opacity: 0.35;
+  background: var(--surface3);
+}
+
+.seq-frame--drop-target {
+  border-top: 2px solid var(--accent);
 }
 
 /* Input group: ticks, offset */
