@@ -113,7 +113,7 @@
 
 /* ── Right panel ── */
 .sprite-forge__panel {
-  width: 168px;
+  width: 228px;
   flex-shrink: 0;
   background: var(--surface);
   border-left: 1px solid var(--border);
@@ -136,6 +136,102 @@
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sprite-forge__key-hint {
+  font-size: 9px;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  opacity: 0.55;
+  margin-left: auto;
+}
+
+/* Foreground / background colour slots */
+.sprite-forge__fg-bg {
+  position: relative;
+  height: 52px;
+  margin-bottom: 4px;
+}
+
+.sprite-forge__fg-bg-bg {
+  position: absolute;
+  bottom: 0;
+  right: 12px;
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  border: 2px solid var(--border);
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+  transition: border-color 0.1s;
+}
+.sprite-forge__fg-bg-bg:hover {
+  border-color: var(--text-muted);
+}
+
+.sprite-forge__fg-bg-fg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 38px;
+  height: 38px;
+  border-radius: 4px;
+  border: 2px solid var(--text);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+  background-image: repeating-conic-gradient(#aaa 0% 25%, #fff 0% 50%);
+  background-size: 6px 6px;
+}
+
+/* The fg swatch sits on top via stacking context — overlay colour via ::after */
+/* (colour is set inline via bg directly) */
+
+.sprite-forge__swap-btn {
+  position: absolute;
+  bottom: 18px;
+  right: 0;
+  width: 18px;
+  height: 18px;
+  font-size: 11px;
+  line-height: 1;
+  padding: 0;
+  background: var(--surface3);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.sprite-forge__swap-btn:hover {
+  color: var(--text);
+  border-color: var(--text-muted);
+}
+
+/* Recent colour history */
+.sprite-forge__history {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
+.sprite-forge__history-cell {
+  width: 18px;
+  height: 18px;
+  border-radius: 3px;
+  border: 1px solid rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.08s;
+}
+.sprite-forge__history-cell:hover {
+  transform: scale(1.25);
+  z-index: 1;
+  position: relative;
 }
 
 /* Color controls */

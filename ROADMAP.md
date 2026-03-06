@@ -1,49 +1,94 @@
 # DoomJelly Studio — Project Roadmap
 
-**Last updated:** 2026-03-06 (M17 complete, M18 planned)
+**Last updated:** 2026-03-06 (M18 complete, M19 in progress)
 **Status key:** ✅ Done · 🔄 In Progress · 🔵 Next · ⬜ Pending · 💭 Wishlist
 
 ---
 
-## ⚡ NEXT SESSION — Start Here
+## ⚡ NEXT — M19: Sprite Forge Power Tools
 
-**M18 — Sprite Creator**: built-in pixel art canvas for drawing sprite sheets directly
-in the app, so users don't need an external tool before animating.
-
-See M18 spec below.
+Building Sprite Forge into a truly comprehensive pixel art tool across 7 tiers.
+See full M19 spec below.
 
 ---
 
-## 🔵 M18: Sprite Creator (planned)
+## 🔄 M19: Sprite Forge — Power Tools
 
-A dedicated `/sprite-creator` route and nav item giving users a pixel art drawing
-surface so they can create (or edit) sprite sheets without leaving DoomJelly Studio.
+### Tier 1 — Colour tools ← START HERE
 
-**Scope:**
+- [ ] Full **HSV + RGB + Hex** inline colour picker panel (replaces native `<input type="color">`)
+- [ ] **Foreground / background** colour slots with swap (X key)
+- [ ] **Recent colour history** row — last 10 used colours
+- [ ] **User-built custom palettes** — add/remove/reorder swatches, name palette, multiple palettes
+- [ ] **Import Lospec palettes** (.hex plain-text format)
+- [ ] **Colour ramp generator** — pick two colours → N interpolated steps added to palette
 
-- Pixel canvas with configurable dimensions (width × height in tiles, tile size)
-- Drawing tools: pencil, eraser, flood fill, eyedropper
-- Colour palette — a small fixed set + custom picker + "used colours" row
-- Grid overlay toggle (shows tile/cell boundaries)
-- Undo/redo (dedicated stack, separate from the Animator undo)
-- Export as PNG → auto-imports into the current project's Animator (or prompts to
-  create a new project)
-- Layers are a stretch goal — start single-layer
-- Persistence: save canvas state to localStorage alongside the project
+### Tier 2 — Drawing tools
 
-**Integration points:**
+- [ ] **Line tool** — Bresenham pixel-perfect line (L key)
+- [ ] **Rectangle tool** — outlined or filled (R key)
+- [ ] **Ellipse / circle tool** — outlined or filled (O key)
+- [ ] **Symmetry mode** — mirror strokes across H / V / both axes (S key toggle)
+- [ ] **Pixel-perfect pencil** — auto-removes redundant diagonal corner pixels
 
-- Projects page: "New sprite" button → Sprite Creator with blank canvas tied to that project
-- Animator: "Edit sprite" button in SpriteImporter when a sheet is loaded → opens Creator
-  with the current sheet pre-loaded for editing
-- On export from Creator → sprite sheet objectUrl is set in ProjectContext so Animator
-  can use it immediately (no file-drop needed)
+### Tier 3 — Layers
 
-**Nav label:** "Sprite Creator" or "Draw"
+- [ ] Named layers, drag-to-reorder, hide/lock toggles, per-layer opacity slider
+- [ ] Blending modes: Normal, Multiply, Screen, Add, Overlay
+- [ ] Merge down / flatten all
+- [ ] Each layer = independent `Uint8ClampedArray`; composited at render time
+- [ ] Layer data stored in ProjectContext (replaces single flat `spriteForgeDataUrl`)
+
+### Tier 4 — Frames & in-Forge animation preview
+
+- [ ] Frame strip at bottom — add / duplicate / delete / reorder frames
+- [ ] Each frame holds its own layer stack
+- [ ] **Onion skinning** — ghost of prev/next frames at configurable opacity
+- [ ] **Looping playback preview** inside Forge at configurable FPS
+- [ ] Active frame selector (click frame in strip to switch draw target)
+
+### Tier 5 — Selection & transform
+
+- [ ] Rectangular selection — move, copy (Ctrl+C), paste (Ctrl+V), delete contents
+- [ ] **Flip horizontal** — whole canvas or selection
+- [ ] **Flip vertical** — whole canvas or selection
+- [ ] **Rotate 90° CW / CCW** — whole canvas or selection
+- [ ] **Canvas resize** with 9-point anchor picker (pads / crops, non-destructive)
+- [ ] Crop to selection
+
+### Tier 6 — Tiling & reference
+
+- [ ] **Tile preview panel** — 2×2 / 3×3 tiled view alongside canvas
+- [ ] **Seamless tile mode** — strokes wrap from one edge to the opposite
+- [ ] **Reference image overlay** — import PNG as locked semi-transparent reference layer
+
+### Tier 7 — Sprite Forge export
+
+- [ ] Export canvas as PNG
+- [ ] Export as sprite sheet (configurable frames-per-row, padding, labels)
+- [ ] Export individual frames as numbered PNGs
+- [ ] Export active palette as `.hex` file (Lospec format)
 
 ---
 
-## M17: Export Bundle + Nav Rename (complete)
+## ✅ M18: Sprite Forge MVP + Dual Workspace
+
+- **Dedicated workspaces** — `/forge` (Sprite Forge) and `/editor` (Animator) as separate nav items
+- **SpriteForgeWorkspace** — its own Page with editable title and Save button
+- **Pixel art canvas** — pencil / eraser / flood fill / colour picker tools
+- **32-colour fixed palette** + native colour input
+- **Undo/redo** — 50-step history stack
+- **Zoom** 1–12× · pixel grid (at zoom ≥ 4) · frame boundary grid
+- **Four canvas size presets** — 64×64, 128×128, 256×128, 256×256
+- **Cross-workspace flow:**
+  - "Send to Animator →" — exports canvas, sets as sprite sheet, navigates to `/editor`
+  - "← From Animator" — loads current sprite sheet back into Forge canvas
+  - "Edit in Forge ↗" button in Animator toolbar (visible when sheet loaded) — converts sheet to data URL, stores as `spriteForgeDataUrl`, navigates to `/forge`
+- **Persistence** — `spriteForgeDataUrl` in ProjectContext, serialised with project
+
+---
+
+## ✅ M17: Export Bundle + Nav Rename
 
 - **Export All bundle tab** — new "Export All" tab in the Export modal
   - Downloads `{name}_bundle.zip` containing everything in one click:
