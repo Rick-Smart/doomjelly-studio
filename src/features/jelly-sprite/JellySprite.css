@@ -924,3 +924,236 @@
   gap: 14px;
   min-height: 0;
 }
+
+/* ── Brush panel ── */
+
+/* 4-column grid of brush shape tiles */
+.jelly-sprite__brush-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+}
+
+/* Individual brush tile button */
+.jelly-sprite__brush-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 6px 4px 5px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition:
+    background 0.1s,
+    border-color 0.1s,
+    color 0.1s;
+  min-height: 52px;
+}
+
+.jelly-sprite__brush-cell:hover {
+  background: var(--surface3);
+  border-color: var(--text-muted);
+  color: var(--text);
+}
+
+.jelly-sprite__brush-cell--active {
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface2));
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Canvas thumbnail inside each brush cell */
+.jelly-sprite__brush-thumb {
+  width: 30px;
+  height: 30px;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  flex-shrink: 0;
+}
+
+/* Label below the preview */
+.jelly-sprite__brush-cell-label {
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+/* Size / Opacity property rows */
+.jelly-sprite__brush-prop-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.jelly-sprite__brush-prop-key {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  width: 44px;
+  flex-shrink: 0;
+}
+
+.jelly-sprite__brush-prop-val {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text);
+  width: 32px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.jelly-sprite__brush-slider {
+  flex: 1;
+  height: 4px;
+  cursor: pointer;
+  accent-color: var(--accent);
+}
+
+.jelly-sprite__brush-slider:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* Shape mode (Outline / Filled) toggle in Brush tab */
+.jelly-sprite__brush-shape-opts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+}
+
+.jelly-sprite__brush-shape-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 6px 4px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition:
+    background 0.1s,
+    border-color 0.1s,
+    color 0.1s;
+}
+
+.jelly-sprite__brush-shape-btn:hover {
+  background: var(--surface3);
+  border-color: var(--text-muted);
+  color: var(--text);
+}
+
+.jelly-sprite__brush-shape-btn--active {
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface2));
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.jelly-sprite__brush-shape-icon {
+  font-size: 16px;
+  line-height: 1;
+}
+
+/* ── Layer masks ── */
+
+/* Small "⬡" chip shown in the layer row when a mask exists */
+.jelly-sprite__mask-chip {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  font-size: 11px;
+  line-height: 1;
+  padding: 0;
+  background: var(--surface3);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    background 0.1s,
+    border-color 0.1s,
+    color 0.1s;
+}
+
+.jelly-sprite__mask-chip:hover {
+  background: var(--surface2);
+  color: var(--text);
+}
+
+.jelly-sprite__mask-chip--editing {
+  background: color-mix(in srgb, #f0a020 20%, var(--surface2));
+  border-color: #f0a020;
+  color: #f0a020;
+}
+
+/* Mask controls row inside active layer options */
+.jelly-sprite__layer-mask-row {
+  display: flex;
+  gap: 4px;
+  padding-top: 4px;
+}
+
+/* Active state for size-btn (used by Edit Mask button) */
+.jelly-sprite__size-btn--active {
+  background: color-mix(in srgb, #f0a020 18%, var(--surface2));
+  border-color: #f0a020;
+  color: #f0a020;
+}
+
+/* Danger variant for size-btn */
+.jelly-sprite__size-btn--danger {
+  color: var(--danger);
+}
+.jelly-sprite__size-btn--danger:hover {
+  background: var(--danger);
+  color: #fff;
+}
+
+/* Mask edit mode banner shown above the canvas */
+.jelly-sprite__mask-edit-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 12px;
+  background: color-mix(in srgb, #f0a020 18%, var(--surface));
+  border-bottom: 1px solid #f0a020;
+  font-size: 11px;
+  font-weight: 600;
+  color: #f0a020;
+  flex-shrink: 0;
+}
+
+.jelly-sprite__mask-edit-done {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  background: #f0a020;
+  border: none;
+  border-radius: 4px;
+  color: #fff;
+  cursor: pointer;
+}
+
+.jelly-sprite__mask-edit-done:hover {
+  background: #d08000;
+}
