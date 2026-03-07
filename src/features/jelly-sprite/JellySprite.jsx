@@ -258,6 +258,12 @@ export function JellySprite({ onSwitchToAnimator }) {
   // Move tool state
   const moveOriginRef = useRef(null);
   const movePixelSnapRef = useRef(null);
+  // Clipboard: { pixels: Uint8ClampedArray, w, h }
+  const clipboardRef = useRef(null);
+  // When set, the init/resize useEffect uses this data instead of blank buffers
+  const pendingResizeDataRef = useRef(null);
+  // 9-point anchor for canvas resize: tl/tc/tr/ml/mc/mr/bl/bc/br
+  const [resizeAnchor, setResizeAnchor] = useState("mc");
 
   // Colour — foreground, background, alpha, history
   const [fgColor, setFgColor] = useState("#000000");
@@ -337,6 +343,9 @@ export function JellySprite({ onSwitchToAnimator }) {
       setSelection(null);
       selectionRef.current = null;
     },
+    copySelection: () => copySelection(),
+    pasteSelection: () => pasteSelection(),
+    deleteSelection: () => deleteSelectionContents(),
     prevFrame: () => {
       if (!isPlayingRef.current)
         switchToFrame(Math.max(0, activeFrameIdxRef.current - 1));
@@ -367,6 +376,17 @@ export function JellySprite({ onSwitchToAnimator }) {
       return prevLayers;
     });
     layerDataRef.current = newLayerData;
+
+    // If a crop/resize pre-computed pixel data, copy it into the fresh buffers
+    if (pendingResizeDataRef.current) {
+      const pending = pendingResizeDataRef.current;
+      for (const [lid, data] of Object.entries(pending)) {
+        if (layerDataRef.current[lid]) {
+          layerDataRef.current[lid].set(data);
+        }
+      }
+      pendingResizeDataRef.current = null;
+    }
 
     // Sync pixelsRef to active layer
     pixelsRef.current =
@@ -1143,6 +1163,18 @@ export function JellySprite({ onSwitchToAnimator }) {
       } else if ((e.ctrlKey || e.metaKey) && e.key === "d") {
         e.preventDefault();
         a.deselectAll();
+      } else if ((e.ctrlKey || e.metaKey) && e.key === "c") {
+        e.preventDefault();
+        a.copySelection();
+      } else if ((e.ctrlKey || e.metaKey) && e.key === "v") {
+        e.preventDefault();
+        a.pasteSelection();
+      } else if (
+        (e.key === "Delete" || e.key === "Backspace") &&
+        selectionRef.current
+      ) {
+        e.preventDefault();
+        a.deleteSelection();
       } else if (e.key === "p") a.setTool("pencil");
       else if (e.key === "e") a.setTool("eraser");
       else if (e.key === "f") a.setTool("fill");
@@ -1571,19 +1603,172 @@ export function JellySprite({ onSwitchToAnimator }) {
     loadImg.src = src;
   }
 
-  function changeSize(w, h) {
-    if (w === canvasW && h === canvasH) return;
+  // ── Selection clipboard operations ────────────────────────────────────────
+  function copySelection() {
+    const sel = selectionRef.current;
+    if (!sel) return;
+    const { x: sx, y: sy, w: sw, h: sh } = sel;
+    const src = pixelsRef.current;
+    const buf = new Uint8ClampedArray(sw * sh * 4);
+    for (let dy = 0; dy < sh; dy++) {
+      for (let dx = 0; dx < sw; dx++) {
+        const si = ((sy + dy) * canvasW + (sx + dx)) * 4;
+        const di = (dy * sw + dx) * 4;
+        buf[di] = src[si];
+        buf[di + 1] = src[si + 1];
+        buf[di + 2] = src[si + 2];
+        buf[di + 3] = src[si + 3];
+      }
+    }
+    clipboardRef.current = { pixels: buf, w: sw, h: sh };
+  }
+
+  function pasteSelection() {
+    const clip = clipboardRef.current;
+    if (!clip) return;
+    const { pixels, w: cw, h: ch } = clip;
+    // Paste centered on canvas
+    const px = Math.max(0, Math.floor((canvasW - cw) / 2));
+    const py = Math.max(0, Math.floor((canvasH - ch) / 2));
+    const dst = pixelsRef.current;
+    for (let dy = 0; dy < ch; dy++) {
+      for (let dx = 0; dx < cw; dx++) {
+        const nx = px + dx,
+          ny = py + dy;
+        if (nx >= canvasW || ny >= canvasH) continue;
+        const si = (dy * cw + dx) * 4;
+        const di = (ny * canvasW + nx) * 4;
+        // Alpha-composite paste over destination
+        const sa = pixels[si + 3] / 255;
+        const da = dst[di + 3] / 255;
+        const oa = sa + da * (1 - sa);
+        if (oa === 0) {
+          dst[di] = dst[di + 1] = dst[di + 2] = dst[di + 3] = 0;
+        } else {
+          dst[di] = Math.round(
+            (pixels[si] * sa + dst[di] * da * (1 - sa)) / oa,
+          );
+          dst[di + 1] = Math.round(
+            (pixels[si + 1] * sa + dst[di + 1] * da * (1 - sa)) / oa,
+          );
+          dst[di + 2] = Math.round(
+            (pixels[si + 2] * sa + dst[di + 2] * da * (1 - sa)) / oa,
+          );
+          dst[di + 3] = Math.round(oa * 255);
+        }
+      }
+    }
+    // Create selection around pasted region
+    const newSel = {
+      x: px,
+      y: py,
+      w: Math.min(cw, canvasW - px),
+      h: Math.min(ch, canvasH - py),
+    };
+    selectionRef.current = newSel;
+    setSelection(newSel);
+    pushHistoryEntry();
+    redraw();
+    saveToProject();
+  }
+
+  function deleteSelectionContents() {
+    const sel = selectionRef.current;
+    if (!sel) return;
+    for (let dy = 0; dy < sel.h; dy++) {
+      for (let dx = 0; dx < sel.w; dx++) {
+        const i = ((sel.y + dy) * canvasW + (sel.x + dx)) * 4;
+        pixelsRef.current[i] =
+          pixelsRef.current[i + 1] =
+          pixelsRef.current[i + 2] =
+          pixelsRef.current[i + 3] =
+            0;
+      }
+    }
+    pushHistoryEntry();
+    redraw();
+    saveToProject();
+  }
+
+  function cropToSelection() {
+    const sel = selectionRef.current;
+    if (!sel) return;
+    const { x: sx, y: sy, w: sw, h: sh } = sel;
+    // Pre-compute cropped data for every layer
+    const cropped = {};
+    for (const [lid, data] of Object.entries(layerDataRef.current)) {
+      const buf = new Uint8ClampedArray(sw * sh * 4);
+      for (let dy = 0; dy < sh; dy++) {
+        for (let dx = 0; dx < sw; dx++) {
+          const si = ((sy + dy) * canvasW + (sx + dx)) * 4;
+          const di = (dy * sw + dx) * 4;
+          buf[di] = data[si];
+          buf[di + 1] = data[si + 1];
+          buf[di + 2] = data[si + 2];
+          buf[di + 3] = data[si + 3];
+        }
+      }
+      cropped[lid] = buf;
+    }
+    pendingResizeDataRef.current = cropped;
+    selectionRef.current = null;
+    setSelection(null);
+    setCanvasW(sw);
+    setCanvasH(sh);
+  }
+
+  function changeSize(nw, nh) {
+    if (nw === canvasW && nh === canvasH) return;
+    const w = canvasW,
+      h = canvasH;
     const hasContent =
       historyRef.current.length > 1 || pixelsRef.current?.some((v) => v !== 0);
     if (
-      !hasContent ||
-      window.confirm(
-        `Resize to ${w}×${h}? This will clear the current drawing.`,
+      hasContent &&
+      !window.confirm(
+        `Resize to ${nw}×${nh}? Pixels outside the new canvas will be clipped.`,
       )
-    ) {
-      setCanvasW(w);
-      setCanvasH(h);
+    )
+      return;
+
+    // 9-point anchor offset computation
+    const anchorMap = {
+      tl: [0, 0],
+      tc: [0.5, 0],
+      tr: [1, 0],
+      ml: [0, 0.5],
+      mc: [0.5, 0.5],
+      mr: [1, 0.5],
+      bl: [0, 1],
+      bc: [0.5, 1],
+      br: [1, 1],
+    };
+    const [ax, ay] = anchorMap[resizeAnchor] ?? [0.5, 0.5];
+    const offX = Math.round((nw - w) * ax);
+    const offY = Math.round((nh - h) * ay);
+
+    // Pre-compute shifted layer data
+    const resized = {};
+    for (const [lid, data] of Object.entries(layerDataRef.current)) {
+      const buf = new Uint8ClampedArray(nw * nh * 4);
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          const nx = x + offX,
+            ny = y + offY;
+          if (nx < 0 || nx >= nw || ny < 0 || ny >= nh) continue;
+          const si = (y * w + x) * 4;
+          const di = (ny * nw + nx) * 4;
+          buf[di] = data[si];
+          buf[di + 1] = data[si + 1];
+          buf[di + 2] = data[si + 2];
+          buf[di + 3] = data[si + 3];
+        }
+      }
+      resized[lid] = buf;
     }
+    pendingResizeDataRef.current = resized;
+    setCanvasW(nw);
+    setCanvasH(nh);
   }
 
   // ── Palette management ─────────────────────────────────────────────────────
@@ -2048,26 +2233,32 @@ export function JellySprite({ onSwitchToAnimator }) {
             <div className="jelly-sprite__selection-actions">
               <button
                 className="jelly-sprite__size-btn"
-                title="Delete selection contents"
-                onClick={() => {
-                  const sel = selectionRef.current;
-                  if (!sel) return;
-                  for (let dy = 0; dy < sel.h; dy++) {
-                    for (let dx = 0; dx < sel.w; dx++) {
-                      const i = ((sel.y + dy) * canvasW + (sel.x + dx)) * 4;
-                      pixelsRef.current[i] =
-                        pixelsRef.current[i + 1] =
-                        pixelsRef.current[i + 2] =
-                        pixelsRef.current[i + 3] =
-                          0;
-                    }
-                  }
-                  pushHistoryEntry();
-                  redraw();
-                  saveToProject();
-                }}
+                title="Copy selection (Ctrl+C)"
+                onClick={copySelection}
               >
-                Delete contents
+                Copy
+              </button>
+              <button
+                className="jelly-sprite__size-btn"
+                title="Paste from clipboard (Ctrl+V)"
+                onClick={pasteSelection}
+                disabled={!clipboardRef.current}
+              >
+                Paste
+              </button>
+              <button
+                className="jelly-sprite__size-btn"
+                title="Crop canvas to selection"
+                onClick={cropToSelection}
+              >
+                Crop
+              </button>
+              <button
+                className="jelly-sprite__size-btn jelly-sprite__size-btn--danger"
+                title="Delete selection contents (Delete)"
+                onClick={deleteSelectionContents}
+              >
+                Delete
               </button>
             </div>
           </div>
@@ -2200,6 +2391,23 @@ export function JellySprite({ onSwitchToAnimator }) {
         {/* Canvas size presets */}
         <div className="jelly-sprite__section">
           <div className="jelly-sprite__section-label">Canvas size</div>
+          {/* 9-point anchor picker */}
+          <div
+            className="jelly-sprite__section-label"
+            style={{ fontSize: 9, marginTop: -2 }}
+          >
+            Anchor
+          </div>
+          <div className="jelly-sprite__anchor-picker">
+            {["tl", "tc", "tr", "ml", "mc", "mr", "bl", "bc", "br"].map((a) => (
+              <button
+                key={a}
+                className={`jelly-sprite__anchor-btn${resizeAnchor === a ? " jelly-sprite__anchor-btn--active" : ""}`}
+                onClick={() => setResizeAnchor(a)}
+                title={a}
+              />
+            ))}
+          </div>
           <div className="jelly-sprite__size-btns">
             {CANVAS_SIZES.map((s) => (
               <button
