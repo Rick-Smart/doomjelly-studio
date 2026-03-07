@@ -1,4 +1,5 @@
 import { useRef, useEffect, useState, useCallback } from "react";
+import JSZip from "jszip";
 import { useProject } from "../../contexts/ProjectContext";
 import { ColorPicker } from "./ColorPicker";
 import { PaletteManager, BUILTIN_PALETTES } from "./PaletteManager";
@@ -312,6 +313,12 @@ export function JellySprite({ onSwitchToAnimator }) {
 
   // Frame thumbnails: {frameId: dataURL}
   const [frameThumbnails, setFrameThumbnails] = useState({});
+
+  // Export modal
+  const [exportOpen, setExportOpen] = useState(false);
+  const [exportFramesPerRow, setExportFramesPerRow] = useState(4);
+  const [exportPadding, setExportPadding] = useState(1);
+  const [exportLabels, setExportLabels] = useState(false);
 
   // Undo/redo — stores full {layerData, layers, activeLayerId} snapshots
   const historyRef = useRef([]);
@@ -1238,6 +1245,131 @@ export function JellySprite({ onSwitchToAnimator }) {
       ctx.globalAlpha = 1;
     });
     return tmp.toDataURL("image/png");
+  }
+
+  // ── Export helpers ────────────────────────────────────────────────────────
+  /** Composite a frame's visible layers and return a canvas element */
+  function compositeFrameToCanvas(frameId) {
+    const w = canvasW,
+      h = canvasH;
+    const cvs = document.createElement("canvas");
+    cvs.width = w;
+    cvs.height = h;
+    const ctx = cvs.getContext("2d");
+    const isActive =
+      framesRef.current[activeFrameIdxRef.current]?.id === frameId;
+    const renderLayers = isActive
+      ? layersRef.current
+      : (frameDataRef.current[frameId]?.layers ?? []);
+    const renderPixelData = isActive
+      ? layerDataRef.current
+      : (frameDataRef.current[frameId]?.pixelData ?? {});
+    renderLayers.forEach((layer) => {
+      if (!layer.visible) return;
+      const data = renderPixelData[layer.id];
+      if (!data) return;
+      const imgData = new ImageData(new Uint8ClampedArray(data), w, h);
+      const tmp = document.createElement("canvas");
+      tmp.width = w;
+      tmp.height = h;
+      tmp.getContext("2d").putImageData(imgData, 0, 0);
+      ctx.globalAlpha = layer.opacity;
+      ctx.drawImage(tmp, 0, 0);
+      ctx.globalAlpha = 1;
+    });
+    return cvs;
+  }
+
+  /** Trigger a browser download of a blob/dataURL */
+  function triggerDownload(url, filename) {
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+  }
+
+  function exportPNG() {
+    // Save current frame first
+    saveCurrentFrameToRef();
+    const activeFrameId = framesRef.current[activeFrameIdxRef.current]?.id;
+    if (!activeFrameId) return;
+    const cvs = compositeFrameToCanvas(activeFrameId);
+    triggerDownload(
+      cvs.toDataURL("image/png"),
+      `${state.name || "sprite"}.png`,
+    );
+  }
+
+  function exportSpriteSheet(
+    framesPerRow = exportFramesPerRow,
+    padding = exportPadding,
+    labels = exportLabels,
+  ) {
+    saveCurrentFrameToRef();
+    const allFrames = framesRef.current;
+    const fw = canvasW,
+      fh = canvasH;
+    const cols = Math.min(framesPerRow, allFrames.length);
+    const rows = Math.ceil(allFrames.length / cols);
+    const labelH = labels ? 12 : 0;
+    const shW = cols * (fw + padding) + padding;
+    const shH = rows * (fh + padding + labelH) + padding;
+
+    const sheet = document.createElement("canvas");
+    sheet.width = shW;
+    sheet.height = shH;
+    const ctx = sheet.getContext("2d");
+
+    allFrames.forEach((frame, idx) => {
+      const col = idx % cols;
+      const row = Math.floor(idx / cols);
+      const x = padding + col * (fw + padding);
+      const y = padding + row * (fh + padding + labelH);
+      const frameCvs = compositeFrameToCanvas(frame.id);
+      ctx.drawImage(frameCvs, x, y);
+      if (labels) {
+        ctx.fillStyle = "rgba(0,0,0,0.6)";
+        ctx.font = "9px monospace";
+        ctx.fillText(frame.name || `F${idx + 1}`, x + 2, y + fh + 9);
+      }
+    });
+
+    triggerDownload(
+      sheet.toDataURL("image/png"),
+      `${state.name || "sprite"}_sheet.png`,
+    );
+  }
+
+  async function exportFramesZip() {
+    saveCurrentFrameToRef();
+    const zip = new JSZip();
+    const folder = zip.folder("frames");
+    const allFrames = framesRef.current;
+    for (let i = 0; i < allFrames.length; i++) {
+      const frame = allFrames[i];
+      const cvs = compositeFrameToCanvas(frame.id);
+      const dataUrl = cvs.toDataURL("image/png");
+      const base64 = dataUrl.split(",")[1];
+      const num = String(i + 1).padStart(3, "0");
+      folder.file(`${state.name || "sprite"}_frame_${num}.png`, base64, {
+        base64: true,
+      });
+    }
+    const blob = await zip.generateAsync({ type: "blob" });
+    triggerDownload(
+      URL.createObjectURL(blob),
+      `${state.name || "sprite"}_frames.zip`,
+    );
+  }
+
+  function exportPaletteHex() {
+    const colors = palettes[activePalette] ?? [];
+    const hex = colors.map((c) => c.replace("#", "")).join("\n");
+    const blob = new Blob([hex], { type: "text/plain" });
+    triggerDownload(
+      URL.createObjectURL(blob),
+      `${activePalette.replace(/\s+/g, "_")}.hex`,
+    );
   }
 
   // ── Cross-workspace actions ────────────────────────────────────────────────
@@ -2435,7 +2567,144 @@ export function JellySprite({ onSwitchToAnimator }) {
             Send to Animator →
           </button>
         </div>
+
+        {/* Export */}
+        <div className="jelly-sprite__section">
+          <button
+            className="jelly-sprite__export-btn"
+            onClick={() => setExportOpen(true)}
+          >
+            ⬇ Export…
+          </button>
+        </div>
       </div>
+
+      {/* ── Export modal ── */}
+      {exportOpen && (
+        <div
+          className="jelly-sprite__export-overlay"
+          onClick={() => setExportOpen(false)}
+        >
+          <div
+            className="jelly-sprite__export-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="jelly-sprite__export-header">
+              <span>Export</span>
+              <button
+                className="jelly-sprite__export-close"
+                onClick={() => setExportOpen(false)}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Single frame PNG */}
+            <div className="jelly-sprite__export-section">
+              <div className="jelly-sprite__export-section-label">
+                Current frame
+              </div>
+              <button
+                className="jelly-sprite__export-action-btn"
+                onClick={() => {
+                  exportPNG();
+                  setExportOpen(false);
+                }}
+              >
+                PNG — active frame
+              </button>
+            </div>
+
+            {/* Sprite sheet */}
+            <div className="jelly-sprite__export-section">
+              <div className="jelly-sprite__export-section-label">
+                Sprite sheet ({frames.length} frames)
+              </div>
+              <div className="jelly-sprite__export-row">
+                <label className="jelly-sprite__export-label">Columns</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={frames.length}
+                  value={exportFramesPerRow}
+                  onChange={(e) =>
+                    setExportFramesPerRow(Math.max(1, Number(e.target.value)))
+                  }
+                  className="jelly-sprite__export-number"
+                />
+              </div>
+              <div className="jelly-sprite__export-row">
+                <label className="jelly-sprite__export-label">
+                  Padding (px)
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  max={16}
+                  value={exportPadding}
+                  onChange={(e) =>
+                    setExportPadding(Math.max(0, Number(e.target.value)))
+                  }
+                  className="jelly-sprite__export-number"
+                />
+              </div>
+              <div className="jelly-sprite__export-row">
+                <label className="jelly-sprite__export-label">
+                  <input
+                    type="checkbox"
+                    checked={exportLabels}
+                    onChange={(e) => setExportLabels(e.target.checked)}
+                    style={{ marginRight: 6 }}
+                  />
+                  Frame labels
+                </label>
+              </div>
+              <button
+                className="jelly-sprite__export-action-btn"
+                onClick={() => {
+                  exportSpriteSheet();
+                  setExportOpen(false);
+                }}
+              >
+                PNG — sprite sheet
+              </button>
+            </div>
+
+            {/* Frames as zip */}
+            <div className="jelly-sprite__export-section">
+              <div className="jelly-sprite__export-section-label">
+                Individual frames
+              </div>
+              <button
+                className="jelly-sprite__export-action-btn"
+                onClick={() => {
+                  exportFramesZip();
+                  setExportOpen(false);
+                }}
+                disabled={frames.length <= 1}
+              >
+                ZIP — all frames as PNGs
+              </button>
+            </div>
+
+            {/* Palette */}
+            <div className="jelly-sprite__export-section">
+              <div className="jelly-sprite__export-section-label">
+                Palette — {activePalette}
+              </div>
+              <button
+                className="jelly-sprite__export-action-btn"
+                onClick={() => {
+                  exportPaletteHex();
+                  setExportOpen(false);
+                }}
+              >
+                .hex — Lospec palette
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
