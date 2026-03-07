@@ -1,9 +1,8 @@
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect } from "react";
 import JSZip from "jszip";
 import { useProject } from "../../contexts/ProjectContext";
-import { BUILTIN_PALETTES } from "../../ui/PaletteManager";
 import "./JellySprite.css";
-import { MAX_COLOUR_HISTORY } from "./jellySprite.constants";
+import * as A from "./store/jellySpriteActions";
 import { JellySpriteCtx } from "./JellySpriteContext";
 import { JellySpriteProvider } from "./store/JellySpriteProvider";
 import { useJellySpriteStore } from "./store/useJellySpriteStore";
@@ -28,53 +27,85 @@ export function JellySprite({ onSwitchToAnimator }) {
 // ── Inner component — all logic runs inside JellySpriteProvider ───────────────
 function JellySpriteBody({ onSwitchToAnimator }) {
   const { state, dispatch } = useProject();
-  const { refs } = useJellySpriteStore();
+  const { refs, state: ss, dispatch: sd } = useJellySpriteStore();
 
-  // ── Local state ────────────────────────────────────────────────────────────
-  const [canvasW, setCanvasW] = useState(128);
-  const [canvasH, setCanvasH] = useState(128);
-  const [zoom, setZoom] = useState(4);
+  // ── Store state (M4) ───────────────────────────────────────────────────────
+  const {
+    canvasW,
+    canvasH,
+    zoom,
+    tool,
+    fillShapes,
+    symmetryH,
+    symmetryV,
+    gridVisible,
+    frameGridVisible,
+    brushType,
+    brushSize,
+    brushOpacity,
+    resizeAnchor,
+    customW,
+    customH,
+    fgColor,
+    bgColor,
+    fgAlpha,
+    colorHistory,
+    palettes,
+    activePalette,
+    panelTab,
+    exportOpen,
+    exportFramesPerRow,
+    exportPadding,
+    exportLabels,
+    refImage,
+    refOpacity,
+    refVisible,
+    tileVisible,
+    tileCount,
+  } = ss;
 
-  const [tool, setTool] = useState("pencil");
-  const [fillShapes, setFillShapes] = useState(false);
-  const [symmetryH, setSymmetryH] = useState(false);
-  const [symmetryV, setSymmetryV] = useState(false);
-  const [gridVisible, setGridVisible] = useState(true);
-  const [frameGridVisible, setFrameGridVisible] = useState(true);
+  // Dispatch wrappers — keep the same setter names so all callers are unchanged
+  const setZoom = (v) => sd({ type: A.SET_ZOOM, payload: v });
+  const setTool = (v) => sd({ type: A.SET_TOOL, payload: v });
+  const setFillShapes = (v) => sd({ type: A.SET_FILL_SHAPES, payload: v });
+  const setSymmetryH = (v) => sd({ type: A.SET_SYMMETRY_H, payload: v });
+  const setSymmetryV = (v) => sd({ type: A.SET_SYMMETRY_V, payload: v });
+  const setGridVisible = (v) => sd({ type: A.SET_GRID_VISIBLE, payload: v });
+  const setFrameGridVisible = (v) =>
+    sd({ type: A.SET_FRAME_GRID_VISIBLE, payload: v });
+  const setBrushType = (v) => sd({ type: A.SET_BRUSH_TYPE, payload: v });
+  const setBrushSize = (v) => sd({ type: A.SET_BRUSH_SIZE, payload: v });
+  const setBrushOpacity = (v) => sd({ type: A.SET_BRUSH_OPACITY, payload: v });
+  const setFgColor = (v) => sd({ type: A.SET_FG_COLOR, payload: v });
+  const setBgColor = (v) => sd({ type: A.SET_BG_COLOR, payload: v });
+  const setFgAlpha = (v) => sd({ type: A.SET_FG_ALPHA, payload: v });
+  const setActivePalette = (v) =>
+    sd({ type: A.SET_ACTIVE_PALETTE, payload: v });
+  const setPanelTab = (v) => sd({ type: A.SET_PANEL_TAB, payload: v });
+  const setExportOpen = (v) => sd({ type: A.SET_EXPORT_OPEN, payload: v });
+  const setExportFramesPerRow = (v) =>
+    sd({ type: A.SET_EXPORT_FRAMES_PER_ROW, payload: v });
+  const setExportPadding = (v) =>
+    sd({ type: A.SET_EXPORT_PADDING, payload: v });
+  const setExportLabels = (v) => sd({ type: A.SET_EXPORT_LABELS, payload: v });
+  const setRefImage = (v) => sd({ type: A.SET_REF_IMAGE, payload: v });
+  const setRefOpacity = (v) => sd({ type: A.SET_REF_OPACITY, payload: v });
+  const setRefVisible = (v) => sd({ type: A.SET_REF_VISIBLE, payload: v });
+  const setTileVisible = (v) => sd({ type: A.SET_TILE_VISIBLE, payload: v });
+  const setTileCount = (v) => sd({ type: A.SET_TILE_COUNT, payload: v });
+  const setResizeAnchor = (v) => sd({ type: A.SET_RESIZE_ANCHOR, payload: v });
+  const setCustomW = (v) => sd({ type: A.SET_CUSTOM_W, payload: v });
+  const setCustomH = (v) => sd({ type: A.SET_CUSTOM_H, payload: v });
+  // Canvas size — dispatches both w and h together
+  const setCanvasW = (v) =>
+    sd({ type: A.SET_CANVAS_SIZE, payload: { w: v, h: canvasH } });
+  const setCanvasH = (v) =>
+    sd({ type: A.SET_CANVAS_SIZE, payload: { w: canvasW, h: v } });
 
-  const [brushType, setBrushType] = useState("round");
-  const [brushSize, setBrushSize] = useState(1);
-  const [brushOpacity, setBrushOpacity] = useState(100);
-
-  const [resizeAnchor, setResizeAnchor] = useState("mc");
-  const [customW, setCustomW] = useState(128);
-  const [customH, setCustomH] = useState(128);
   const pendingResizeDataRef = useRef(null);
-
-  const [fgColor, setFgColor] = useState("#000000");
-  const [bgColor, setBgColor] = useState("#ffffff");
-  const [fgAlpha, setFgAlpha] = useState(1);
-  const [colorHistory, setColorHistory] = useState([]);
-
-  const [palettes, setPalettes] = useState(BUILTIN_PALETTES);
-  const [activePalette, setActivePalette] = useState("DoomJelly 32");
-
-  const [panelTab, setPanelTab] = useState("palette");
-
-  const [exportOpen, setExportOpen] = useState(false);
-  const [exportFramesPerRow, setExportFramesPerRow] = useState(4);
-  const [exportPadding, setExportPadding] = useState(1);
-  const [exportLabels, setExportLabels] = useState(false);
-
-  const [refImage, setRefImage] = useState(null);
-  const [refOpacity, setRefOpacity] = useState(0.5);
-  const [refVisible, setRefVisible] = useState(true);
   const refImgElRef = useRef(null);
   const refOpacityRef = useRef(0.5);
   const refVisibleRef = useRef(true);
-
-  const [tileVisible, setTileVisible] = useState(false);
-  const [tileCount, setTileCount] = useState(2);
   const tileCanvasRef = useRef(null);
   const tileUpdateRef = useRef(null);
 
@@ -340,10 +371,7 @@ function JellySpriteBody({ onSwitchToAnimator }) {
 
   // ── Colour helpers ─────────────────────────────────────────────────────────
   function pickColor(hex) {
-    setFgColor(hex);
-    setColorHistory((h) =>
-      [hex, ...h.filter((c) => c !== hex)].slice(0, MAX_COLOUR_HISTORY),
-    );
+    sd({ type: A.PICK_COLOR, payload: hex });
   }
 
   // ── Initialise / resize ────────────────────────────────────────────────────
@@ -455,10 +483,7 @@ function JellySpriteBody({ onSwitchToAnimator }) {
     doUndo,
     doRedo,
     setTool,
-    swapColors: () => {
-      setFgColor(bgColor);
-      setBgColor(fgColor);
-    },
+    swapColors: () => sd({ type: A.SWAP_COLORS }),
     deselectAll: () => {
       setSelection(null);
       selectionRef.current = null;
@@ -601,8 +626,7 @@ function JellySpriteBody({ onSwitchToAnimator }) {
       resized[lid] = buf;
     }
     pendingResizeDataRef.current = resized;
-    setCanvasW(nw);
-    setCanvasH(nh);
+    sd({ type: A.SET_CANVAS_SIZE, payload: { w: nw, h: nh } });
   }
 
   // ── Animator integration ───────────────────────────────────────────────────
@@ -779,37 +803,26 @@ function JellySpriteBody({ onSwitchToAnimator }) {
 
   // ── Palette management ─────────────────────────────────────────────────────
   function paletteAddColor(hex) {
-    setPalettes((prev) => {
-      const colors = prev[activePalette] ?? [];
-      if (colors.includes(hex)) return prev;
-      return { ...prev, [activePalette]: [...colors, hex] };
-    });
+    sd({ type: A.PALETTE_ADD_COLOR, payload: hex });
   }
   function paletteRemoveColor(idx) {
-    setPalettes((prev) => ({
-      ...prev,
-      [activePalette]: prev[activePalette].filter((_, i) => i !== idx),
-    }));
+    const hex = (palettes[activePalette] ?? [])[idx];
+    if (hex !== undefined) sd({ type: A.PALETTE_REMOVE_COLOR, payload: hex });
   }
   function paletteSetColors(colors) {
-    setPalettes((prev) => ({ ...prev, [activePalette]: colors }));
+    sd({
+      type: A.PALETTE_SET_COLORS,
+      payload: { name: activePalette, colors },
+    });
   }
   function paletteAddNew(name) {
-    setPalettes((prev) => ({ ...prev, [name]: [] }));
-    setActivePalette(name);
+    sd({ type: A.PALETTE_ADD_NEW, payload: { name } });
   }
   function paletteDelete(name) {
-    const next = { ...palettes };
-    delete next[name];
-    setPalettes(next);
-    setActivePalette(Object.keys(next)[0]);
+    sd({ type: A.PALETTE_DELETE, payload: name });
   }
   function paletteRename(oldName, newName) {
-    const next = {};
-    for (const [k, v] of Object.entries(palettes))
-      next[k === oldName ? newName : k] = v;
-    setPalettes(next);
-    if (activePalette === oldName) setActivePalette(newName);
+    sd({ type: A.PALETTE_RENAME, payload: { oldName, newName } });
   }
 
   // ── Tile preview ───────────────────────────────────────────────────────────
