@@ -50,6 +50,13 @@ export function useCanvas() {
     // 3. Drawing engine
     refs.drawingEngine = createDrawingEngine(refs);
 
+    // Sync selection from the engine into React state so the renderer
+    // (which reads state.selection via refs.stateRef) and marching ants
+    // effect both see the update.
+    refs.drawingEngine.onSelectionChange((sel) => {
+      dispatch({ type: "SET_SELECTION", payload: sel });
+    });
+
     refs.redraw();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 

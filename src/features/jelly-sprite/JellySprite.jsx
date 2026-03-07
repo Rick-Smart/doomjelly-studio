@@ -795,20 +795,24 @@ function JellySpriteBody({ onSwitchToAnimator }) {
   }, [refVisible]);
 
   // Marching ants animation
+  // Watches ss.selection (store state) — that's what the renderer reads via
+  // refs.stateRef.current.selection. The loop writes to refs.marchOffset
+  // (also what the renderer reads) rather than marchOffsetRef.current,
+  // which is a separate ref from the now-bypassed useDrawingTools path.
   useEffect(() => {
-    if (!selection) {
+    if (!ss.selection) {
       if (marchingAntsRef.current)
         cancelAnimationFrame(marchingAntsRef.current);
       return;
     }
     const animate = () => {
-      marchOffsetRef.current = (marchOffsetRef.current + 1) % 16;
+      refs.marchOffset = ((refs.marchOffset ?? 0) + 1) % 16;
       redraw();
       marchingAntsRef.current = requestAnimationFrame(animate);
     };
     marchingAntsRef.current = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(marchingAntsRef.current);
-  }, [selection]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [ss.selection]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (tileVisible) redrawRef.current?.();
@@ -822,6 +826,14 @@ function JellySpriteBody({ onSwitchToAnimator }) {
     setTool,
     swapColors: () => sd({ type: A.SWAP_COLORS }),
     deselectAll: () => {
+      // Clear in the drawing engine (refs path used by drawingEngine)
+      refs.selection = null;
+      refs.selectionMask = null;
+      refs.lassoPath = [];
+      // Dispatch to store so renderer (refs.stateRef.current.selection) and
+      // marching ants useEffect both see null
+      sd({ type: A.SET_SELECTION, payload: null });
+      // Also clear the useDrawingTools local path (fallback)
       setSelection(null);
       selectionRef.current = null;
       lassoMaskRef.current = null;
