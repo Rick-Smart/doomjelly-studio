@@ -83,6 +83,15 @@ const BLEND_MODES = [
   { id: "exclusion", label: "Excl" },
 ];
 
+const PANEL_TABS = [
+  { id: "palette", icon: "🎨", label: "Palette" },
+  { id: "brush", icon: "🖌", label: "Brush" },
+  { id: "layers", icon: "🗂", label: "Layers" },
+  { id: "canvas", icon: "📐", label: "Canvas" },
+  { id: "view", icon: "🖼", label: "View" },
+  { id: "more", icon: "⋯", label: "More" },
+];
+
 function makeLayer(name) {
   return {
     id: `layer-${_layerIdCounter++}`,
@@ -336,6 +345,9 @@ export function JellySprite({ onSwitchToAnimator }) {
   const [exportFramesPerRow, setExportFramesPerRow] = useState(4);
   const [exportPadding, setExportPadding] = useState(1);
   const [exportLabels, setExportLabels] = useState(false);
+
+  // Right-panel active tab
+  const [panelTab, setPanelTab] = useState("palette");
 
   // Tile preview
   const [tileVisible, setTileVisible] = useState(false);
@@ -2311,541 +2323,590 @@ export function JellySprite({ onSwitchToAnimator }) {
 
       {/* ── Right panel ── */}
       <div className="jelly-sprite__panel">
-        {/* Foreground / background colour slots */}
-        <div className="jelly-sprite__section">
-          <div className="jelly-sprite__section-label">
-            Color <span className="jelly-sprite__key-hint">X=swap</span>
-          </div>
-          <div className="jelly-sprite__fg-bg">
-            <div
-              className="jelly-sprite__fg-bg-bg"
-              style={{ background: bgColor }}
-              title="Background colour (click to edit)"
-              onClick={() => {
-                const tmp = fgColor;
-                setFgColor(bgColor);
-                setBgColor(tmp);
-              }}
-            />
-            <div
-              className="jelly-sprite__fg-bg-fg"
-              style={{
-                background: `rgba(${hexToRgba(
-                  fgColor,
-                  Math.round(fgAlpha * 255),
-                )
-                  .slice(0, 3)
-                  .join(",")},${fgAlpha})`,
-              }}
-              title="Foreground colour (active)"
-            />
-            <button
-              className="jelly-sprite__swap-btn"
-              title="Swap colours (X)"
-              onClick={() => {
-                const tmp = fgColor;
-                setFgColor(bgColor);
-                setBgColor(tmp);
-              }}
-            >
-              ⇄
-            </button>
-          </div>
-        </div>
-
-        {/* Inline HSV picker */}
-        <div className="jelly-sprite__section">
-          <ColorPicker
-            hex={fgColor}
-            alpha={fgAlpha}
-            onChange={(hex, alpha) => {
-              pickColor(hex);
-              setFgAlpha(alpha);
-            }}
-          />
-        </div>
-
-        {/* Colour history */}
-        {colorHistory.length > 0 && (
-          <div className="jelly-sprite__section">
-            <div className="jelly-sprite__section-label">Recent</div>
-            <div className="jelly-sprite__history">
-              {colorHistory.map((c, i) => (
-                <button
-                  key={i}
-                  className={`jelly-sprite__history-cell${fgColor === c ? " jelly-sprite__palette-cell--active" : ""}`}
-                  style={{ background: c }}
-                  title={c}
-                  onClick={() => pickColor(c)}
-                />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Palette manager */}
-        <div className="jelly-sprite__section">
-          <div className="jelly-sprite__section-label">Palette</div>
-          <PaletteManager
-            activeColor={fgColor}
-            palettes={palettes}
-            activePalette={activePalette}
-            onSelectColor={pickColor}
-            onAddColor={paletteAddColor}
-            onRemoveColor={paletteRemoveColor}
-            onAddPalette={paletteAddNew}
-            onDeletePalette={paletteDelete}
-            onRenamePalette={paletteRename}
-            onSetActivePalette={setActivePalette}
-            onSetColors={paletteSetColors}
-          />
-        </div>
-
-        {/* Brush options */}
-        <div className="jelly-sprite__section">
-          <div className="jelly-sprite__section-label">Brush</div>
-          <div className="jelly-sprite__brush-types">
-            {BRUSH_TYPES.map((b) => (
-              <button
-                key={b.id}
-                className={`jelly-sprite__tool-btn${brushType === b.id ? " jelly-sprite__tool-btn--active" : ""}`}
-                onClick={() => setBrushType(b.id)}
-                title={b.title}
-              >
-                {b.icon}
-              </button>
-            ))}
-          </div>
-          <div className="jelly-sprite__brush-size-row">
-            <span className="jelly-sprite__brush-size-label">
-              Size {brushSize}px
-            </span>
-            <input
-              type="range"
-              min={1}
-              max={32}
-              value={brushSize}
-              onChange={(e) => setBrushSize(Number(e.target.value))}
-              className="jelly-sprite__brush-slider"
-            />
-          </div>
-        </div>
-
-        {/* Selection info */}
-        {selection && (
+        {/* ── Always-visible: colour + picker + recent ── */}
+        <div className="jelly-sprite__panel-top">
+          {/* Foreground / background colour slots */}
           <div className="jelly-sprite__section">
             <div className="jelly-sprite__section-label">
-              Selection
-              <button
-                className="jelly-sprite__deselect-btn"
-                onClick={() => {
-                  setSelection(null);
-                  selectionRef.current = null;
-                }}
-                title="Deselect (Esc / Ctrl+D)"
-              >
-                ✕
-              </button>
+              Color <span className="jelly-sprite__key-hint">X=swap</span>
             </div>
-            <div className="jelly-sprite__selection-info">
-              {selection.x},{selection.y} — {selection.w}×{selection.h}px
-            </div>
-            <div className="jelly-sprite__selection-actions">
-              <button
-                className="jelly-sprite__size-btn"
-                title="Copy selection (Ctrl+C)"
-                onClick={copySelection}
-              >
-                Copy
-              </button>
-              <button
-                className="jelly-sprite__size-btn"
-                title="Paste from clipboard (Ctrl+V)"
-                onClick={pasteSelection}
-                disabled={!clipboardRef.current}
-              >
-                Paste
-              </button>
-              <button
-                className="jelly-sprite__size-btn"
-                title="Crop canvas to selection"
-                onClick={cropToSelection}
-              >
-                Crop
-              </button>
-              <button
-                className="jelly-sprite__size-btn jelly-sprite__size-btn--danger"
-                title="Delete selection contents (Delete)"
-                onClick={deleteSelectionContents}
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Layers panel */}
-        <div className="jelly-sprite__section">
-          <div className="jelly-sprite__section-label">
-            Layers
-            <button
-              className="jelly-sprite__layer-add-btn"
-              onClick={addLayer}
-              title="Add layer"
-            >
-              +
-            </button>
-          </div>
-          <div className="jelly-sprite__layers-list">
-            {[...layers].reverse().map((layer) => (
+            <div className="jelly-sprite__fg-bg">
               <div
-                key={layer.id}
-                className={`jelly-sprite__layer-row${layer.id === activeLayerId ? " jelly-sprite__layer-row--active" : ""}`}
-                onClick={() => setActiveLayerId(layer.id)}
+                className="jelly-sprite__fg-bg-bg"
+                style={{ background: bgColor }}
+                title="Background colour (click to edit)"
+                onClick={() => {
+                  const tmp = fgColor;
+                  setFgColor(bgColor);
+                  setBgColor(tmp);
+                }}
+              />
+              <div
+                className="jelly-sprite__fg-bg-fg"
+                style={{
+                  background: `rgba(${hexToRgba(
+                    fgColor,
+                    Math.round(fgAlpha * 255),
+                  )
+                    .slice(0, 3)
+                    .join(",")},${fgAlpha})`,
+                }}
+                title="Foreground colour (active)"
+              />
+              <button
+                className="jelly-sprite__swap-btn"
+                title="Swap colours (X)"
+                onClick={() => {
+                  const tmp = fgColor;
+                  setFgColor(bgColor);
+                  setBgColor(tmp);
+                }}
               >
-                <button
-                  className="jelly-sprite__layer-vis-btn"
-                  title={layer.visible ? "Hide layer" : "Show layer"}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    updateLayer(layer.id, { visible: !layer.visible });
-                    redraw();
-                  }}
-                >
-                  {layer.visible ? "👁" : "⊘"}
-                </button>
-                <span className="jelly-sprite__layer-name">{layer.name}</span>
-                <div className="jelly-sprite__layer-actions">
+                ⇄
+              </button>
+            </div>
+          </div>
+
+          {/* Inline HSV picker */}
+          <div className="jelly-sprite__section">
+            <ColorPicker
+              hex={fgColor}
+              alpha={fgAlpha}
+              onChange={(hex, alpha) => {
+                pickColor(hex);
+                setFgAlpha(alpha);
+              }}
+            />
+          </div>
+
+          {/* Colour history */}
+          {colorHistory.length > 0 && (
+            <div className="jelly-sprite__section">
+              <div className="jelly-sprite__section-label">Recent</div>
+              <div className="jelly-sprite__history">
+                {colorHistory.map((c, i) => (
                   <button
-                    className="jelly-sprite__layer-icon-btn"
-                    title="Move up"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      moveLayerUp(layer.id);
-                    }}
-                  >
-                    ↑
-                  </button>
-                  <button
-                    className="jelly-sprite__layer-icon-btn"
-                    title="Move down"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      moveLayerDown(layer.id);
-                    }}
-                  >
-                    ↓
-                  </button>
-                  <button
-                    className="jelly-sprite__layer-icon-btn"
-                    title="Duplicate layer"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      duplicateLayer(layer.id);
-                    }}
-                  >
-                    ⎘
-                  </button>
-                  <button
-                    className="jelly-sprite__layer-icon-btn jelly-sprite__layer-icon-btn--danger"
-                    title="Delete layer"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      deleteLayer(layer.id);
-                    }}
-                  >
-                    ✕
-                  </button>
-                </div>
+                    key={i}
+                    className={`jelly-sprite__history-cell${fgColor === c ? " jelly-sprite__palette-cell--active" : ""}`}
+                    style={{ background: c }}
+                    title={c}
+                    onClick={() => pickColor(c)}
+                  />
+                ))}
               </div>
-            ))}
-            {[...layers].reverse().map((layer) =>
-              layer.id === activeLayerId ? (
-                <div
-                  key={`op-${layer.id}`}
-                  className="jelly-sprite__layer-opacity-row"
-                >
-                  <select
-                    className="jelly-sprite__blend-select"
-                    value={layer.blendMode ?? "normal"}
-                    onClick={(e) => e.stopPropagation()}
-                    onChange={(e) => {
-                      updateLayer(layer.id, { blendMode: e.target.value });
-                      redraw();
-                    }}
-                    title="Blend mode"
-                  >
-                    {BLEND_MODES.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.label}
-                      </option>
-                    ))}
-                  </select>
+            </div>
+          )}
+        </div>
+
+        {/* ── Tab strip ── */}
+        <div className="jelly-sprite__panel-tabs">
+          {PANEL_TABS.map((tab) => (
+            <button
+              key={tab.id}
+              className={`jelly-sprite__panel-tab${panelTab === tab.id ? " jelly-sprite__panel-tab--active" : ""}${tab.id === "brush" && selection ? " jelly-sprite__panel-tab--badge" : ""}`}
+              onClick={() => setPanelTab(tab.id)}
+              title={tab.label}
+            >
+              <span className="jelly-sprite__panel-tab-icon">{tab.icon}</span>
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* ── Tab body ── */}
+        <div className="jelly-sprite__panel-body">
+          {/* Palette tab */}
+          {panelTab === "palette" && (
+            <div className="jelly-sprite__section">
+              <PaletteManager
+                activeColor={fgColor}
+                palettes={palettes}
+                activePalette={activePalette}
+                onSelectColor={pickColor}
+                onAddColor={paletteAddColor}
+                onRemoveColor={paletteRemoveColor}
+                onAddPalette={paletteAddNew}
+                onDeletePalette={paletteDelete}
+                onRenamePalette={paletteRename}
+                onSetActivePalette={setActivePalette}
+                onSetColors={paletteSetColors}
+              />
+            </div>
+          )}
+
+          {/* Brush tab */}
+          {panelTab === "brush" && (
+            <>
+              <div className="jelly-sprite__section">
+                <div className="jelly-sprite__section-label">Brush</div>
+                <div className="jelly-sprite__brush-types">
+                  {BRUSH_TYPES.map((b) => (
+                    <button
+                      key={b.id}
+                      className={`jelly-sprite__tool-btn${brushType === b.id ? " jelly-sprite__tool-btn--active" : ""}`}
+                      onClick={() => setBrushType(b.id)}
+                      title={b.title}
+                    >
+                      {b.icon}
+                    </button>
+                  ))}
+                </div>
+                <div className="jelly-sprite__brush-size-row">
                   <span className="jelly-sprite__brush-size-label">
-                    {Math.round(layer.opacity * 100)}%
+                    Size {brushSize}px
                   </span>
                   <input
                     type="range"
-                    min={0}
-                    max={100}
-                    value={Math.round(layer.opacity * 100)}
-                    onChange={(e) => {
-                      updateLayer(layer.id, {
-                        opacity: Number(e.target.value) / 100,
-                      });
-                      redraw();
-                    }}
+                    min={1}
+                    max={32}
+                    value={brushSize}
+                    onChange={(e) => setBrushSize(Number(e.target.value))}
                     className="jelly-sprite__brush-slider"
-                    style={{ flex: 1 }}
                   />
                 </div>
-              ) : null,
-            )}
-          </div>
-          <div className="jelly-sprite__layer-merge-row">
-            <button
-              className="jelly-sprite__size-btn"
-              onClick={() => {
-                const idx = layers.findIndex((l) => l.id === activeLayerId);
-                mergeLayerDown(activeLayerId);
-              }}
-              disabled={layers.findIndex((l) => l.id === activeLayerId) <= 0}
-              title="Merge active layer down"
-            >
-              Merge Down
-            </button>
-            <button
-              className="jelly-sprite__size-btn"
-              onClick={flattenAll}
-              disabled={layers.length <= 1}
-              title="Flatten all layers into one"
-            >
-              Flatten All
-            </button>
-          </div>
-        </div>
-
-        {/* Canvas size presets */}
-        <div className="jelly-sprite__section">
-          <div className="jelly-sprite__section-label">Canvas size</div>
-          {/* 9-point anchor picker */}
-          <div
-            className="jelly-sprite__section-label"
-            style={{ fontSize: 9, marginTop: -2 }}
-          >
-            Anchor
-          </div>
-          <div className="jelly-sprite__anchor-picker">
-            {["tl", "tc", "tr", "ml", "mc", "mr", "bl", "bc", "br"].map((a) => (
-              <button
-                key={a}
-                className={`jelly-sprite__anchor-btn${resizeAnchor === a ? " jelly-sprite__anchor-btn--active" : ""}`}
-                onClick={() => setResizeAnchor(a)}
-                title={a}
-              />
-            ))}
-          </div>
-          <div className="jelly-sprite__size-btns">
-            {CANVAS_SIZES.map((s) => (
-              <button
-                key={s.label}
-                className={`jelly-sprite__size-btn${canvasW === s.w && canvasH === s.h ? " jelly-sprite__size-btn--active" : ""}`}
-                onClick={() => {
-                  setCustomW(s.w);
-                  setCustomH(s.h);
-                  changeSize(s.w, s.h);
-                }}
-              >
-                {s.label}
-              </button>
-            ))}
-          </div>
-          <div className="jelly-sprite__custom-size-row">
-            <input
-              type="number"
-              className="jelly-sprite__custom-size-input"
-              min={1}
-              max={1024}
-              value={customW}
-              onChange={(e) =>
-                setCustomW(
-                  Math.max(1, Math.min(1024, Number(e.target.value) || 1)),
-                )
-              }
-              onKeyDown={(e) => {
-                if (e.key === "Enter") changeSize(customW, customH);
-              }}
-              title="Width (px)"
-            />
-            <span className="jelly-sprite__custom-size-sep">×</span>
-            <input
-              type="number"
-              className="jelly-sprite__custom-size-input"
-              min={1}
-              max={1024}
-              value={customH}
-              onChange={(e) =>
-                setCustomH(
-                  Math.max(1, Math.min(1024, Number(e.target.value) || 1)),
-                )
-              }
-              onKeyDown={(e) => {
-                if (e.key === "Enter") changeSize(customW, customH);
-              }}
-              title="Height (px)"
-            />
-            <button
-              className="jelly-sprite__custom-size-apply"
-              onClick={() => changeSize(customW, customH)}
-              title="Apply custom size"
-            >
-              ↵
-            </button>
-          </div>
-        </div>
-
-        {/* Cross-workspace */}
-        <div className="jelly-sprite__section">
-          {state.spriteSheet && (
-            <button
-              className="jelly-sprite__import-btn"
-              onClick={importFromAnimator}
-            >
-              ← From Animator
-            </button>
-          )}
-          <button className="jelly-sprite__use-btn" onClick={useInAnimator}>
-            Send to Animator →
-          </button>
-        </div>
-
-        {/* Reference image */}
-        <div className="jelly-sprite__section">
-          <div className="jelly-sprite__section-label">
-            Reference
-            {refImage && (
-              <button
-                className="jelly-sprite__deselect-btn"
-                onClick={clearRefImage}
-                title="Remove reference image"
-              >
-                ✕
-              </button>
-            )}
-          </div>
-          {refImage ? (
-            <>
-              <img
-                src={refImage}
-                className="jelly-sprite__ref-preview"
-                alt="Reference"
-              />
-              <div className="jelly-sprite__export-row">
-                <label className="jelly-sprite__export-label">
-                  <input
-                    type="checkbox"
-                    checked={refVisible}
-                    onChange={(e) => {
-                      refVisibleRef.current = e.target.checked;
-                      setRefVisible(e.target.checked);
-                      redrawRef.current?.();
-                    }}
-                    style={{ marginRight: 6 }}
-                  />
-                  Visible
-                </label>
               </div>
-              <div className="jelly-sprite__export-row">
-                <label className="jelly-sprite__export-label">Opacity</label>
+
+              {/* Selection info */}
+              {selection && (
+                <div className="jelly-sprite__section">
+                  <div className="jelly-sprite__section-label">
+                    Selection
+                    <button
+                      className="jelly-sprite__deselect-btn"
+                      onClick={() => {
+                        setSelection(null);
+                        selectionRef.current = null;
+                      }}
+                      title="Deselect (Esc / Ctrl+D)"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <div className="jelly-sprite__selection-info">
+                    {selection.x},{selection.y} — {selection.w}×{selection.h}px
+                  </div>
+                  <div className="jelly-sprite__selection-actions">
+                    <button
+                      className="jelly-sprite__size-btn"
+                      title="Copy selection (Ctrl+C)"
+                      onClick={copySelection}
+                    >
+                      Copy
+                    </button>
+                    <button
+                      className="jelly-sprite__size-btn"
+                      title="Paste from clipboard (Ctrl+V)"
+                      onClick={pasteSelection}
+                      disabled={!clipboardRef.current}
+                    >
+                      Paste
+                    </button>
+                    <button
+                      className="jelly-sprite__size-btn"
+                      title="Crop canvas to selection"
+                      onClick={cropToSelection}
+                    >
+                      Crop
+                    </button>
+                    <button
+                      className="jelly-sprite__size-btn jelly-sprite__size-btn--danger"
+                      title="Delete selection contents (Delete)"
+                      onClick={deleteSelectionContents}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Layers tab */}
+          {panelTab === "layers" && (
+            <div className="jelly-sprite__section">
+              <div className="jelly-sprite__section-label">
+                Layers
+                <button
+                  className="jelly-sprite__layer-add-btn"
+                  onClick={addLayer}
+                  title="Add layer"
+                >
+                  +
+                </button>
+              </div>
+              <div className="jelly-sprite__layers-list">
+                {[...layers].reverse().map((layer) => (
+                  <div
+                    key={layer.id}
+                    className={`jelly-sprite__layer-row${layer.id === activeLayerId ? " jelly-sprite__layer-row--active" : ""}`}
+                    onClick={() => setActiveLayerId(layer.id)}
+                  >
+                    <button
+                      className="jelly-sprite__layer-vis-btn"
+                      title={layer.visible ? "Hide layer" : "Show layer"}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        updateLayer(layer.id, { visible: !layer.visible });
+                        redraw();
+                      }}
+                    >
+                      {layer.visible ? "👁" : "⊘"}
+                    </button>
+                    <span className="jelly-sprite__layer-name">
+                      {layer.name}
+                    </span>
+                    <div className="jelly-sprite__layer-actions">
+                      <button
+                        className="jelly-sprite__layer-icon-btn"
+                        title="Move up"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          moveLayerUp(layer.id);
+                        }}
+                      >
+                        ↑
+                      </button>
+                      <button
+                        className="jelly-sprite__layer-icon-btn"
+                        title="Move down"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          moveLayerDown(layer.id);
+                        }}
+                      >
+                        ↓
+                      </button>
+                      <button
+                        className="jelly-sprite__layer-icon-btn"
+                        title="Duplicate layer"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          duplicateLayer(layer.id);
+                        }}
+                      >
+                        ⎘
+                      </button>
+                      <button
+                        className="jelly-sprite__layer-icon-btn jelly-sprite__layer-icon-btn--danger"
+                        title="Delete layer"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteLayer(layer.id);
+                        }}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                {[...layers].reverse().map((layer) =>
+                  layer.id === activeLayerId ? (
+                    <div
+                      key={`op-${layer.id}`}
+                      className="jelly-sprite__layer-opacity-row"
+                    >
+                      <select
+                        className="jelly-sprite__blend-select"
+                        value={layer.blendMode ?? "normal"}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={(e) => {
+                          updateLayer(layer.id, { blendMode: e.target.value });
+                          redraw();
+                        }}
+                        title="Blend mode"
+                      >
+                        {BLEND_MODES.map((m) => (
+                          <option key={m.id} value={m.id}>
+                            {m.label}
+                          </option>
+                        ))}
+                      </select>
+                      <span className="jelly-sprite__brush-size-label">
+                        {Math.round(layer.opacity * 100)}%
+                      </span>
+                      <input
+                        type="range"
+                        min={0}
+                        max={100}
+                        value={Math.round(layer.opacity * 100)}
+                        onChange={(e) => {
+                          updateLayer(layer.id, {
+                            opacity: Number(e.target.value) / 100,
+                          });
+                          redraw();
+                        }}
+                        className="jelly-sprite__brush-slider"
+                        style={{ flex: 1 }}
+                      />
+                    </div>
+                  ) : null,
+                )}
+              </div>
+              <div className="jelly-sprite__layer-merge-row">
+                <button
+                  className="jelly-sprite__size-btn"
+                  onClick={() => mergeLayerDown(activeLayerId)}
+                  disabled={
+                    layers.findIndex((l) => l.id === activeLayerId) <= 0
+                  }
+                  title="Merge active layer down"
+                >
+                  Merge Down
+                </button>
+                <button
+                  className="jelly-sprite__size-btn"
+                  onClick={flattenAll}
+                  disabled={layers.length <= 1}
+                  title="Flatten all layers into one"
+                >
+                  Flatten All
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Canvas tab */}
+          {panelTab === "canvas" && (
+            <div className="jelly-sprite__section">
+              <div className="jelly-sprite__section-label">Canvas size</div>
+              <div
+                className="jelly-sprite__section-label"
+                style={{ fontSize: 9, marginTop: -2 }}
+              >
+                Anchor
+              </div>
+              <div className="jelly-sprite__anchor-picker">
+                {["tl", "tc", "tr", "ml", "mc", "mr", "bl", "bc", "br"].map(
+                  (a) => (
+                    <button
+                      key={a}
+                      className={`jelly-sprite__anchor-btn${resizeAnchor === a ? " jelly-sprite__anchor-btn--active" : ""}`}
+                      onClick={() => setResizeAnchor(a)}
+                      title={a}
+                    />
+                  ),
+                )}
+              </div>
+              <div className="jelly-sprite__size-btns">
+                {CANVAS_SIZES.map((s) => (
+                  <button
+                    key={s.label}
+                    className={`jelly-sprite__size-btn${canvasW === s.w && canvasH === s.h ? " jelly-sprite__size-btn--active" : ""}`}
+                    onClick={() => {
+                      setCustomW(s.w);
+                      setCustomH(s.h);
+                      changeSize(s.w, s.h);
+                    }}
+                  >
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+              <div className="jelly-sprite__custom-size-row">
                 <input
-                  type="range"
-                  min={5}
-                  max={100}
-                  value={Math.round(refOpacity * 100)}
-                  onChange={(e) => {
-                    const v = Number(e.target.value) / 100;
-                    refOpacityRef.current = v;
-                    setRefOpacity(v);
-                    redrawRef.current?.();
+                  type="number"
+                  className="jelly-sprite__custom-size-input"
+                  min={1}
+                  max={1024}
+                  value={customW}
+                  onChange={(e) =>
+                    setCustomW(
+                      Math.max(1, Math.min(1024, Number(e.target.value) || 1)),
+                    )
+                  }
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") changeSize(customW, customH);
                   }}
-                  className="jelly-sprite__brush-slider"
-                  style={{ flex: 1 }}
+                  title="Width (px)"
                 />
-                <span className="jelly-sprite__ref-opacity-label">
-                  {Math.round(refOpacity * 100)}%
-                </span>
+                <span className="jelly-sprite__custom-size-sep">×</span>
+                <input
+                  type="number"
+                  className="jelly-sprite__custom-size-input"
+                  min={1}
+                  max={1024}
+                  value={customH}
+                  onChange={(e) =>
+                    setCustomH(
+                      Math.max(1, Math.min(1024, Number(e.target.value) || 1)),
+                    )
+                  }
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") changeSize(customW, customH);
+                  }}
+                  title="Height (px)"
+                />
+                <button
+                  className="jelly-sprite__custom-size-apply"
+                  onClick={() => changeSize(customW, customH)}
+                  title="Apply custom size"
+                >
+                  ↵
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* View tab — reference image + tile preview */}
+          {panelTab === "view" && (
+            <>
+              <div className="jelly-sprite__section">
+                <div className="jelly-sprite__section-label">
+                  Reference
+                  {refImage && (
+                    <button
+                      className="jelly-sprite__deselect-btn"
+                      onClick={clearRefImage}
+                      title="Remove reference image"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+                {refImage ? (
+                  <>
+                    <img
+                      src={refImage}
+                      className="jelly-sprite__ref-preview"
+                      alt="Reference"
+                    />
+                    <div className="jelly-sprite__export-row">
+                      <label className="jelly-sprite__export-label">
+                        <input
+                          type="checkbox"
+                          checked={refVisible}
+                          onChange={(e) => {
+                            refVisibleRef.current = e.target.checked;
+                            setRefVisible(e.target.checked);
+                            redrawRef.current?.();
+                          }}
+                          style={{ marginRight: 6 }}
+                        />
+                        Visible
+                      </label>
+                    </div>
+                    <div className="jelly-sprite__export-row">
+                      <label className="jelly-sprite__export-label">
+                        Opacity
+                      </label>
+                      <input
+                        type="range"
+                        min={5}
+                        max={100}
+                        value={Math.round(refOpacity * 100)}
+                        onChange={(e) => {
+                          const v = Number(e.target.value) / 100;
+                          refOpacityRef.current = v;
+                          setRefOpacity(v);
+                          redrawRef.current?.();
+                        }}
+                        className="jelly-sprite__brush-slider"
+                        style={{ flex: 1 }}
+                      />
+                      <span className="jelly-sprite__ref-opacity-label">
+                        {Math.round(refOpacity * 100)}%
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <label className="jelly-sprite__ref-load-btn">
+                    Load image…
+                    <input
+                      type="file"
+                      accept="image/*"
+                      hidden
+                      onChange={(e) =>
+                        e.target.files[0] && loadRefImage(e.target.files[0])
+                      }
+                    />
+                  </label>
+                )}
+              </div>
+
+              <div className="jelly-sprite__section">
+                <div className="jelly-sprite__section-label">
+                  Tile preview
+                  <div className="jelly-sprite__tile-mode-btns">
+                    <button
+                      className={`jelly-sprite__tile-mode-btn${
+                        tileVisible && tileCount === 2
+                          ? " jelly-sprite__tile-mode-btn--active"
+                          : ""
+                      }`}
+                      onClick={() => {
+                        setTileVisible(true);
+                        setTileCount(2);
+                      }}
+                    >
+                      2×2
+                    </button>
+                    <button
+                      className={`jelly-sprite__tile-mode-btn${
+                        tileVisible && tileCount === 3
+                          ? " jelly-sprite__tile-mode-btn--active"
+                          : ""
+                      }`}
+                      onClick={() => {
+                        setTileVisible(true);
+                        setTileCount(3);
+                      }}
+                    >
+                      3×3
+                    </button>
+                    {tileVisible && (
+                      <button
+                        className="jelly-sprite__tile-mode-btn"
+                        onClick={() => setTileVisible(false)}
+                      >
+                        off
+                      </button>
+                    )}
+                  </div>
+                </div>
+                {tileVisible && (
+                  <canvas
+                    ref={tileCanvasRef}
+                    className="jelly-sprite__tile-canvas"
+                  />
+                )}
               </div>
             </>
-          ) : (
-            <label className="jelly-sprite__ref-load-btn">
-              Load image…
-              <input
-                type="file"
-                accept="image/*"
-                hidden
-                onChange={(e) =>
-                  e.target.files[0] && loadRefImage(e.target.files[0])
-                }
-              />
-            </label>
           )}
-        </div>
 
-        {/* Tile preview */}
-        <div className="jelly-sprite__section">
-          <div className="jelly-sprite__section-label">
-            Tile preview
-            <div className="jelly-sprite__tile-mode-btns">
-              <button
-                className={`jelly-sprite__tile-mode-btn${
-                  tileVisible && tileCount === 2
-                    ? " jelly-sprite__tile-mode-btn--active"
-                    : ""
-                }`}
-                onClick={() => {
-                  setTileVisible(true);
-                  setTileCount(2);
-                }}
-              >
-                2×2
-              </button>
-              <button
-                className={`jelly-sprite__tile-mode-btn${
-                  tileVisible && tileCount === 3
-                    ? " jelly-sprite__tile-mode-btn--active"
-                    : ""
-                }`}
-                onClick={() => {
-                  setTileVisible(true);
-                  setTileCount(3);
-                }}
-              >
-                3×3
-              </button>
-              {tileVisible && (
+          {/* More tab — cross-workspace + export */}
+          {panelTab === "more" && (
+            <>
+              <div className="jelly-sprite__section">
+                <div className="jelly-sprite__section-label">Workspace</div>
+                {state.spriteSheet && (
+                  <button
+                    className="jelly-sprite__import-btn"
+                    onClick={importFromAnimator}
+                  >
+                    ← From Animator
+                  </button>
+                )}
                 <button
-                  className="jelly-sprite__tile-mode-btn"
-                  onClick={() => setTileVisible(false)}
+                  className="jelly-sprite__use-btn"
+                  onClick={useInAnimator}
                 >
-                  off
+                  Send to Animator →
                 </button>
-              )}
-            </div>
-          </div>
-          {tileVisible && (
-            <canvas ref={tileCanvasRef} className="jelly-sprite__tile-canvas" />
+              </div>
+
+              <div className="jelly-sprite__section">
+                <div className="jelly-sprite__section-label">Export</div>
+                <button
+                  className="jelly-sprite__export-btn"
+                  onClick={() => setExportOpen(true)}
+                >
+                  ⬇ Export…
+                </button>
+              </div>
+            </>
           )}
         </div>
-
-        {/* Export */}
-        <div className="jelly-sprite__section">
-          <button
-            className="jelly-sprite__export-btn"
-            onClick={() => setExportOpen(true)}
-          >
-            ⬇ Export…
-          </button>
-        </div>
+        {/* end panel-body */}
       </div>
 
       {/* ── Export modal ── */}

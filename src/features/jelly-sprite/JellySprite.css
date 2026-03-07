@@ -135,521 +135,6 @@
 
 /* ── Right panel ── */
 .jelly-sprite__panel {
-  width: 240px;
-  flex-shrink: 0;
-  background: var(--surface);
-  border-left: 1px solid var(--border);
-  overflow-y: auto;
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.jelly-sprite__section {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.jelly-sprite__section-label {
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--text-muted);
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.jelly-sprite__key-hint {
-  font-size: 9px;
-  font-weight: 400;
-  text-transform: none;
-  letter-spacing: 0;
-  opacity: 0.55;
-  margin-left: auto;
-}
-
-/* Foreground / background colour slots */
-.jelly-sprite__fg-bg {
-  position: relative;
-  height: 52px;
-  margin-bottom: 4px;
-}
-
-.jelly-sprite__fg-bg-bg {
-  position: absolute;
-  bottom: 0;
-  right: 12px;
-  width: 32px;
-  height: 32px;
-  border-radius: 4px;
-  border: 2px solid var(--border);
-  cursor: pointer;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
-  transition: border-color 0.1s;
-}
-.jelly-sprite__fg-bg-bg:hover {
-  border-color: var(--text-muted);
-}
-
-.jelly-sprite__fg-bg-fg {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 38px;
-  height: 38px;
-  border-radius: 4px;
-  border: 2px solid var(--text);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
-  background-image: repeating-conic-gradient(#aaa 0% 25%, #fff 0% 50%);
-  background-size: 6px 6px;
-}
-
-.jelly-sprite__swap-btn {
-  position: absolute;
-  bottom: 18px;
-  right: 0;
-  width: 18px;
-  height: 18px;
-  font-size: 11px;
-  line-height: 1;
-  padding: 0;
-  background: var(--surface3);
-  border: 1px solid var(--border);
-  border-radius: 3px;
-  color: var(--text-muted);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.jelly-sprite__swap-btn:hover {
-  color: var(--text);
-  border-color: var(--text-muted);
-}
-
-/* Recent colour history */
-.jelly-sprite__history {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 3px;
-}
-
-.jelly-sprite__history-cell {
-  width: 18px;
-  height: 18px;
-  border-radius: 3px;
-  border: 1px solid rgba(0, 0, 0, 0.25);
-  cursor: pointer;
-  padding: 0;
-  transition: transform 0.08s;
-}
-.jelly-sprite__history-cell:hover {
-  transform: scale(1.25);
-  z-index: 1;
-  position: relative;
-}
-
-/* Palette grid */
-.jelly-sprite__palette {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 3px;
-}
-
-.jelly-sprite__palette-cell {
-  aspect-ratio: 1;
-  border-radius: 3px;
-  border: 2px solid transparent;
-  cursor: pointer;
-  padding: 0;
-  transition: transform 0.08s;
-}
-
-.jelly-sprite__palette-cell:hover {
-  transform: scale(1.2);
-  z-index: 1;
-  position: relative;
-}
-
-.jelly-sprite__palette-cell--active {
-  border-color: var(--text);
-  box-shadow: 0 0 0 1px var(--bg);
-}
-
-/* ── Brush options ── */
-.jelly-sprite__brush-types {
-  display: flex;
-  gap: 4px;
-}
-
-.jelly-sprite__brush-types .jelly-sprite__tool-btn {
-  flex: 1;
-  height: 30px;
-  font-size: 16px;
-}
-
-.jelly-sprite__brush-size-row {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.jelly-sprite__brush-size-label {
-  font-size: 10px;
-  color: var(--text-muted);
-  font-weight: 500;
-}
-
-.jelly-sprite__brush-slider {
-  width: 100%;
-  accent-color: var(--accent);
-  cursor: pointer;
-}
-
-/* ── Selection info ── */
-.jelly-sprite__selection-info {
-  font-size: 11px;
-  color: var(--text-muted);
-  font-variant-numeric: tabular-nums;
-}
-
-.jelly-sprite__selection-actions {
-  display: flex;
-  gap: 4px;
-}
-
-.jelly-sprite__deselect-btn {
-  margin-left: auto;
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  font-size: 11px;
-  padding: 0 2px;
-  border-radius: 3px;
-}
-.jelly-sprite__deselect-btn:hover {
-  color: var(--danger);
-}
-
-/* ── Layers panel ── */
-.jelly-sprite__layers-list {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.jelly-sprite__layer-row {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 6px;
-  border-radius: 5px;
-  border: 1px solid transparent;
-  cursor: pointer;
-  background: var(--surface2);
-  transition:
-    border-color 0.1s,
-    background 0.1s;
-  min-height: 30px;
-}
-
-.jelly-sprite__layer-row:hover {
-  background: var(--surface3);
-}
-
-.jelly-sprite__layer-row--active {
-  border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 10%, var(--surface2));
-}
-
-.jelly-sprite__layer-vis-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 13px;
-  padding: 0;
-  opacity: 0.8;
-  flex-shrink: 0;
-  line-height: 1;
-}
-.jelly-sprite__layer-vis-btn:hover {
-  opacity: 1;
-}
-
-.jelly-sprite__layer-name {
-  flex: 1;
-  font-size: 12px;
-  color: var(--text);
-  font-weight: 500;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  min-width: 0;
-}
-
-.jelly-sprite__layer-actions {
-  display: flex;
-  gap: 1px;
-  flex-shrink: 0;
-}
-
-.jelly-sprite__layer-icon-btn {
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  font-size: 11px;
-  padding: 2px 3px;
-  border-radius: 3px;
-  line-height: 1;
-}
-.jelly-sprite__layer-icon-btn:hover {
-  background: var(--surface3);
-  color: var(--text);
-}
-.jelly-sprite__layer-icon-btn--danger:hover {
-  background: var(--danger);
-  color: #fff;
-}
-
-.jelly-sprite__layer-opacity-row {
-  padding: 4px 6px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.jelly-sprite__blend-select {
-  width: 100%;
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  color: var(--text);
-  font-size: 11px;
-  padding: 3px 4px;
-  cursor: pointer;
-}
-.jelly-sprite__blend-select:focus {
-  outline: 1px solid var(--accent);
-}
-
-.jelly-sprite__layer-add-btn {
-  margin-left: auto;
-  background: var(--surface3);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  color: var(--text);
-  font-size: 14px;
-  font-weight: 700;
-  cursor: pointer;
-  width: 20px;
-  height: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  transition:
-    background 0.1s,
-    border-color 0.1s;
-}
-.jelly-sprite__layer-add-btn:hover {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #fff;
-}
-
-.jelly-sprite__layer-merge-row {
-  display: flex;
-  gap: 4px;
-}
-
-.jelly-sprite__layer-merge-row .jelly-sprite__size-btn {
-  flex: 1;
-  text-align: center;
-  font-size: 10px;
-}
-
-/* Canvas size presets */
-.jelly-sprite__size-btns {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.jelly-sprite__custom-size-row {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin-top: 2px;
-}
-
-.jelly-sprite__custom-size-input {
-  width: 0;
-  flex: 1;
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  color: var(--text);
-  font-size: 11px;
-  padding: 4px 5px;
-  text-align: center;
-  min-width: 0;
-}
-.jelly-sprite__custom-size-input:focus {
-  outline: 1px solid var(--accent);
-  border-color: var(--accent);
-}
-
-.jelly-sprite__custom-size-sep {
-  font-size: 11px;
-  color: var(--text-muted);
-  flex-shrink: 0;
-}
-
-.jelly-sprite__custom-size-apply {
-  flex-shrink: 0;
-  width: 26px;
-  height: 26px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--accent);
-  border: none;
-  border-radius: 4px;
-  color: #fff;
-  font-size: 13px;
-  cursor: pointer;
-  transition: opacity 0.1s;
-}
-.jelly-sprite__custom-size-apply:hover {
-  opacity: 0.85;
-}
-
-.jelly-sprite__size-btn {
-  font-size: 11px;
-  padding: 5px 8px;
-  background: var(--surface3);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  color: var(--text);
-  cursor: pointer;
-  text-align: left;
-  transition: background 0.1s;
-}
-
-.jelly-sprite__size-btn:hover:not(:disabled) {
-  background: var(--surface2);
-}
-
-.jelly-sprite__size-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.jelly-sprite__size-btn--active {
-  border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 10%, var(--surface3));
-  color: var(--accent);
-  font-weight: 600;
-}
-
-/* Use in Animator */
-.jelly-sprite__use-btn {
-  width: 100%;
-  padding: 8px 12px;
-  background: var(--accent);
-  border: none;
-  border-radius: 6px;
-  color: #fff;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: opacity 0.1s;
-}
-
-.jelly-sprite__use-btn:hover {
-  opacity: 0.85;
-}
-
-/* Import from Animator */
-.jelly-sprite__import-btn {
-  width: 100%;
-  margin-bottom: 6px;
-  padding: 7px 12px;
-  background: var(--surface-raised, var(--surface));
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  color: var(--text);
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition:
-    border-color 0.1s,
-    color 0.1s;
-}
-
-.jelly-sprite__import-btn:hover {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-
-/* Color controls (legacy — keep for any palette items that reference them) */
-.jelly-sprite__color-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.jelly-sprite__color-swatch {
-  width: 32px;
-  height: 32px;
-  border-radius: 4px;
-  border: 1px solid var(--border);
-  flex-shrink: 0;
-}
-
-.jelly-sprite__color-input {
-  width: 36px;
-  height: 32px;
-  padding: 2px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background: var(--surface3);
-  cursor: pointer;
-}
-
-/* ── Canvas area ── */
-.jelly-sprite__canvas-wrap {
-  flex: 1;
-  overflow: auto;
-  background: var(--surface2);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-}
-
-.jelly-sprite__canvas {
-  image-rendering: pixelated;
-  image-rendering: crisp-edges;
-  /* Checkerboard transparency indicator */
-  background-image: repeating-conic-gradient(
-    color-mix(in srgb, var(--surface3) 90%, var(--text-muted)) 0% 25%,
-    color-mix(in srgb, var(--surface2) 90%, var(--text-muted)) 0% 50%
-  );
-  background-size: 10px 10px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
-  display: block;
-  flex-shrink: 0;
-}
-
-/* ── Right panel ── */
-.jelly-sprite__panel {
   width: 228px;
   flex-shrink: 0;
   background: var(--surface);
@@ -1347,4 +832,95 @@
       color-mix(in srgb, var(--surface2) 90%, var(--text-muted)) 0% 50%
     )
     0 0 / 8px 8px;
+}
+
+/* ── Panel tab redesign ── */
+
+/* Override panel to use tab-driven layout */
+.jelly-sprite__panel {
+  width: 228px;
+  overflow: hidden;
+  padding: 0;
+  gap: 0;
+}
+
+/* Always-visible top: colour slots + picker + recent */
+.jelly-sprite__panel-top {
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+/* Six-column tab strip */
+.jelly-sprite__panel-tabs {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  background: var(--surface);
+}
+
+.jelly-sprite__panel-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 7px 2px 5px;
+  font-size: 8px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition:
+    color 0.12s,
+    border-color 0.12s,
+    background 0.12s;
+  line-height: 1.2;
+  position: relative;
+}
+
+.jelly-sprite__panel-tab:hover {
+  background: var(--surface2);
+  color: var(--text);
+}
+
+.jelly-sprite__panel-tab--active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+}
+
+/* Small dot badge (e.g. when a selection is active on Brush tab) */
+.jelly-sprite__panel-tab--badge::after {
+  content: "";
+  position: absolute;
+  top: 5px;
+  right: 6px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.jelly-sprite__panel-tab-icon {
+  font-size: 13px;
+  line-height: 1;
+}
+
+/* Scrollable tab content area */
+.jelly-sprite__panel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
 }
