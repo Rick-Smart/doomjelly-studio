@@ -1,21 +1,27 @@
 import { useRef, useEffect } from "react";
 import { useJellySpriteStore } from "../store/useJellySpriteStore.js";
 import { createRenderer } from "../engine/canvasRenderer.js";
+import { wireHistoryEngine } from "../engine/historyEngine.js";
+import { createDrawingEngine } from "../engine/drawingEngine.js";
 
 /**
- * useCanvas — M2 rebuild.
+ * useCanvas — M2/M3 rebuild.
  *
- * Attaches to a <canvas> element, creates the offscreen buffer, initialises
- * pixel buffers for every layer that doesn't have one yet, wires up
- * createRenderer and stores redraw() in refs.redraw.
+ * On mount:
+ *   1. Attaches to the <canvas> element (refs.canvasEl)
+ *   2. Creates offscreen canvas
+ *   3. Initialises pixel buffers for any layers that don't have one yet
+ *   4. Wires canvasRenderer → refs.redraw
+ *   5. Wires historyEngine → refs.pushHistory / refs.undoHistory / refs.redoHistory
+ *   6. Wires drawingEngine → refs.drawingEngine  (pointer events, clipboard ops)
  *
- * Returns { canvasRef } — mount it on the <canvas> element.
+ * Returns { canvasRef } — mount on the <canvas> element.
  */
 export function useCanvas() {
-  const { refs, state } = useJellySpriteStore();
+  const { refs, state, dispatch } = useJellySpriteStore();
   const canvasRef = useRef(null);
 
-  // ── On mount: create offscreen, init pixel buffers, create renderer ────
+  // ── On mount: create offscreen, init pixel buffers, wire all engines ───
   useEffect(() => {
     const { canvasW, canvasH, layers } = refs.stateRef.current;
 
@@ -34,8 +40,16 @@ export function useCanvas() {
       }
     });
 
+    // 1. Renderer
     const { redraw } = createRenderer(refs);
     refs.redraw = redraw;
+
+    // 2. History engine (seeds initial snapshot)
+    wireHistoryEngine(refs, dispatch);
+
+    // 3. Drawing engine
+    refs.drawingEngine = createDrawingEngine(refs);
+
     refs.redraw();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 

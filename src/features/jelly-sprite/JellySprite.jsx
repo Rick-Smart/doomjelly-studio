@@ -205,8 +205,8 @@ function JellySpriteBody({ onSwitchToAnimator }) {
     isDrawing,
     onMouseDown: _onMouseDown,
     onMouseMove: _onMouseMove,
-    onMouseUp,
-    onMouseLeave,
+    onMouseUp: _onMouseUp,
+    onMouseLeave: _onMouseLeave,
     copySelection,
     pasteSelection,
     deleteSelectionContents,
@@ -269,6 +269,11 @@ function JellySpriteBody({ onSwitchToAnimator }) {
 
   // ── Undo / Redo ────────────────────────────────────────────────────────────
   function doUndo() {
+    // M3: prefer new history engine
+    if (refs.undoHistory) {
+      refs.undoHistory();
+      return;
+    }
     if (histIdxRef.current <= 0) return;
     histIdxRef.current--;
     restoreHistory(historyRef.current[histIdxRef.current]);
@@ -279,6 +284,11 @@ function JellySpriteBody({ onSwitchToAnimator }) {
   }
 
   function doRedo() {
+    // M3: prefer new history engine
+    if (refs.redoHistory) {
+      refs.redoHistory();
+      return;
+    }
     if (histIdxRef.current >= historyRef.current.length - 1) return;
     histIdxRef.current++;
     restoreHistory(historyRef.current[histIdxRef.current]);
@@ -289,20 +299,43 @@ function JellySpriteBody({ onSwitchToAnimator }) {
   }
 
   function clearCanvas() {
-    pixelsRef.current.fill(0);
+    const activeLayerId = refs.stateRef.current.activeLayerId;
+    const buf = refs.pixelBuffers[activeLayerId];
+    if (buf) {
+      buf.fill(0);
+      refs.pushHistory?.();
+      refs.redraw?.();
+      return;
+    }
+    // legacy fallback
+    pixelsRef.current?.fill(0);
     pushHistoryEntryStubRef.current();
     redraw();
     saveToProject();
   }
 
   // ── Mouse handlers ─────────────────────────────────────────────────────────
+  // M3: prefer the new store-based drawing engine when it's ready.
+  // The old _onMouseDown/_onMouseMove (from useDrawingTools) remain as fallback.
   function onMouseDown(e) {
-    const hex = _onMouseDown(e);
+    const eng = refs.drawingEngine;
+    const hex = eng ? eng.onPointerDown(e) : _onMouseDown(e);
     if (hex) pickColor(hex);
   }
   function onMouseMove(e) {
-    const hex = _onMouseMove(e);
+    const eng = refs.drawingEngine;
+    const hex = eng ? eng.onPointerMove(e) : _onMouseMove(e);
     if (hex) pickColor(hex);
+  }
+  function onMouseUp(e) {
+    const eng = refs.drawingEngine;
+    if (eng) eng.onPointerUp(e);
+    else _onMouseUp?.(e);
+  }
+  function onMouseLeave(e) {
+    const eng = refs.drawingEngine;
+    if (eng) eng.onPointerLeave(e);
+    else _onMouseLeave?.(e);
   }
 
   // ── Colour helpers ─────────────────────────────────────────────────────────
