@@ -131,18 +131,33 @@ export function createRenderer(refs) {
 
     // ── Pixel grid ────────────────────────────────────────────────────────
     if (gridVisible && z >= 4) {
-      ctx.strokeStyle = "rgba(0,0,0,0.1)";
-      ctx.lineWidth = 0.5;
+      ctx.lineWidth = 1;
+      // Draw light lines first, then dark lines on top so the grid is visible
+      // over both light/transparent and dark painted pixels.
+      ctx.strokeStyle = "rgba(255,255,255,0.2)";
       for (let x = 0; x <= w; x++) {
         ctx.beginPath();
-        ctx.moveTo(x * z, 0);
-        ctx.lineTo(x * z, h * z);
+        ctx.moveTo(x * z + 0.5, 0);
+        ctx.lineTo(x * z + 0.5, h * z);
         ctx.stroke();
       }
       for (let y = 0; y <= h; y++) {
         ctx.beginPath();
-        ctx.moveTo(0, y * z);
-        ctx.lineTo(w * z, y * z);
+        ctx.moveTo(0, y * z + 0.5);
+        ctx.lineTo(w * z, y * z + 0.5);
+        ctx.stroke();
+      }
+      ctx.strokeStyle = "rgba(0,0,0,0.25)";
+      for (let x = 0; x <= w; x++) {
+        ctx.beginPath();
+        ctx.moveTo(x * z + 0.5, 0);
+        ctx.lineTo(x * z + 0.5, h * z);
+        ctx.stroke();
+      }
+      for (let y = 0; y <= h; y++) {
+        ctx.beginPath();
+        ctx.moveTo(0, y * z + 0.5);
+        ctx.lineTo(w * z, y * z + 0.5);
         ctx.stroke();
       }
     }
