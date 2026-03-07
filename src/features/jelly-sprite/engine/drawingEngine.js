@@ -49,6 +49,54 @@ function canvasCoords(e, canvasEl, zoom, w, h) {
   };
 }
 
+// ── Selection mask helpers ────────────────────────────────────────────────────
+
+function buildRectMask(sel, w, h) {
+  const mask = new Uint8Array(w * h);
+  const x1 = Math.max(0, sel.x),
+    y1 = Math.max(0, sel.y);
+  const x2 = Math.min(w - 1, sel.x + sel.w - 1);
+  const y2 = Math.min(h - 1, sel.y + sel.h - 1);
+  for (let py = y1; py <= y2; py++)
+    for (let px = x1; px <= x2; px++) mask[py * w + px] = 1;
+  return mask;
+}
+
+function getOrBuildMask(refs, w, h) {
+  if (refs.selectionMask) return new Uint8Array(refs.selectionMask);
+  if (refs.selection) return buildRectMask(refs.selection, w, h);
+  return null;
+}
+
+function combineMasks(existing, incoming, mode, w, h) {
+  const result = new Uint8Array(w * h);
+  for (let i = 0; i < w * h; i++) {
+    const a = existing ? existing[i] : 0;
+    const b = incoming[i];
+    if (mode === "add") result[i] = a || b ? 1 : 0;
+    else if (mode === "subtract") result[i] = a && !b ? 1 : 0;
+    else result[i] = b;
+  }
+  return result;
+}
+
+function boundsFromMask(mask, w, h) {
+  let minX = w,
+    maxX = -1,
+    minY = h,
+    maxY = -1;
+  for (let py = 0; py < h; py++)
+    for (let px = 0; px < w; px++)
+      if (mask[py * w + px]) {
+        if (px < minX) minX = px;
+        if (px > maxX) maxX = px;
+        if (py < minY) minY = py;
+        if (py > maxY) maxY = py;
+      }
+  if (maxX < 0) return null;
+  return { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 };
+}
+
 /**
  * Derive a brush-dab context object from current refs state.
  * Passed to stampBrush / paintWithSymmetry / sprayBrush.
@@ -91,7 +139,8 @@ export function createDrawingEngine(refs) {
   let lastPx = null; // { x, y } — last seen pixel (for interpolation)
   let previewSnap = null; // Uint8ClampedArray copy taken before shape preview
   let moveOrigin = null; // { x, y, selX, selY } — for selection move
-  let movePixels = null; // Uint8ClampedArray — lifted selection pixels
+  let movePixels = null; // Uint8ClampedArray
+  let selMode = "replace"; // "replace" | "add" | "subtract" — set on pointer-down — lifted selection pixels
 
   // Notify listeners when selection changes (used to sync React state)
   const selListeners = [];
@@ -151,14 +200,18 @@ export function createDrawingEngine(refs) {
     } else if (tool === "ellipse") {
       drawEllipse(ctx, x0, y0, x1, y1, st.fillShapes, rgba);
     } else if (tool === "select-rect") {
-      const lx = Math.min(x0, x1),
-        ty = Math.min(y0, y1);
-      setSelection({
-        x: lx,
-        y: ty,
-        w: Math.abs(x1 - x0) + 1,
-        h: Math.abs(y1 - y0) + 1,
-      });
+      // In add/subtract mode, don't update the live selection during the drag;
+      // the merge happens on pointer-up so the existing ants stay visible.
+      if (selMode === "replace") {
+        const lx = Math.min(x0, x1),
+          ty = Math.min(y0, y1);
+        setSelection({
+          x: lx,
+          y: ty,
+          w: Math.abs(x1 - x0) + 1,
+          h: Math.abs(y1 - y0) + 1,
+        });
+      }
     }
   }
 
@@ -171,6 +224,7 @@ export function createDrawingEngine(refs) {
     const { canvasW: w, canvasH: h, zoom, tool } = st;
     const { x, y } = canvasCoords(e, refs.canvasEl, zoom, w, h);
 
+    selMode = e.shiftKey ? "add" : e.altKey ? "subtract" : "replace";
     isDrawing = true;
     startPx = { x, y };
     lastPx = { x, y };
@@ -200,27 +254,47 @@ export function createDrawingEngine(refs) {
 
     // ── Shape tools: snapshot for preview ───────────────────────────────────
     if (["line", "rect", "ellipse", "select-rect"].includes(tool)) {
-      if (tool === "select-rect") refs.selectionMask = null;
+      if (tool === "select-rect" && selMode === "replace")
+        refs.selectionMask = null;
       const buf = refs.pixelBuffers[st.activeLayerId];
       if (buf) previewSnap = new Uint8ClampedArray(buf);
     }
 
     // ── Lasso ───────────────────────────────────────────────────────────────
     if (tool === "select-lasso") {
-      refs.selectionMask = null;
-      refs.selection = null;
+      if (selMode === "replace") {
+        refs.selectionMask = null;
+        refs.selection = null;
+      }
       refs.lassoPath = [{ x, y }];
       return null;
     }
 
     // ── Magic wand ──────────────────────────────────────────────────────────
     if (tool === "select-wand") {
-      refs.selectionMask = null;
       const buf = refs.pixelBuffers[st.activeLayerId];
       if (buf) {
         const bounds = magicWandBounds(buf, x, y, w, h);
-        if (bounds) setSelection(bounds);
+        if (bounds) {
+          if (selMode === "replace") {
+            refs.selectionMask = null;
+            setSelection(bounds);
+          } else {
+            const newMask = buildRectMask(bounds, w, h);
+            const existing = getOrBuildMask(refs, w, h);
+            const combined = combineMasks(existing, newMask, selMode, w, h);
+            refs.selectionMask = combined;
+            const newBounds = boundsFromMask(combined, w, h);
+            if (newBounds) {
+              setSelection({ ...newBounds });
+            } else {
+              refs.selectionMask = null;
+              setSelection(null);
+            }
+          }
+        }
       }
+      refs.redraw?.();
       return null;
     }
 
@@ -327,28 +401,43 @@ export function createDrawingEngine(refs) {
       const pts = refs.lassoPath;
       refs.lassoPath = [];
       if (pts.length >= 3) {
-        const mask = buildLassoMask(pts, w, h);
-        refs.selectionMask = mask;
-        let minX = w,
-          maxX = 0,
-          minY = h,
-          maxY = 0;
-        for (const p of pts) {
-          if (p.x < minX) minX = p.x;
-          if (p.x > maxX) maxX = p.x;
-          if (p.y < minY) minY = p.y;
-          if (p.y > maxY) maxY = p.y;
+        const newMask = buildLassoMask(pts, w, h);
+        if (selMode === "replace") {
+          refs.selectionMask = newMask;
+          let minX = w,
+            maxX = 0,
+            minY = h,
+            maxY = 0;
+          for (const p of pts) {
+            if (p.x < minX) minX = p.x;
+            if (p.x > maxX) maxX = p.x;
+            if (p.y < minY) minY = p.y;
+            if (p.y > maxY) maxY = p.y;
+          }
+          setSelection({
+            x: minX,
+            y: minY,
+            w: maxX - minX + 1,
+            h: maxY - minY + 1,
+            poly: pts,
+          });
+        } else {
+          const existing = getOrBuildMask(refs, w, h);
+          const combined = combineMasks(existing, newMask, selMode, w, h);
+          refs.selectionMask = combined;
+          const bounds = boundsFromMask(combined, w, h);
+          if (bounds) {
+            setSelection({ ...bounds });
+          } else {
+            refs.selectionMask = null;
+            setSelection(null);
+          }
         }
-        setSelection({
-          x: minX,
-          y: minY,
-          w: maxX - minX + 1,
-          h: maxY - minY + 1,
-          poly: pts,
-        });
       } else {
-        setSelection(null);
-        refs.selectionMask = null;
+        if (selMode === "replace") {
+          setSelection(null);
+          refs.selectionMask = null;
+        }
       }
       lastPx = null;
       startPx = null;
@@ -359,15 +448,32 @@ export function createDrawingEngine(refs) {
     if (tool === "select-rect") {
       const lx = Math.min(startPx.x, x),
         ty = Math.min(startPx.y, y);
-      setSelection({
+      const newSel = {
         x: lx,
         y: ty,
         w: Math.abs(x - startPx.x) + 1,
         h: Math.abs(y - startPx.y) + 1,
-      });
+      };
+      if (selMode === "replace") {
+        refs.selectionMask = null;
+        setSelection(newSel);
+      } else {
+        const newMask = buildRectMask(newSel, w, h);
+        const existing = getOrBuildMask(refs, w, h);
+        const combined = combineMasks(existing, newMask, selMode, w, h);
+        refs.selectionMask = combined;
+        const bounds = boundsFromMask(combined, w, h);
+        if (bounds) {
+          setSelection({ ...bounds });
+        } else {
+          refs.selectionMask = null;
+          setSelection(null);
+        }
+      }
       lastPx = null;
       startPx = null;
       previewSnap = null;
+      selMode = "replace";
       return;
     }
 
@@ -380,6 +486,7 @@ export function createDrawingEngine(refs) {
 
     lastPx = null;
     startPx = null;
+    selMode = "replace";
     (refs.onStrokeComplete ?? refs.pushHistory)?.();
   }
 

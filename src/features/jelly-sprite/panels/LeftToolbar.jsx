@@ -27,7 +27,10 @@ export function LeftToolbar() {
     canUndo,
     canRedo,
     clearCanvas,
+    deselectAll,
   } = useJellySprite();
+
+  const SELECT_TOOLS = new Set(["select-rect", "select-lasso", "select-wand"]);
 
   return (
     <div className="jelly-sprite__toolbar">
@@ -40,8 +43,14 @@ export function LeftToolbar() {
                 key={t.id}
                 className={`jelly-sprite__tool-btn${tool === t.id ? " jelly-sprite__tool-btn--active" : ""}`}
                 onClick={() => {
-                  setTool(t.id);
-                  if (t.id === "picker") setPanelTab("palette");
+                  if (t.id === tool && SELECT_TOOLS.has(t.id)) {
+                    // Clicking the active selection tool again deselects all
+                    deselectAll();
+                    setTool("pencil");
+                  } else {
+                    setTool(t.id);
+                    if (t.id === "picker") setPanelTab("palette");
+                  }
                 }}
                 title={t.title}
               >
@@ -49,6 +58,9 @@ export function LeftToolbar() {
               </button>
             ))}
           </div>
+          {group.label === "Select" && (
+            <div className="jelly-sprite__sel-hint">⇧ add · ⌥ subtract</div>
+          )}
         </div>
       ))}
 
