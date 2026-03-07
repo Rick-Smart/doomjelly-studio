@@ -1253,8 +1253,10 @@ function JellySpriteBody({ onSwitchToAnimator }) {
     setFgAlpha,
     colorHistory,
     pickColor,
-    selection,
-    setSelection,
+    // selection from store (ss.selection) is the source of truth — the
+    // useDrawingTools local copy lags the new refs.drawingEngine path.
+    selection: ss.selection,
+    setSelection: () => actionsRef.current.deselectAll(),
     selectionRef,
     lassoMaskRef,
     clipboardRef,

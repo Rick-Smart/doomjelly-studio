@@ -257,11 +257,7 @@ function BrushTabBody() {
             Selection
             <button
               className="jelly-sprite__deselect-btn"
-              onClick={() => {
-                setSelection(null);
-                selectionRef.current = null;
-                lassoMaskRef.current = null;
-              }}
+              onClick={() => setSelection(null)}
               title="Deselect (Esc / Ctrl+D)"
             >
               ✕
