@@ -10,9 +10,9 @@ import { useJellySpriteStore } from "./store/useJellySpriteStore";
 import { LeftToolbar } from "./panels/LeftToolbar";
 import { CanvasArea } from "./panels/CanvasArea";
 import { RightPanel, ExportModal } from "./panels/RightPanel";
+import { makeFrame } from "./jellySprite.constants";
 import { useCanvas } from "./hooks/useCanvas";
 import { useHistory } from "./hooks/useHistory";
-import { useFramePlayback } from "./hooks/useFramePlayback";
 import { useDrawingTools } from "./hooks/useDrawingTools";
 
 // ── Outer component — just provides the store context ─────────────────────────
@@ -65,6 +65,12 @@ function JellySpriteBody({ onSwitchToAnimator }) {
     layers,
     activeLayerId,
     editingMaskId,
+    frames,
+    activeFrameIdx,
+    frameThumbnails,
+    isPlaying,
+    fps,
+    onionSkinning,
   } = ss;
 
   // Dispatch wrappers — keep the same setter names so all callers are unchanged
@@ -104,17 +110,15 @@ function JellySpriteBody({ onSwitchToAnimator }) {
     sd({ type: A.SET_CANVAS_SIZE, payload: { w: v, h: canvasH } });
   const setCanvasH = (v) =>
     sd({ type: A.SET_CANVAS_SIZE, payload: { w: canvasW, h: v } });
-  // Layer/mask state dispatch wrappers (bridge for useFramePlayback until M6)
+  // Layer/mask state dispatch wrappers
   const setActiveLayerId = (id) =>
     sd({ type: A.SET_ACTIVE_LAYER, payload: id });
   const setEditingMaskId = (id) =>
     sd({ type: A.SET_EDITING_MASK, payload: id });
-  const setLayers = (layersOrFn) =>
-    sd({
-      type: A.SET_LAYERS,
-      payload:
-        typeof layersOrFn === "function" ? layersOrFn(ss.layers) : layersOrFn,
-    });
+  // Frame / playback dispatch wrappers
+  const setFps = (v) => sd({ type: A.SET_FPS, payload: v });
+  const setOnionSkinning = (v) =>
+    sd({ type: A.SET_ONION_SKINNING, payload: v });
 
   const pendingResizeDataRef = useRef(null);
   const refImgElRef = useRef(null);
@@ -145,14 +149,24 @@ function JellySpriteBody({ onSwitchToAnimator }) {
       refs.maskBuffers = val;
     },
   };
-  // Stable refs kept in sync with the store so event-handler closures
-  // in legacy hooks always see the current values (no stale closure).
+  // Stable refs — synced every render so closures never go stale
   const layersRef = useRef(ss.layers);
   const activeLayerIdRef = useRef(ss.activeLayerId);
   const editingMaskIdRef = useRef(ss.editingMaskId);
+  const framesRef = useRef(ss.frames);
+  const activeFrameIdxRef = useRef(ss.activeFrameIdx);
+  const isPlayingRef = useRef(ss.isPlaying);
+  const playbackFrameIdxRef = useRef(ss.activeFrameIdx);
   layersRef.current = ss.layers;
   activeLayerIdRef.current = ss.activeLayerId;
   editingMaskIdRef.current = ss.editingMaskId;
+  framesRef.current = ss.frames;
+  activeFrameIdxRef.current = ss.activeFrameIdx;
+  isPlayingRef.current = ss.isPlaying;
+  // playbackFrameIdxRef is only advanced by startPlayback — not synced to store
+
+  // playIntervalRef: holds setInterval id for playback (not in React state)
+  const playIntervalRef = useRef(null);
 
   // ── Stub refs — break circular hook dependencies ───────────────────────────
   const pushHistoryEntryStubRef = useRef(() => {});
@@ -195,48 +209,238 @@ function JellySpriteBody({ onSwitchToAnimator }) {
     pixelsRef,
   });
 
-  // ── useFramePlayback ───────────────────────────────────────────────────────
-  const {
-    frames,
-    setFrames,
-    activeFrameIdx,
-    setActiveFrameIdx,
-    isPlaying,
-    fps,
-    setFps,
-    onionSkinning,
-    setOnionSkinning,
-    frameThumbnails,
-    framesRef,
-    activeFrameIdxRef,
-    isPlayingRef,
-    playbackFrameIdxRef,
-    frameDataRef,
-    saveCurrentFrameToRef,
-    switchToFrame,
-    addFrame,
-    duplicateFrame,
-    deleteFrame,
-    startPlayback,
-    stopPlayback,
-    updateThumbnailForActiveFrame,
-  } = useFramePlayback({
-    canvasW,
-    canvasH,
-    layerDataRef,
-    layerMaskDataRef,
-    layersRef,
-    activeLayerIdRef,
-    pixelsRef,
-    redrawRef,
-    setLayers,
-    setActiveLayerId,
-    snapshotHistory,
-    historyRef,
-    histIdxRef,
-    setCanUndo,
-    setCanRedo,
-  });
+  // ── Frame snapshot store (M6) ──────────────────────────────────────────────
+  // refs.frameSnapshots: { [frameId]: { layers, activeLayerId, pixelBuffers, maskBuffers } }
+  // Initialised lazily the first time a frame is saved or switched away from.
+  // We alias frameDataRef → refs.frameSnapshots so export helpers keep working.
+  const frameDataRef = {
+    get current() {
+      return refs.frameSnapshots;
+    },
+    set current(val) {
+      refs.frameSnapshots = val;
+    },
+  };
+
+  // ── Frame helpers ──────────────────────────────────────────────────────────
+  function saveCurrentFrameToSnapshot() {
+    const frameId = framesRef.current[activeFrameIdxRef.current]?.id;
+    if (!frameId) return;
+    refs.frameSnapshots[frameId] = {
+      layers: [...layersRef.current],
+      activeLayerId: activeLayerIdRef.current,
+      // shallow copy of the map — the Uint8ClampedArrays themselves are shared
+      pixelBuffers: { ...refs.pixelBuffers },
+      maskBuffers: { ...refs.maskBuffers },
+      // legacy alias so export compositeFrameToCanvas still works
+      pixelData: refs.pixelBuffers,
+    };
+  }
+  // Alias used by legacy export code
+  const saveCurrentFrameToRef = saveCurrentFrameToSnapshot;
+
+  function loadFrameFromSnapshot(frameId) {
+    const snap = refs.frameSnapshots[frameId];
+    if (!snap) {
+      // New frame — initialise blank
+      const newLayer = makeLayer("Layer 1");
+      const pb = {
+        [newLayer.id]: new Uint8ClampedArray(canvasW * canvasH * 4),
+      };
+      refs.frameSnapshots[frameId] = {
+        layers: [newLayer],
+        activeLayerId: newLayer.id,
+        pixelBuffers: pb,
+        maskBuffers: {},
+        pixelData: pb,
+      };
+      refs.pixelBuffers = pb;
+      refs.maskBuffers = {};
+      pixelsRef.current = pb[newLayer.id];
+      sd({ type: A.SET_LAYERS, payload: [newLayer] });
+      sd({ type: A.SET_ACTIVE_LAYER, payload: newLayer.id });
+      return;
+    }
+    refs.pixelBuffers = snap.pixelBuffers;
+    refs.maskBuffers = snap.maskBuffers ?? {};
+    pixelsRef.current = refs.pixelBuffers[snap.activeLayerId] ?? null;
+    sd({ type: A.SET_LAYERS, payload: [...snap.layers] });
+    sd({ type: A.SET_ACTIVE_LAYER, payload: snap.activeLayerId });
+  }
+
+  function generateFrameThumbnail(frameId) {
+    const w = canvasW,
+      h = canvasH;
+    const tmp = document.createElement("canvas");
+    tmp.width = w;
+    tmp.height = h;
+    const ctx2 = tmp.getContext("2d");
+    const isActive =
+      framesRef.current[activeFrameIdxRef.current]?.id === frameId;
+    const snap = refs.frameSnapshots[frameId];
+    const renderLayers = isActive ? layersRef.current : (snap?.layers ?? []);
+    const renderPB = isActive ? refs.pixelBuffers : (snap?.pixelBuffers ?? {});
+    renderLayers.forEach((layer) => {
+      if (!layer.visible) return;
+      const data = renderPB[layer.id];
+      if (!data) return;
+      const imgData = new ImageData(new Uint8ClampedArray(data), w, h);
+      const lt = document.createElement("canvas");
+      lt.width = w;
+      lt.height = h;
+      lt.getContext("2d").putImageData(imgData, 0, 0);
+      ctx2.globalAlpha = layer.opacity;
+      ctx2.drawImage(lt, 0, 0);
+      ctx2.globalAlpha = 1;
+    });
+    return tmp.toDataURL("image/png");
+  }
+
+  function updateThumbnailForActiveFrame() {
+    const frameId = framesRef.current[activeFrameIdxRef.current]?.id;
+    if (!frameId) return;
+    const dataUrl = generateFrameThumbnail(frameId);
+    if (dataUrl)
+      sd({ type: A.UPDATE_THUMBNAIL, payload: { frameId, dataUrl } });
+  }
+
+  // ── Frame operations ───────────────────────────────────────────────────────
+  function switchToFrame(newIdx) {
+    if (newIdx === activeFrameIdxRef.current) return;
+    saveCurrentFrameToSnapshot();
+    const newFrameId = framesRef.current[newIdx]?.id;
+    if (!newFrameId) return;
+    loadFrameFromSnapshot(newFrameId);
+    sd({
+      type: A.SWITCH_FRAME,
+      payload: {
+        newIdx,
+        layers: refs.frameSnapshots[newFrameId]?.layers ?? layersRef.current,
+        activeLayerId:
+          refs.frameSnapshots[newFrameId]?.activeLayerId ??
+          activeLayerIdRef.current,
+      },
+    });
+    resetHistory();
+    refs.redraw?.();
+  }
+
+  function addFrame() {
+    saveCurrentFrameToSnapshot();
+    const newFrame = makeFrame(`Frame ${framesRef.current.length + 1}`);
+    const newLayer = makeLayer("Layer 1");
+    const pb = { [newLayer.id]: new Uint8ClampedArray(canvasW * canvasH * 4) };
+    refs.frameSnapshots[newFrame.id] = {
+      layers: [newLayer],
+      activeLayerId: newLayer.id,
+      pixelBuffers: pb,
+      maskBuffers: {},
+      pixelData: pb,
+    };
+    refs.pixelBuffers = pb;
+    refs.maskBuffers = {};
+    pixelsRef.current = pb[newLayer.id];
+    sd({ type: A.ADD_FRAME, payload: { frame: newFrame, layer: newLayer } });
+    resetHistory();
+    refs.redraw?.();
+  }
+
+  function duplicateFrame(idx) {
+    saveCurrentFrameToSnapshot();
+    const srcId = framesRef.current[idx]?.id;
+    const src = refs.frameSnapshots[srcId] ?? {
+      layers: layersRef.current,
+      activeLayerId: activeLayerIdRef.current,
+      pixelBuffers: refs.pixelBuffers,
+      maskBuffers: refs.maskBuffers,
+    };
+    const newFrame = makeFrame(framesRef.current[idx].name + " dup");
+    const newPB = {};
+    const newMB = {};
+    const newLayers = src.layers.map((l) => {
+      const dup = makeLayer(l.name);
+      dup.visible = l.visible;
+      dup.opacity = l.opacity;
+      const srcBuf = src.pixelBuffers[l.id];
+      newPB[dup.id] = srcBuf
+        ? new Uint8ClampedArray(srcBuf)
+        : new Uint8ClampedArray(canvasW * canvasH * 4);
+      if (src.maskBuffers?.[l.id]) {
+        newMB[dup.id] = new Uint8Array(src.maskBuffers[l.id]);
+        dup.hasMask = true;
+      }
+      return dup;
+    });
+    const newActiveLayerId = newLayers[newLayers.length - 1].id;
+    refs.frameSnapshots[newFrame.id] = {
+      layers: newLayers,
+      activeLayerId: newActiveLayerId,
+      pixelBuffers: newPB,
+      maskBuffers: newMB,
+      pixelData: newPB,
+    };
+    refs.pixelBuffers = newPB;
+    refs.maskBuffers = newMB;
+    pixelsRef.current = newPB[newActiveLayerId];
+    const newIdx = idx + 1;
+    sd({
+      type: A.DUPLICATE_FRAME,
+      payload: {
+        newFrame,
+        insertIdx: newIdx,
+        layers: newLayers,
+        activeLayerId: newActiveLayerId,
+      },
+    });
+    resetHistory();
+    refs.redraw?.();
+  }
+
+  function deleteFrame(idx) {
+    if (framesRef.current.length <= 1) return;
+    const delId = framesRef.current[idx]?.id;
+    delete refs.frameSnapshots[delId];
+    const remaining = framesRef.current.filter((_, i) => i !== idx);
+    const newIdx = Math.min(idx, remaining.length - 1);
+    loadFrameFromSnapshot(remaining[newIdx].id);
+    sd({
+      type: A.DELETE_FRAME,
+      payload: {
+        frameId: delId,
+        remainingFrames: remaining,
+        newIdx,
+        newLayers:
+          refs.frameSnapshots[remaining[newIdx].id]?.layers ??
+          layersRef.current,
+        newActiveLayerId:
+          refs.frameSnapshots[remaining[newIdx].id]?.activeLayerId ??
+          activeLayerIdRef.current,
+      },
+    });
+    resetHistory();
+    refs.redraw?.();
+  }
+
+  function startPlayback() {
+    if (framesRef.current.length <= 1) return;
+    saveCurrentFrameToSnapshot();
+    playbackFrameIdxRef.current = activeFrameIdxRef.current;
+    isPlayingRef.current = true;
+    playIntervalRef.current = setInterval(() => {
+      playbackFrameIdxRef.current =
+        (playbackFrameIdxRef.current + 1) % framesRef.current.length;
+      refs.redraw?.();
+    }, 1000 / ss.fps);
+    sd({ type: A.SET_IS_PLAYING, payload: true });
+  }
+
+  function stopPlayback() {
+    clearInterval(playIntervalRef.current);
+    playIntervalRef.current = null;
+    isPlayingRef.current = false;
+    sd({ type: A.SET_IS_PLAYING, payload: false });
+    refs.redraw?.();
+  }
 
   // ── useDrawingTools ────────────────────────────────────────────────────────
   const {
@@ -305,6 +509,15 @@ function JellySpriteBody({ onSwitchToAnimator }) {
   };
   redrawStubRef.current = redraw;
   saveToProjectStubRef.current = saveToProject;
+
+  // Stop playback if FPS changes while playing
+  useEffect(() => {
+    if (!isPlayingRef.current) return;
+    stopPlayback();
+    // Restart on next tick so ss.fps is already updated
+    const t = setTimeout(() => startPlayback(), 0);
+    return () => clearTimeout(t);
+  }, [fps]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Layer actions (M5: dispatch + mutate pixel buffers directly) ──────────
   function addLayer() {
@@ -440,11 +653,19 @@ function JellySpriteBody({ onSwitchToAnimator }) {
     refs.redraw?.();
   }
 
-  // Keep window.__jellyRefs__.onionSkinning current for useCanvas
+  // Expose minimal refs on window ONLY for useCanvas (renderer reads framesRef,
+  // activeFrameIdxRef, isPlayingRef, playbackFrameIdxRef to composite onion
+  // skins and playback frames without circular deps).
   useEffect(() => {
-    if (window.__jellyRefs__)
-      window.__jellyRefs__.onionSkinning = onionSkinning;
-  }); // no deps — runs every render
+    window.__jellyRefs__ = {
+      framesRef,
+      activeFrameIdxRef,
+      isPlayingRef,
+      playbackFrameIdxRef,
+      onionSkinning,
+      frameSnapshots: refs.frameSnapshots,
+    };
+  }); // no deps — runs every render so values stay current
 
   // ── Undo / Redo ────────────────────────────────────────────────────────────
   function doUndo() {
@@ -548,9 +769,11 @@ function JellySpriteBody({ onSwitchToAnimator }) {
 
     const activeFrameId = framesRef.current[activeFrameIdxRef.current]?.id;
     if (activeFrameId) {
-      frameDataRef.current[activeFrameId] = {
+      refs.frameSnapshots[activeFrameId] = {
         layers: [...layersRef.current],
         activeLayerId: activeLayerIdRef.current,
+        pixelBuffers: refs.pixelBuffers,
+        maskBuffers: refs.maskBuffers,
         pixelData: refs.pixelBuffers,
       };
     }
@@ -583,12 +806,12 @@ function JellySpriteBody({ onSwitchToAnimator }) {
 
   // Sync pixelsRef when active layer changes
   useEffect(() => {
-    if (!layerDataRef.current[activeLayerId]) {
-      layerDataRef.current[activeLayerId] = new Uint8ClampedArray(
+    if (!refs.pixelBuffers[activeLayerId]) {
+      refs.pixelBuffers[activeLayerId] = new Uint8ClampedArray(
         canvasW * canvasH * 4,
       );
     }
-    pixelsRef.current = layerDataRef.current[activeLayerId];
+    pixelsRef.current = refs.pixelBuffers[activeLayerId];
     redraw();
   }, [activeLayerId]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -1080,7 +1303,7 @@ function JellySpriteBody({ onSwitchToAnimator }) {
     playbackFrameIdxRef,
     isPlaying,
     fps,
-    setFps,
+    setFps: (v) => setFps(v),
     onionSkinning,
     setOnionSkinning,
     switchToFrame,
