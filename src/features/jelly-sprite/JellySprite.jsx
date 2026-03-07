@@ -280,6 +280,8 @@ export function JellySprite({ onSwitchToAnimator }) {
   const pendingResizeDataRef = useRef(null);
   // 9-point anchor for canvas resize: tl/tc/tr/ml/mc/mr/bl/bc/br
   const [resizeAnchor, setResizeAnchor] = useState("mc");
+  const [customW, setCustomW] = useState(128);
+  const [customH, setCustomH] = useState(128);
 
   // Colour — foreground, background, alpha, history
   const [fgColor, setFgColor] = useState("#000000");
@@ -2648,11 +2650,57 @@ export function JellySprite({ onSwitchToAnimator }) {
               <button
                 key={s.label}
                 className={`jelly-sprite__size-btn${canvasW === s.w && canvasH === s.h ? " jelly-sprite__size-btn--active" : ""}`}
-                onClick={() => changeSize(s.w, s.h)}
+                onClick={() => {
+                  setCustomW(s.w);
+                  setCustomH(s.h);
+                  changeSize(s.w, s.h);
+                }}
               >
                 {s.label}
               </button>
             ))}
+          </div>
+          <div className="jelly-sprite__custom-size-row">
+            <input
+              type="number"
+              className="jelly-sprite__custom-size-input"
+              min={1}
+              max={1024}
+              value={customW}
+              onChange={(e) =>
+                setCustomW(
+                  Math.max(1, Math.min(1024, Number(e.target.value) || 1)),
+                )
+              }
+              onKeyDown={(e) => {
+                if (e.key === "Enter") changeSize(customW, customH);
+              }}
+              title="Width (px)"
+            />
+            <span className="jelly-sprite__custom-size-sep">×</span>
+            <input
+              type="number"
+              className="jelly-sprite__custom-size-input"
+              min={1}
+              max={1024}
+              value={customH}
+              onChange={(e) =>
+                setCustomH(
+                  Math.max(1, Math.min(1024, Number(e.target.value) || 1)),
+                )
+              }
+              onKeyDown={(e) => {
+                if (e.key === "Enter") changeSize(customW, customH);
+              }}
+              title="Height (px)"
+            />
+            <button
+              className="jelly-sprite__custom-size-apply"
+              onClick={() => changeSize(customW, customH)}
+              title="Apply custom size"
+            >
+              ↵
+            </button>
           </div>
         </div>
 
