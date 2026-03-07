@@ -132,10 +132,6 @@
   display: block;
   flex-shrink: 0;
 }
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
-  display: block;
-  flex-shrink: 0;
-}
 
 /* ── Right panel ── */
 .jelly-sprite__panel {
