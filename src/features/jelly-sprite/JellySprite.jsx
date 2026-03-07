@@ -6,6 +6,7 @@ import "./JellySprite.css";
 import { MAX_COLOUR_HISTORY } from "./jellySprite.constants";
 import { JellySpriteCtx } from "./JellySpriteContext";
 import { JellySpriteProvider } from "./store/JellySpriteProvider";
+import { useJellySpriteStore } from "./store/useJellySpriteStore";
 import { LeftToolbar } from "./panels/LeftToolbar";
 import { CanvasArea } from "./panels/CanvasArea";
 import { RightPanel, ExportModal } from "./panels/RightPanel";
@@ -15,9 +16,19 @@ import { useHistory } from "./hooks/useHistory";
 import { useFramePlayback } from "./hooks/useFramePlayback";
 import { useDrawingTools } from "./hooks/useDrawingTools";
 
-// ── Component ─────────────────────────────────────────────────────────────────
+// ── Outer component — just provides the store context ─────────────────────────
 export function JellySprite({ onSwitchToAnimator }) {
+  return (
+    <JellySpriteProvider>
+      <JellySpriteBody onSwitchToAnimator={onSwitchToAnimator} />
+    </JellySpriteProvider>
+  );
+}
+
+// ── Inner component — all logic runs inside JellySpriteProvider ───────────────
+function JellySpriteBody({ onSwitchToAnimator }) {
   const { state, dispatch } = useProject();
+  const { refs } = useJellySpriteStore();
 
   // ── Local state ────────────────────────────────────────────────────────────
   const [canvasW, setCanvasW] = useState(128);
@@ -103,24 +114,22 @@ export function JellySprite({ onSwitchToAnimator }) {
     saveToProject: () => saveToProjectStubRef.current(),
   });
 
-  // ── useCanvas ──────────────────────────────────────────────────────────────
-  const { canvasRef, offscreenRef, pixelsRef, redraw, redrawRef } = useCanvas({
-    canvasW,
-    canvasH,
-    zoom,
-    gridVisible,
-    frameGridVisible,
-    onionSkinning: false, // real value is read from window.__jellyRefs__.onionSkinning by redraw
-    frameConfig: state.frameConfig,
-    layerDataRef,
-    layerMaskDataRef,
-    layersRef,
-    refImgElRef,
-    refVisibleRef,
-    refOpacityRef,
-    tileCanvasRef,
-    tileUpdateRef,
-  });
+  // ── useCanvas (M2 store-based) ─────────────────────────────────────────────
+  const { canvasRef } = useCanvas();
+
+  // Backward-compat refs: old hooks (useHistory, useDrawingTools, etc.) still
+  // read these. They are populated by the init useEffect below, exactly as
+  // before. The old offscreen canvas and pixel buffers keep the old rendering
+  // pipeline working while M3+ migrates drawing into the new store.
+  const pixelsRef = useRef(null);
+  const offscreenRef = useRef(null);
+
+  // redrawRef + redraw: delegate to refs.redraw (the new store renderer).
+  // Old hooks / playback that call redrawRef.current?.() will trigger the
+  // new canvas renderer, keeping visuals in sync.
+  const redrawRef = useRef(null);
+  redrawRef.current = () => refs.redraw?.();
+  const redraw = () => refs.redraw?.();
 
   // ── useHistory ─────────────────────────────────────────────────────────────
   const {
@@ -939,15 +948,13 @@ export function JellySprite({ onSwitchToAnimator }) {
   };
 
   return (
-    <JellySpriteProvider>
-      <JellySpriteCtx.Provider value={ctx}>
-        <div className="jelly-sprite">
-          <LeftToolbar />
-          <CanvasArea />
-          <RightPanel />
-          <ExportModal />
-        </div>
-      </JellySpriteCtx.Provider>
-    </JellySpriteProvider>
+    <JellySpriteCtx.Provider value={ctx}>
+      <div className="jelly-sprite">
+        <LeftToolbar />
+        <CanvasArea />
+        <RightPanel />
+        <ExportModal />
+      </div>
+    </JellySpriteCtx.Provider>
   );
 }
