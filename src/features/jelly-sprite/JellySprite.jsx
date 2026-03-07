@@ -433,10 +433,13 @@ function JellySpriteBody({ onSwitchToAnimator }) {
     if (framesRef.current.length <= 1) return;
     saveCurrentFrameToSnapshot();
     playbackFrameIdxRef.current = activeFrameIdxRef.current;
+    refs.playbackFrameIdx = activeFrameIdxRef.current;
     isPlayingRef.current = true;
+    refs.isPlaying = true;
     playIntervalRef.current = setInterval(() => {
       playbackFrameIdxRef.current =
         (playbackFrameIdxRef.current + 1) % framesRef.current.length;
+      refs.playbackFrameIdx = playbackFrameIdxRef.current;
       refs.redraw?.();
     }, 1000 / ss.fps);
     sd({ type: A.SET_IS_PLAYING, payload: true });
@@ -446,6 +449,8 @@ function JellySpriteBody({ onSwitchToAnimator }) {
     clearInterval(playIntervalRef.current);
     playIntervalRef.current = null;
     isPlayingRef.current = false;
+    refs.isPlaying = false;
+    refs.playbackFrameIdx = activeFrameIdxRef.current;
     sd({ type: A.SET_IS_PLAYING, payload: false });
     refs.redraw?.();
   }
