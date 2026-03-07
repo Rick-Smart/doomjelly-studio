@@ -13,6 +13,12 @@ import { RightPanel, ExportModal } from "./panels/RightPanel";
 import { makeFrame } from "./jellySprite.constants";
 import { useCanvas } from "./hooks/useCanvas";
 import { wireHistoryEngine } from "./engine/historyEngine";
+
+// ── Custom cursor ─────────────────────────────────────────────────────────────
+// Thin precision crosshair: white outline + dark inner line, 4px center gap.
+// Defined once at module level so it's never recomputed per render.
+const _cursorSvg = `<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24'><line x1='0' y1='12' x2='10' y2='12' stroke='white' stroke-width='2'/><line x1='14' y1='12' x2='24' y2='12' stroke='white' stroke-width='2'/><line x1='12' y1='0' x2='12' y2='10' stroke='white' stroke-width='2'/><line x1='12' y1='14' x2='12' y2='24' stroke='white' stroke-width='2'/><line x1='0' y1='12' x2='10' y2='12' stroke='%23222' stroke-width='1'/><line x1='14' y1='12' x2='24' y2='12' stroke='%23222' stroke-width='1'/><line x1='12' y1='0' x2='12' y2='10' stroke='%23222' stroke-width='1'/><line x1='12' y1='14' x2='12' y2='24' stroke='%23222' stroke-width='1'/></svg>`;
+const CURSOR_PRECISION = `url("data:image/svg+xml,${_cursorSvg}") 12 12, crosshair`;
 import { useDrawingTools } from "./hooks/useDrawingTools";
 
 // ── Outer component — just provides the store context ─────────────────────────
@@ -1290,19 +1296,12 @@ function JellySpriteBody({ onSwitchToAnimator }) {
   };
 
   // ── Cursor style ───────────────────────────────────────────────────────────
-  const selectTools = ["select-rect", "select-lasso", "select-wand"];
   const cursorStyle =
-    tool === "picker"
-      ? "crosshair"
-      : tool === "move"
-        ? isDrawing.current
-          ? "grabbing"
-          : "grab"
-        : selectTools.includes(tool)
-          ? "crosshair"
-          : ["line", "rect", "ellipse"].includes(tool)
-            ? "crosshair"
-            : "cell";
+    tool === "move"
+      ? isDrawing.current
+        ? "grabbing"
+        : "grab"
+      : CURSOR_PRECISION;
 
   // ── Context object ─────────────────────────────────────────────────────────
   const ctx = {
