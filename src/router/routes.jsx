@@ -1,6 +1,6 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import { ProtectedRoute } from "./ProtectedRoute";
-import { AppShell } from "../features/layout/AppShell";
+import { AppShell } from "../layout/AppShell";
 import { EditorPage } from "../features/editor/EditorPage";
 import { ProjectsPage } from "../features/projects/ProjectsPage";
 import { LoginPage } from "../features/auth/LoginPage";

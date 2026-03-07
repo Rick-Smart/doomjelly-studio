@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import "./PaletteManager.css";
-import { hexToRgb, rgbToHex } from "./ColorPicker";
+import { hexToRgb, rgbToHex } from "../ColorPicker";
 
 // ── Built-in palette presets ──────────────────────────────────────────────────
 export const BUILTIN_PALETTES = {

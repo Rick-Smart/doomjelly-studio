@@ -1,8 +1,8 @@
 import { useRef, useEffect, useState, useCallback } from "react";
 import JSZip from "jszip";
 import { useProject } from "../../contexts/ProjectContext";
-import { ColorPicker } from "./ColorPicker";
-import { PaletteManager, BUILTIN_PALETTES } from "./PaletteManager";
+import { ColorPicker } from "../../ui/ColorPicker";
+import { PaletteManager, BUILTIN_PALETTES } from "../../ui/PaletteManager";
 import "./JellySprite.css";
 
 // ── Colour helpers ────────────────────────────────────────────────────────────

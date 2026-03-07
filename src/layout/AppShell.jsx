@@ -1,7 +1,7 @@
 import { Outlet, NavLink } from "react-router-dom";
-import { useAuth } from "../../contexts/AuthContext";
-import { useTheme } from "../../contexts/ThemeContext";
-import { THEMES } from "../../contexts/ThemeContext";
+import { useAuth } from "../contexts/AuthContext";
+import { useTheme } from "../contexts/ThemeContext";
+import { THEMES } from "../contexts/ThemeContext";
 import "./AppShell.css";
 
 const NAV_ITEMS = [
