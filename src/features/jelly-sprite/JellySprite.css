@@ -1273,6 +1273,20 @@
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;
+  cursor: default;
+}
+.jelly-sprite__layer-rename {
+  flex: 1;
+  font-size: 11px;
+  font-weight: 500;
+  background: var(--surface3);
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  color: var(--text);
+  padding: 1px 4px;
+  outline: none;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .jelly-sprite__layer-actions {

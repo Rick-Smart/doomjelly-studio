@@ -83,7 +83,7 @@ export function CanvasArea() {
           </div>
           <button
             className={`jelly-sprite__playback-btn${onionSkinning ? " jelly-sprite__playback-btn--active" : ""}`}
-            onClick={() => setOnionSkinning((v) => !v)}
+            onClick={() => setOnionSkinning(!onionSkinning)}
             title="Onion skinning"
             disabled={isPlaying || frames.length <= 1}
           >

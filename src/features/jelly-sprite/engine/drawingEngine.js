@@ -7,7 +7,7 @@
  * Design rules:
  * - Never closes over React state. All state is read from refs.stateRef.current.
  * - All pixel mutations go through pixelOps helpers.
- * - Calls refs.pushHistory() on stroke completion.
+ * - Calls refs.onStrokeComplete() on stroke completion (history + thumbnail + dispatch).
  * - Does NOT touch React setState — that is handled by the returned
  *   { getSelection } helper which JellySpriteBody uses to sync React state.
  *
@@ -318,7 +318,7 @@ export function createDrawingEngine(refs) {
       moveOrigin = null;
       movePixels = null;
       previewSnap = null;
-      refs.pushHistory?.();
+      (refs.onStrokeComplete ?? refs.pushHistory)?.();
       return;
     }
 
@@ -380,7 +380,7 @@ export function createDrawingEngine(refs) {
 
     lastPx = null;
     startPx = null;
-    refs.pushHistory?.();
+    (refs.onStrokeComplete ?? refs.pushHistory)?.();
   }
 
   // ── Pointer leave ──────────────────────────────────────────────────────────
@@ -400,7 +400,7 @@ export function createDrawingEngine(refs) {
     if (
       !["select-rect", "select-lasso", "select-wand", "move"].includes(tool)
     ) {
-      refs.pushHistory?.();
+      (refs.onStrokeComplete ?? refs.pushHistory)?.();
     }
   }
 
@@ -443,7 +443,7 @@ export function createDrawingEngine(refs) {
       h,
     );
     setSelection({ x: px, y: py, w: refs.clipboardW, h: refs.clipboardH });
-    refs.pushHistory?.();
+    (refs.onStrokeComplete ?? refs.pushHistory)?.();
     refs.redraw?.();
   }
 
@@ -464,7 +464,7 @@ export function createDrawingEngine(refs) {
         buf[i] = buf[i + 1] = buf[i + 2] = buf[i + 3] = 0;
       }
     }
-    refs.pushHistory?.();
+    (refs.onStrokeComplete ?? refs.pushHistory)?.();
     refs.redraw?.();
   }
 

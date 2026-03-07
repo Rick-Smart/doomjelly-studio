@@ -1,3 +1,4 @@
+import { useState, useRef, useEffect } from "react";
 import { ColorPicker } from "../../../ui/ColorPicker";
 import { PaletteManager } from "../../../ui/PaletteManager";
 import { useJellySprite } from "../JellySpriteContext";
@@ -341,7 +342,25 @@ function LayerRow({ layer, isActive }) {
         >
           {layer.visible ? "👁" : "⊘"}
         </button>
-        <span className="jelly-sprite__layer-name">{layer.name}</span>
+        {renaming ? (
+          <input
+            ref={renameInputRef}
+            className="jelly-sprite__layer-rename"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={commitRename}
+            onKeyDown={onRenameKey}
+            onClick={(e) => e.stopPropagation()}
+          />
+        ) : (
+          <span
+            className="jelly-sprite__layer-name"
+            onDoubleClick={startRename}
+            title="Double-click to rename"
+          >
+            {layer.name}
+          </span>
+        )}
         {layer.hasMask && (
           <button
             className={`jelly-sprite__mask-chip${editingMaskId === layer.id ? " jelly-sprite__mask-chip--editing" : ""}`}

@@ -494,6 +494,9 @@ function JellySpriteBody({ onSwitchToAnimator }) {
     refs.pushHistory?.();
     updateThumbnailForActiveFrame();
   };
+  // Wire onStrokeComplete so the drawing engine triggers history + thumbnail +
+  // STROKE_COMPLETE dispatch (enables canUndo, updates frame thumbnail).
+  refs.onStrokeComplete = pushHistoryEntryStubRef.current;
   redrawStubRef.current = redraw;
   saveToProjectStubRef.current = saveToProject;
 
