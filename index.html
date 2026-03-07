@@ -5,6 +5,39 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>DoomJelly Studio</title>
+    <script>
+      // GitHub Pages SPA redirect: restore the path encoded by 404.html
+      (function () {
+        var redirect = sessionStorage.redirect;
+        delete sessionStorage.redirect;
+        if (redirect && redirect !== location.href) {
+          history.replaceState(null, null, redirect);
+          return;
+        }
+        var search = location.search;
+        if (search.indexOf("?p=/") === 0 || search.indexOf("?p=") === 0) {
+          var decoded = search
+            .slice(1)
+            .split("&")
+            .reduce(function (o, s) {
+              var k = s.split("=")[0],
+                v = s.split("=").slice(1).join("=").replace(/~and~/g, "&");
+              o[k] = decodeURIComponent(v);
+              return o;
+            }, {});
+          var path = decoded.p || "/";
+          var query = decoded.q ? "?" + decoded.q : "";
+          history.replaceState(
+            null,
+            null,
+            location.pathname.slice(0, location.pathname.lastIndexOf("/") + 1) +
+              (path.startsWith("/") ? path.slice(1) : path) +
+              query +
+              location.hash,
+          );
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
