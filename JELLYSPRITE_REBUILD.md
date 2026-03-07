@@ -28,11 +28,11 @@
 | M9        | Playback + Onion Skinning        | ✅ Done        | `c53263e` |
 | M10       | Selection Tools + Transforms     | ✅ Done        | `b9c6fbe` |
 | QA        | Tool + Panel Audit               | 🔄 In Progress | —         |
-| M11       | Canvas Resize                    | ✅ Done        | `pending` |
-| M12       | Export + Workspace Integration   | ⬜ Pending     | —         |
-| M13       | Color System + Palette Manager   | ⬜ Pending     | —         |
-| M14       | View Tools                       | ⬜ Pending     | —         |
-| M15       | Keyboard Shortcuts               | ⬜ Pending     | —         |
+| M11       | Canvas Resize                    | ✅ Done        | `c1bba73` |
+| M12       | Export + Workspace Integration   | ✅ Done        | `c1bba73` |
+| M13       | Color System + Palette Manager   | ✅ Done        | `c1bba73` |
+| M14       | View Tools                       | ✅ Done        | `pending` |
+| M15       | Keyboard Shortcuts               | ✅ Done        | `c1bba73` |
 | M16       | UI Polish + CSS                  | ⬜ Pending     | —         |
 
 ---

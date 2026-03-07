@@ -806,6 +806,18 @@ function JellySpriteBody({ onSwitchToAnimator }) {
     refVisibleRef.current = refVisible;
   }, [refVisible]);
 
+  // Keep refs.tileCanvasEl in sync — the canvas DOM element is conditionally
+  // rendered (only when tileVisible), so we need a post-commit effect.
+  useEffect(() => {
+    refs.tileCanvasEl = tileCanvasRef.current;
+    if (tileVisible) redraw();
+  }, [tileVisible]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Tile count change: re-render tile canvas
+  useEffect(() => {
+    if (tileVisible) redraw();
+  }, [tileCount]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Marching ants animation
   // Watches ss.selection (store state) — that's what the renderer reads via
   // refs.stateRef.current.selection. The loop writes to refs.marchOffset
@@ -928,6 +940,7 @@ function JellySpriteBody({ onSwitchToAnimator }) {
       const img = new Image();
       img.onload = () => {
         refImgElRef.current = img;
+        refs.refImgEl = img;
         redrawRef.current?.();
       };
       img.src = e.target.result;
@@ -938,6 +951,7 @@ function JellySpriteBody({ onSwitchToAnimator }) {
 
   function clearRefImage() {
     refImgElRef.current = null;
+    refs.refImgEl = null;
     setRefImage(null);
     redrawRef.current?.();
   }
