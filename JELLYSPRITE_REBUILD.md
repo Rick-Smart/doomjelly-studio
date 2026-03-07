@@ -28,7 +28,7 @@
 | M9        | Playback + Onion Skinning        | ✅ Done        | `c53263e` |
 | M10       | Selection Tools + Transforms     | ✅ Done        | `b9c6fbe` |
 | QA        | Tool + Panel Audit               | 🔄 In Progress | —         |
-| M11       | Canvas Resize                    | ⬜ Pending     | —         |
+| M11       | Canvas Resize                    | ✅ Done        | `pending` |
 | M12       | Export + Workspace Integration   | ⬜ Pending     | —         |
 | M13       | Color System + Palette Manager   | ⬜ Pending     | —         |
 | M14       | View Tools                       | ⬜ Pending     | —         |
