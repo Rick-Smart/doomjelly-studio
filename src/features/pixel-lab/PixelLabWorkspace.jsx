@@ -7,7 +7,7 @@ import {
   serialiseProject,
   saveProjectToStorage,
 } from "../../services/projectService";
-import { SpriteForge } from "./SpriteForge";
+import { PixelLab } from "./PixelLab";
 
 function EditableTitle({ value, onChange }) {
   const [editing, setEditing] = useState(false);
@@ -55,7 +55,7 @@ function EditableTitle({ value, onChange }) {
   );
 }
 
-export function SpriteForgeWorkspace() {
+export function PixelLabWorkspace() {
   const { state, dispatch } = useProject();
   const { showToast } = useNotification();
   const navigate = useNavigate();
@@ -102,7 +102,7 @@ export function SpriteForgeWorkspace() {
       scrollable={false}
       padding={false}
     >
-      <SpriteForge onSwitchToAnimator={() => navigate("/editor")} />
+      <PixelLab onSwitchToAnimator={() => navigate("/editor")} />
     </Page>
   );
 }

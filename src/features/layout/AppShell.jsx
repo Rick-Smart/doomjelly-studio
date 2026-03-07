@@ -5,7 +5,7 @@ import { THEMES } from "../../contexts/ThemeContext";
 import "./AppShell.css";
 
 const NAV_ITEMS = [
-  { to: "/forge", label: "Sprite Forge" },
+  { to: "/pixel-lab", label: "PixelLab" },
   { to: "/editor", label: "Animator" },
   { to: "/projects", label: "Projects" },
   { to: "/settings", label: "Settings" },

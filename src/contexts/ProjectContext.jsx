@@ -26,7 +26,7 @@ const initialState = {
   id: null,
   name: "Untitled Project",
   spriteSheet: null,
-  spriteForgeDataUrl: null,
+  pixelLabDataUrl: null,
   frameConfig: {
     frameW: 32,
     frameH: 32,
@@ -116,7 +116,7 @@ function reducer(state, action) {
       return { ...state, id: action.payload };
 
     case "SET_SPRITE_FORGE_DATA":
-      return { ...state, spriteForgeDataUrl: action.payload };
+      return { ...state, pixelLabDataUrl: action.payload };
 
     case "RESTORE_SNAPSHOT":
       return { ...state, ...action.payload };

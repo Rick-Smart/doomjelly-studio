@@ -1,11 +1,11 @@
-.sprite-forge {
+.pixel-lab {
   display: flex;
   height: 100%;
   overflow: hidden;
 }
 
 /* ── Left toolbar ── */
-.sprite-forge__toolbar {
+.pixel-lab__toolbar {
   width: 52px;
   flex-shrink: 0;
   background: var(--surface);
@@ -18,14 +18,14 @@
   overflow-y: auto;
 }
 
-.sprite-forge__tool-group {
+.pixel-lab__tool-group {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 2px;
 }
 
-.sprite-forge__toolbar-sep {
+.pixel-lab__toolbar-sep {
   width: 30px;
   height: 1px;
   background: var(--border);
@@ -33,7 +33,7 @@
   flex-shrink: 0;
 }
 
-.sprite-forge__tool-btn {
+.pixel-lab__tool-btn {
   width: 36px;
   height: 36px;
   display: flex;
@@ -52,32 +52,32 @@
   padding: 0;
 }
 
-.sprite-forge__tool-btn:hover:not(:disabled) {
+.pixel-lab__tool-btn:hover:not(:disabled) {
   background: var(--surface2);
   color: var(--text);
 }
 
-.sprite-forge__tool-btn--active {
+.pixel-lab__tool-btn--active {
   background: color-mix(in srgb, var(--accent) 15%, var(--surface2));
   border-color: var(--accent);
   color: var(--accent);
 }
 
-.sprite-forge__tool-btn--danger {
+.pixel-lab__tool-btn--danger {
   color: var(--danger);
 }
 
-.sprite-forge__tool-btn--danger:hover:not(:disabled) {
+.pixel-lab__tool-btn--danger:hover:not(:disabled) {
   background: var(--danger);
   color: #fff;
 }
 
-.sprite-forge__tool-btn:disabled {
+.pixel-lab__tool-btn:disabled {
   opacity: 0.35;
   cursor: not-allowed;
 }
 
-.sprite-forge__zoom-label {
+.pixel-lab__zoom-label {
   font-size: 10px;
   color: var(--text-muted);
   font-weight: 600;
@@ -87,7 +87,7 @@
 }
 
 /* ── Canvas area ── */
-.sprite-forge__canvas-wrap {
+.pixel-lab__canvas-wrap {
   flex: 1;
   overflow: auto;
   background: var(--surface2);
@@ -97,7 +97,7 @@
   padding: 20px;
 }
 
-.sprite-forge__canvas {
+.pixel-lab__canvas {
   image-rendering: pixelated;
   image-rendering: crisp-edges;
   /* Checkerboard transparency indicator */
@@ -112,7 +112,7 @@
 }
 
 /* ── Right panel ── */
-.sprite-forge__panel {
+.pixel-lab__panel {
   width: 228px;
   flex-shrink: 0;
   background: var(--surface);
@@ -124,13 +124,13 @@
   gap: 16px;
 }
 
-.sprite-forge__section {
+.pixel-lab__section {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.sprite-forge__section-label {
+.pixel-lab__section-label {
   font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
@@ -141,7 +141,7 @@
   gap: 6px;
 }
 
-.sprite-forge__key-hint {
+.pixel-lab__key-hint {
   font-size: 9px;
   font-weight: 400;
   text-transform: none;
@@ -151,13 +151,13 @@
 }
 
 /* Foreground / background colour slots */
-.sprite-forge__fg-bg {
+.pixel-lab__fg-bg {
   position: relative;
   height: 52px;
   margin-bottom: 4px;
 }
 
-.sprite-forge__fg-bg-bg {
+.pixel-lab__fg-bg-bg {
   position: absolute;
   bottom: 0;
   right: 12px;
@@ -169,11 +169,11 @@
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
   transition: border-color 0.1s;
 }
-.sprite-forge__fg-bg-bg:hover {
+.pixel-lab__fg-bg-bg:hover {
   border-color: var(--text-muted);
 }
 
-.sprite-forge__fg-bg-fg {
+.pixel-lab__fg-bg-fg {
   position: absolute;
   top: 0;
   left: 0;
@@ -189,7 +189,7 @@
 /* The fg swatch sits on top via stacking context — overlay colour via ::after */
 /* (colour is set inline via bg directly) */
 
-.sprite-forge__swap-btn {
+.pixel-lab__swap-btn {
   position: absolute;
   bottom: 18px;
   right: 0;
@@ -207,19 +207,19 @@
   align-items: center;
   justify-content: center;
 }
-.sprite-forge__swap-btn:hover {
+.pixel-lab__swap-btn:hover {
   color: var(--text);
   border-color: var(--text-muted);
 }
 
 /* Recent colour history */
-.sprite-forge__history {
+.pixel-lab__history {
   display: flex;
   flex-wrap: wrap;
   gap: 3px;
 }
 
-.sprite-forge__history-cell {
+.pixel-lab__history-cell {
   width: 18px;
   height: 18px;
   border-radius: 3px;
@@ -228,20 +228,20 @@
   padding: 0;
   transition: transform 0.08s;
 }
-.sprite-forge__history-cell:hover {
+.pixel-lab__history-cell:hover {
   transform: scale(1.25);
   z-index: 1;
   position: relative;
 }
 
 /* Color controls */
-.sprite-forge__color-row {
+.pixel-lab__color-row {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.sprite-forge__color-swatch {
+.pixel-lab__color-swatch {
   width: 32px;
   height: 32px;
   border-radius: 4px;
@@ -249,7 +249,7 @@
   flex-shrink: 0;
 }
 
-.sprite-forge__color-input {
+.pixel-lab__color-input {
   width: 36px;
   height: 32px;
   padding: 2px;
@@ -260,13 +260,13 @@
 }
 
 /* Palette grid */
-.sprite-forge__palette {
+.pixel-lab__palette {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 3px;
 }
 
-.sprite-forge__palette-cell {
+.pixel-lab__palette-cell {
   aspect-ratio: 1;
   border-radius: 3px;
   border: 2px solid transparent;
@@ -275,25 +275,25 @@
   transition: transform 0.08s;
 }
 
-.sprite-forge__palette-cell:hover {
+.pixel-lab__palette-cell:hover {
   transform: scale(1.2);
   z-index: 1;
   position: relative;
 }
 
-.sprite-forge__palette-cell--active {
+.pixel-lab__palette-cell--active {
   border-color: var(--text);
   box-shadow: 0 0 0 1px var(--bg);
 }
 
 /* Canvas size presets */
-.sprite-forge__size-btns {
+.pixel-lab__size-btns {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-.sprite-forge__size-btn {
+.pixel-lab__size-btn {
   font-size: 11px;
   padding: 4px 8px;
   background: var(--surface3);
@@ -305,11 +305,11 @@
   transition: background 0.1s;
 }
 
-.sprite-forge__size-btn:hover {
+.pixel-lab__size-btn:hover {
   background: var(--surface2);
 }
 
-.sprite-forge__size-btn--active {
+.pixel-lab__size-btn--active {
   border-color: var(--accent);
   background: color-mix(in srgb, var(--accent) 10%, var(--surface3));
   color: var(--accent);
@@ -317,7 +317,7 @@
 }
 
 /* Use in Animator */
-.sprite-forge__use-btn {
+.pixel-lab__use-btn {
   width: 100%;
   padding: 8px 12px;
   background: var(--accent);
@@ -330,12 +330,12 @@
   transition: opacity 0.1s;
 }
 
-.sprite-forge__use-btn:hover {
+.pixel-lab__use-btn:hover {
   opacity: 0.85;
 }
 
 /* Import from Animator */
-.sprite-forge__import-btn {
+.pixel-lab__import-btn {
   width: 100%;
   margin-bottom: 6px;
   padding: 7px 12px;
@@ -351,7 +351,7 @@
     color 0.1s;
 }
 
-.sprite-forge__import-btn:hover {
+.pixel-lab__import-btn:hover {
   border-color: var(--accent);
   color: var(--accent);
 }

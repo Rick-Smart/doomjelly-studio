@@ -5,7 +5,7 @@ import { EditorPage } from "../features/editor/EditorPage";
 import { ProjectsPage } from "../features/projects/ProjectsPage";
 import { LoginPage } from "../features/auth/LoginPage";
 import { SettingsPage } from "../features/settings/SettingsPage";
-import { SpriteForgeWorkspace } from "../features/sprite-forge/SpriteForgeWorkspace";
+import { PixelLabWorkspace } from "../features/pixel-lab/PixelLabWorkspace";
 
 export function AppRoutes() {
   return (
@@ -21,7 +21,7 @@ export function AppRoutes() {
       >
         <Route index element={<Navigate to="/projects" replace />} />
         <Route path="editor" element={<EditorPage />} />
-        <Route path="forge" element={<SpriteForgeWorkspace />} />
+        <Route path="pixel-lab" element={<PixelLabWorkspace />} />
         <Route path="projects" element={<ProjectsPage />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>

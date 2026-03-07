@@ -2,7 +2,7 @@ import { useRef, useEffect, useState, useCallback } from "react";
 import { useProject } from "../../contexts/ProjectContext";
 import { ColorPicker } from "./ColorPicker";
 import { PaletteManager, BUILTIN_PALETTES } from "./PaletteManager";
-import "./SpriteForge.css";
+import "./PixelLab.css";
 
 // ── Colour helpers ────────────────────────────────────────────────────────────
 function hexToRgba(hex, alpha = 255) {
@@ -129,7 +129,7 @@ function rasterEllipse(cx, cy, rx, ry, filled, cb) {
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
-export function SpriteForge({ onSwitchToAnimator }) {
+export function PixelLab({ onSwitchToAnimator }) {
   const { state, dispatch } = useProject();
 
   // Canvas dimensions
@@ -199,7 +199,7 @@ export function SpriteForge({ onSwitchToAnimator }) {
       redraw();
     }
 
-    const src = state.spriteForgeDataUrl;
+    const src = state.PixelLabDataUrl;
     if (src) {
       const img = new Image();
       img.onload = () => {
@@ -746,15 +746,15 @@ export function SpriteForge({ onSwitchToAnimator }) {
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="sprite-forge">
+    <div className="pixel-lab">
       {/* ── Left toolbar ── */}
-      <div className="sprite-forge__toolbar">
+      <div className="pixel-lab__toolbar">
         {/* Drawing tools */}
-        <div className="sprite-forge__tool-group">
+        <div className="pixel-lab__tool-group">
           {TOOLS.map((t) => (
             <button
               key={t.id}
-              className={`sprite-forge__tool-btn${tool === t.id ? " sprite-forge__tool-btn--active" : ""}`}
+              className={`pixel-lab__tool-btn${tool === t.id ? " pixel-lab__tool-btn--active" : ""}`}
               onClick={() => setTool(t.id)}
               title={t.title}
             >
@@ -763,33 +763,33 @@ export function SpriteForge({ onSwitchToAnimator }) {
           ))}
         </div>
 
-        <div className="sprite-forge__toolbar-sep" />
+        <div className="pixel-lab__toolbar-sep" />
 
         {/* Shape fill toggle */}
         {["rect", "ellipse"].includes(tool) && (
           <>
             <button
-              className={`sprite-forge__tool-btn${fillShapes ? " sprite-forge__tool-btn--active" : ""}`}
+              className={`pixel-lab__tool-btn${fillShapes ? " pixel-lab__tool-btn--active" : ""}`}
               onClick={() => setFillShapes((v) => !v)}
               title={fillShapes ? "Filled shape" : "Outlined shape"}
             >
               {fillShapes ? "■" : "□"}
             </button>
-            <div className="sprite-forge__toolbar-sep" />
+            <div className="pixel-lab__toolbar-sep" />
           </>
         )}
 
         {/* Symmetry */}
-        <div className="sprite-forge__tool-group">
+        <div className="pixel-lab__tool-group">
           <button
-            className={`sprite-forge__tool-btn${symmetryH ? " sprite-forge__tool-btn--active" : ""}`}
+            className={`pixel-lab__tool-btn${symmetryH ? " pixel-lab__tool-btn--active" : ""}`}
             onClick={() => setSymmetryH((v) => !v)}
             title="Mirror horizontal (S)"
           >
             ⇔
           </button>
           <button
-            className={`sprite-forge__tool-btn${symmetryV ? " sprite-forge__tool-btn--active" : ""}`}
+            className={`pixel-lab__tool-btn${symmetryV ? " pixel-lab__tool-btn--active" : ""}`}
             onClick={() => setSymmetryV((v) => !v)}
             title="Mirror vertical"
           >
@@ -797,20 +797,20 @@ export function SpriteForge({ onSwitchToAnimator }) {
           </button>
         </div>
 
-        <div className="sprite-forge__toolbar-sep" />
+        <div className="pixel-lab__toolbar-sep" />
 
         {/* Zoom */}
-        <div className="sprite-forge__tool-group">
+        <div className="pixel-lab__tool-group">
           <button
-            className="sprite-forge__tool-btn"
+            className="pixel-lab__tool-btn"
             onClick={() => setZoom((z) => Math.max(1, z - 1))}
             title="Zoom out (-)"
           >
             −
           </button>
-          <span className="sprite-forge__zoom-label">{zoom}×</span>
+          <span className="pixel-lab__zoom-label">{zoom}×</span>
           <button
-            className="sprite-forge__tool-btn"
+            className="pixel-lab__tool-btn"
             onClick={() => setZoom((z) => Math.min(16, z + 1))}
             title="Zoom in (+)"
           >
@@ -818,19 +818,19 @@ export function SpriteForge({ onSwitchToAnimator }) {
           </button>
         </div>
 
-        <div className="sprite-forge__toolbar-sep" />
+        <div className="pixel-lab__toolbar-sep" />
 
         {/* Grid toggles */}
-        <div className="sprite-forge__tool-group">
+        <div className="pixel-lab__tool-group">
           <button
-            className={`sprite-forge__tool-btn${gridVisible ? " sprite-forge__tool-btn--active" : ""}`}
+            className={`pixel-lab__tool-btn${gridVisible ? " pixel-lab__tool-btn--active" : ""}`}
             onClick={() => setGridVisible((v) => !v)}
             title="Toggle pixel grid"
           >
             ⊞
           </button>
           <button
-            className={`sprite-forge__tool-btn${frameGridVisible ? " sprite-forge__tool-btn--active" : ""}`}
+            className={`pixel-lab__tool-btn${frameGridVisible ? " pixel-lab__tool-btn--active" : ""}`}
             onClick={() => setFrameGridVisible((v) => !v)}
             title="Toggle frame grid"
           >
@@ -838,33 +838,33 @@ export function SpriteForge({ onSwitchToAnimator }) {
           </button>
         </div>
 
-        <div className="sprite-forge__toolbar-sep" />
+        <div className="pixel-lab__toolbar-sep" />
 
         {/* Flip / rotate */}
-        <div className="sprite-forge__tool-group">
+        <div className="pixel-lab__tool-group">
           <button
-            className="sprite-forge__tool-btn"
+            className="pixel-lab__tool-btn"
             onClick={flipH}
             title="Flip horizontal"
           >
             ↔
           </button>
           <button
-            className="sprite-forge__tool-btn"
+            className="pixel-lab__tool-btn"
             onClick={flipV}
             title="Flip vertical"
           >
             ↕
           </button>
           <button
-            className="sprite-forge__tool-btn"
+            className="pixel-lab__tool-btn"
             onClick={rotateCW}
             title="Rotate 90° CW"
           >
             ↻
           </button>
           <button
-            className="sprite-forge__tool-btn"
+            className="pixel-lab__tool-btn"
             onClick={rotateCCW}
             title="Rotate 90° CCW"
           >
@@ -872,12 +872,12 @@ export function SpriteForge({ onSwitchToAnimator }) {
           </button>
         </div>
 
-        <div className="sprite-forge__toolbar-sep" />
+        <div className="pixel-lab__toolbar-sep" />
 
         {/* Undo / redo */}
-        <div className="sprite-forge__tool-group">
+        <div className="pixel-lab__tool-group">
           <button
-            className="sprite-forge__tool-btn"
+            className="pixel-lab__tool-btn"
             onClick={doUndo}
             disabled={!canUndo}
             title="Undo (Ctrl+Z)"
@@ -885,7 +885,7 @@ export function SpriteForge({ onSwitchToAnimator }) {
             ↩
           </button>
           <button
-            className="sprite-forge__tool-btn"
+            className="pixel-lab__tool-btn"
             onClick={doRedo}
             disabled={!canRedo}
             title="Redo (Ctrl+Y)"
@@ -894,10 +894,10 @@ export function SpriteForge({ onSwitchToAnimator }) {
           </button>
         </div>
 
-        <div className="sprite-forge__toolbar-sep" />
+        <div className="pixel-lab__toolbar-sep" />
 
         <button
-          className="sprite-forge__tool-btn sprite-forge__tool-btn--danger"
+          className="pixel-lab__tool-btn pixel-lab__tool-btn--danger"
           onClick={clearCanvas}
           title="Clear canvas"
         >
@@ -906,10 +906,10 @@ export function SpriteForge({ onSwitchToAnimator }) {
       </div>
 
       {/* ── Canvas ── */}
-      <div className="sprite-forge__canvas-wrap">
+      <div className="pixel-lab__canvas-wrap">
         <canvas
           ref={canvasRef}
-          className="sprite-forge__canvas"
+          className="pixel-lab__canvas"
           width={canvasW * zoom}
           height={canvasH * zoom}
           onMouseDown={onMouseDown}
@@ -921,15 +921,15 @@ export function SpriteForge({ onSwitchToAnimator }) {
       </div>
 
       {/* ── Right panel ── */}
-      <div className="sprite-forge__panel">
+      <div className="pixel-lab__panel">
         {/* Foreground / background colour slots */}
-        <div className="sprite-forge__section">
-          <div className="sprite-forge__section-label">
-            Color <span className="sprite-forge__key-hint">X=swap</span>
+        <div className="pixel-lab__section">
+          <div className="pixel-lab__section-label">
+            Color <span className="pixel-lab__key-hint">X=swap</span>
           </div>
-          <div className="sprite-forge__fg-bg">
+          <div className="pixel-lab__fg-bg">
             <div
-              className="sprite-forge__fg-bg-bg"
+              className="pixel-lab__fg-bg-bg"
               style={{ background: bgColor }}
               title="Background colour (click to edit)"
               onClick={() => {
@@ -939,7 +939,7 @@ export function SpriteForge({ onSwitchToAnimator }) {
               }}
             />
             <div
-              className="sprite-forge__fg-bg-fg"
+              className="pixel-lab__fg-bg-fg"
               style={{
                 background: `rgba(${hexToRgba(
                   fgColor,
@@ -951,7 +951,7 @@ export function SpriteForge({ onSwitchToAnimator }) {
               title="Foreground colour (active)"
             />
             <button
-              className="sprite-forge__swap-btn"
+              className="pixel-lab__swap-btn"
               title="Swap colours (X)"
               onClick={() => {
                 const tmp = fgColor;
@@ -965,7 +965,7 @@ export function SpriteForge({ onSwitchToAnimator }) {
         </div>
 
         {/* Inline HSV picker */}
-        <div className="sprite-forge__section">
+        <div className="pixel-lab__section">
           <ColorPicker
             hex={fgColor}
             alpha={fgAlpha}
@@ -978,13 +978,13 @@ export function SpriteForge({ onSwitchToAnimator }) {
 
         {/* Colour history */}
         {colorHistory.length > 0 && (
-          <div className="sprite-forge__section">
-            <div className="sprite-forge__section-label">Recent</div>
-            <div className="sprite-forge__history">
+          <div className="pixel-lab__section">
+            <div className="pixel-lab__section-label">Recent</div>
+            <div className="pixel-lab__history">
               {colorHistory.map((c, i) => (
                 <button
                   key={i}
-                  className={`sprite-forge__history-cell${fgColor === c ? " sprite-forge__palette-cell--active" : ""}`}
+                  className={`pixel-lab__history-cell${fgColor === c ? " pixel-lab__palette-cell--active" : ""}`}
                   style={{ background: c }}
                   title={c}
                   onClick={() => pickColor(c)}
@@ -995,8 +995,8 @@ export function SpriteForge({ onSwitchToAnimator }) {
         )}
 
         {/* Palette manager */}
-        <div className="sprite-forge__section">
-          <div className="sprite-forge__section-label">Palette</div>
+        <div className="pixel-lab__section">
+          <div className="pixel-lab__section-label">Palette</div>
           <PaletteManager
             activeColor={fgColor}
             palettes={palettes}
@@ -1013,13 +1013,13 @@ export function SpriteForge({ onSwitchToAnimator }) {
         </div>
 
         {/* Canvas size presets */}
-        <div className="sprite-forge__section">
-          <div className="sprite-forge__section-label">Canvas size</div>
-          <div className="sprite-forge__size-btns">
+        <div className="pixel-lab__section">
+          <div className="pixel-lab__section-label">Canvas size</div>
+          <div className="pixel-lab__size-btns">
             {CANVAS_SIZES.map((s) => (
               <button
                 key={s.label}
-                className={`sprite-forge__size-btn${canvasW === s.w && canvasH === s.h ? " sprite-forge__size-btn--active" : ""}`}
+                className={`pixel-lab__size-btn${canvasW === s.w && canvasH === s.h ? " pixel-lab__size-btn--active" : ""}`}
                 onClick={() => changeSize(s.w, s.h)}
               >
                 {s.label}
@@ -1029,16 +1029,16 @@ export function SpriteForge({ onSwitchToAnimator }) {
         </div>
 
         {/* Cross-workspace */}
-        <div className="sprite-forge__section">
+        <div className="pixel-lab__section">
           {state.spriteSheet && (
             <button
-              className="sprite-forge__import-btn"
+              className="pixel-lab__import-btn"
               onClick={importFromAnimator}
             >
               ← From Animator
             </button>
           )}
-          <button className="sprite-forge__use-btn" onClick={useInAnimator}>
+          <button className="pixel-lab__use-btn" onClick={useInAnimator}>
             Send to Animator →
           </button>
         </div>
