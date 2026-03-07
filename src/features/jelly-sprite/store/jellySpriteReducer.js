@@ -110,6 +110,8 @@ export function jellySpriteReducer(state, action) {
       };
 
     // ── Layers ────────────────────────────────────────────────────────────
+    case A.SET_LAYERS:
+      return { ...state, layers: payload };
     case A.SET_ACTIVE_LAYER:
       return { ...state, activeLayerId: payload };
     case A.SET_EDITING_MASK:

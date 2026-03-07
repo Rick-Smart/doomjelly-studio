@@ -34,6 +34,7 @@ export const PALETTE_RENAME = "PALETTE_RENAME"; // { oldName, newName }
 export const PALETTE_SET_COLORS = "PALETTE_SET_COLORS"; // { name, colors }
 
 // ── Layers ────────────────────────────────────────────────────────────────────
+export const SET_LAYERS = "SET_LAYERS"; // Layer[] — bridge for frame hook until M6
 export const SET_ACTIVE_LAYER = "SET_ACTIVE_LAYER"; // layerId string
 export const SET_EDITING_MASK = "SET_EDITING_MASK"; // layerId string | null
 export const ADD_LAYER = "ADD_LAYER"; // { layer } — new layer object

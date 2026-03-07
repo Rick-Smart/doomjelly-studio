@@ -3,13 +3,13 @@ import JSZip from "jszip";
 import { useProject } from "../../contexts/ProjectContext";
 import "./JellySprite.css";
 import * as A from "./store/jellySpriteActions";
+import { makeLayer } from "./jellySprite.constants";
 import { JellySpriteCtx } from "./JellySpriteContext";
 import { JellySpriteProvider } from "./store/JellySpriteProvider";
 import { useJellySpriteStore } from "./store/useJellySpriteStore";
 import { LeftToolbar } from "./panels/LeftToolbar";
 import { CanvasArea } from "./panels/CanvasArea";
 import { RightPanel, ExportModal } from "./panels/RightPanel";
-import { useLayerManager } from "./hooks/useLayerManager";
 import { useCanvas } from "./hooks/useCanvas";
 import { useHistory } from "./hooks/useHistory";
 import { useFramePlayback } from "./hooks/useFramePlayback";
@@ -62,6 +62,9 @@ function JellySpriteBody({ onSwitchToAnimator }) {
     refVisible,
     tileVisible,
     tileCount,
+    layers,
+    activeLayerId,
+    editingMaskId,
   } = ss;
 
   // Dispatch wrappers — keep the same setter names so all callers are unchanged
@@ -101,6 +104,17 @@ function JellySpriteBody({ onSwitchToAnimator }) {
     sd({ type: A.SET_CANVAS_SIZE, payload: { w: v, h: canvasH } });
   const setCanvasH = (v) =>
     sd({ type: A.SET_CANVAS_SIZE, payload: { w: canvasW, h: v } });
+  // Layer/mask state dispatch wrappers (bridge for useFramePlayback until M6)
+  const setActiveLayerId = (id) =>
+    sd({ type: A.SET_ACTIVE_LAYER, payload: id });
+  const setEditingMaskId = (id) =>
+    sd({ type: A.SET_EDITING_MASK, payload: id });
+  const setLayers = (layersOrFn) =>
+    sd({
+      type: A.SET_LAYERS,
+      payload:
+        typeof layersOrFn === "function" ? layersOrFn(ss.layers) : layersOrFn,
+    });
 
   const pendingResizeDataRef = useRef(null);
   const refImgElRef = useRef(null);
@@ -109,41 +123,41 @@ function JellySpriteBody({ onSwitchToAnimator }) {
   const tileCanvasRef = useRef(null);
   const tileUpdateRef = useRef(null);
 
+  // ── Bridge refs (M5) ───────────────────────────────────────────────────────
+  // layerDataRef / layerMaskDataRef are getter/setter proxies so that legacy
+  // hooks (useHistory, useFramePlayback, useDrawingTools) read and write the
+  // same pixel store as the new engine (refs.pixelBuffers / refs.maskBuffers).
+  // Assigning `layerDataRef.current = obj` replaces refs.pixelBuffers entirely
+  // (correct semantics for frame-switching) rather than mutating in-place.
+  const layerDataRef = {
+    get current() {
+      return refs.pixelBuffers;
+    },
+    set current(val) {
+      refs.pixelBuffers = val;
+    },
+  };
+  const layerMaskDataRef = {
+    get current() {
+      return refs.maskBuffers;
+    },
+    set current(val) {
+      refs.maskBuffers = val;
+    },
+  };
+  // Stable refs kept in sync with the store so event-handler closures
+  // in legacy hooks always see the current values (no stale closure).
+  const layersRef = useRef(ss.layers);
+  const activeLayerIdRef = useRef(ss.activeLayerId);
+  const editingMaskIdRef = useRef(ss.editingMaskId);
+  layersRef.current = ss.layers;
+  activeLayerIdRef.current = ss.activeLayerId;
+  editingMaskIdRef.current = ss.editingMaskId;
+
   // ── Stub refs — break circular hook dependencies ───────────────────────────
   const pushHistoryEntryStubRef = useRef(() => {});
   const redrawStubRef = useRef(() => {});
   const saveToProjectStubRef = useRef(() => {});
-
-  // ── useLayerManager ────────────────────────────────────────────────────────
-  const {
-    layers,
-    setLayers,
-    activeLayerId,
-    setActiveLayerId,
-    editingMaskId,
-    setEditingMaskId,
-    layerDataRef,
-    layerMaskDataRef,
-    layersRef,
-    activeLayerIdRef,
-    editingMaskIdRef,
-    addLayer,
-    deleteLayer,
-    duplicateLayer,
-    mergeLayerDown,
-    flattenAll,
-    moveLayerUp,
-    moveLayerDown,
-    updateLayer,
-    addLayerMask,
-    removeLayerMask,
-  } = useLayerManager({
-    canvasW,
-    canvasH,
-    pushHistoryEntry: () => pushHistoryEntryStubRef.current(),
-    redraw: () => redrawStubRef.current(),
-    saveToProject: () => saveToProjectStubRef.current(),
-  });
 
   // ── useCanvas (M2 store-based) ─────────────────────────────────────────────
   const { canvasRef } = useCanvas();
@@ -292,6 +306,140 @@ function JellySpriteBody({ onSwitchToAnimator }) {
   redrawStubRef.current = redraw;
   saveToProjectStubRef.current = saveToProject;
 
+  // ── Layer actions (M5: dispatch + mutate pixel buffers directly) ──────────
+  function addLayer() {
+    const newLayer = makeLayer(`Layer ${ss.layers.length + 1}`);
+    refs.pixelBuffers[newLayer.id] = new Uint8ClampedArray(
+      canvasW * canvasH * 4,
+    );
+    sd({ type: A.ADD_LAYER, payload: { layer: newLayer } });
+  }
+  function deleteLayer(id) {
+    if (ss.layers.length <= 1) return;
+    const remaining = ss.layers.filter((l) => l.id !== id);
+    delete refs.pixelBuffers[id];
+    delete refs.maskBuffers[id];
+    const newActive =
+      id === ss.activeLayerId
+        ? remaining[remaining.length - 1].id
+        : ss.activeLayerId;
+    sd({
+      type: A.DELETE_LAYER,
+      payload: {
+        layerId: id,
+        remainingLayers: remaining,
+        newActiveLayerId: newActive,
+      },
+    });
+  }
+  function duplicateLayer(id) {
+    const src = ss.layers.find((l) => l.id === id);
+    if (!src) return;
+    const dup = makeLayer(src.name + " copy");
+    const srcData = refs.pixelBuffers[id];
+    refs.pixelBuffers[dup.id] = srcData
+      ? new Uint8ClampedArray(srcData)
+      : new Uint8ClampedArray(canvasW * canvasH * 4);
+    const srcMask = refs.maskBuffers[id];
+    if (srcMask) {
+      refs.maskBuffers[dup.id] = new Uint8Array(srcMask);
+      dup.hasMask = true;
+    }
+    const insertAfterIndex = ss.layers.findIndex((l) => l.id === id);
+    sd({
+      type: A.DUPLICATE_LAYER,
+      payload: { newLayer: dup, insertAfterIndex },
+    });
+  }
+  function mergeLayerDown(id) {
+    const idx = ss.layers.findIndex((l) => l.id === id);
+    if (idx <= 0) return;
+    const below = ss.layers[idx - 1];
+    const topData = refs.pixelBuffers[id];
+    const botData = refs.pixelBuffers[below.id];
+    if (!topData || !botData) return;
+    const topLayer = ss.layers[idx];
+    for (let i = 0; i < botData.length; i += 4) {
+      const ta = (topData[i + 3] / 255) * topLayer.opacity;
+      const ba = botData[i + 3] / 255;
+      const outA = ta + ba * (1 - ta);
+      if (outA === 0) {
+        botData[i] = botData[i + 1] = botData[i + 2] = botData[i + 3] = 0;
+        continue;
+      }
+      botData[i] = Math.round(
+        (topData[i] * ta + botData[i] * ba * (1 - ta)) / outA,
+      );
+      botData[i + 1] = Math.round(
+        (topData[i + 1] * ta + botData[i + 1] * ba * (1 - ta)) / outA,
+      );
+      botData[i + 2] = Math.round(
+        (topData[i + 2] * ta + botData[i + 2] * ba * (1 - ta)) / outA,
+      );
+      botData[i + 3] = Math.round(outA * 255);
+    }
+    delete refs.pixelBuffers[id];
+    pushHistoryEntryStubRef.current();
+    refs.redraw?.();
+    sd({
+      type: A.MERGE_LAYER_DOWN,
+      payload: { survivingLayerId: below.id, removedLayerId: id },
+    });
+    saveToProjectStubRef.current();
+  }
+  function flattenAll() {
+    const flat = new Uint8ClampedArray(canvasW * canvasH * 4);
+    ss.layers.forEach((layer) => {
+      if (!layer.visible) return;
+      const data = refs.pixelBuffers[layer.id];
+      if (!data) return;
+      for (let i = 0; i < flat.length; i += 4) {
+        const ta = (data[i + 3] / 255) * layer.opacity;
+        const ba = flat[i + 3] / 255;
+        const outA = ta + ba * (1 - ta);
+        if (outA === 0) continue;
+        flat[i] = Math.round((data[i] * ta + flat[i] * ba * (1 - ta)) / outA);
+        flat[i + 1] = Math.round(
+          (data[i + 1] * ta + flat[i + 1] * ba * (1 - ta)) / outA,
+        );
+        flat[i + 2] = Math.round(
+          (data[i + 2] * ta + flat[i + 2] * ba * (1 - ta)) / outA,
+        );
+        flat[i + 3] = Math.round(outA * 255);
+      }
+    });
+    const baseLayer = makeLayer("Flattened");
+    refs.pixelBuffers = { [baseLayer.id]: flat };
+    refs.maskBuffers = {};
+    pushHistoryEntryStubRef.current();
+    refs.redraw?.();
+    sd({ type: A.FLATTEN_ALL, payload: { newLayer: baseLayer } });
+    saveToProjectStubRef.current();
+  }
+  function moveLayerUp(id) {
+    sd({ type: A.MOVE_LAYER_UP, payload: id });
+    refs.redraw?.();
+  }
+  function moveLayerDown(id) {
+    sd({ type: A.MOVE_LAYER_DOWN, payload: id });
+    refs.redraw?.();
+  }
+  function updateLayer(id, patch) {
+    sd({ type: A.UPDATE_LAYER, payload: { layerId: id, patch } });
+    if ("visible" in patch || "opacity" in patch || "blendMode" in patch)
+      refs.redraw?.();
+  }
+  function addLayerMask(layerId) {
+    refs.maskBuffers[layerId] = new Uint8Array(canvasW * canvasH).fill(255);
+    sd({ type: A.ADD_LAYER_MASK, payload: layerId });
+    refs.redraw?.();
+  }
+  function removeLayerMask(layerId) {
+    delete refs.maskBuffers[layerId];
+    sd({ type: A.REMOVE_LAYER_MASK, payload: layerId });
+    refs.redraw?.();
+  }
+
   // Keep window.__jellyRefs__.onionSkinning current for useCanvas
   useEffect(() => {
     if (window.__jellyRefs__)
@@ -380,32 +528,30 @@ function JellySpriteBody({ onSwitchToAnimator }) {
       h = canvasH,
       size = w * h * 4;
 
-    const newLayerData = {};
-    setLayers((prevLayers) => {
-      prevLayers.forEach((l) => {
-        newLayerData[l.id] = new Uint8ClampedArray(size);
-      });
-      return prevLayers;
-    });
-    layerDataRef.current = newLayerData;
+    // Re-allocate pixel buffers for all current layers (M5: goes into refs directly)
+    const freshBuffers = {};
+    for (const l of ss.layers) {
+      freshBuffers[l.id] = new Uint8ClampedArray(size);
+    }
+    refs.pixelBuffers = freshBuffers;
 
     if (pendingResizeDataRef.current) {
       for (const [lid, data] of Object.entries(pendingResizeDataRef.current)) {
-        if (layerDataRef.current[lid]) layerDataRef.current[lid].set(data);
+        if (refs.pixelBuffers[lid]) refs.pixelBuffers[lid].set(data);
       }
       pendingResizeDataRef.current = null;
     }
 
     pixelsRef.current =
-      layerDataRef.current[activeLayerId] ??
-      (layerDataRef.current[activeLayerId] = new Uint8ClampedArray(size));
+      refs.pixelBuffers[ss.activeLayerId] ??
+      (refs.pixelBuffers[ss.activeLayerId] = new Uint8ClampedArray(size));
 
     const activeFrameId = framesRef.current[activeFrameIdxRef.current]?.id;
     if (activeFrameId) {
       frameDataRef.current[activeFrameId] = {
         layers: [...layersRef.current],
         activeLayerId: activeLayerIdRef.current,
-        pixelData: layerDataRef.current,
+        pixelData: refs.pixelBuffers,
       };
     }
 
@@ -426,7 +572,7 @@ function JellySpriteBody({ onSwitchToAnimator }) {
         ctx2.clearRect(0, 0, w, h);
         ctx2.drawImage(img, 0, 0, w, h);
         pixelsRef.current.set(ctx2.getImageData(0, 0, w, h).data);
-        layerDataRef.current[activeLayerId] = pixelsRef.current;
+        refs.pixelBuffers[ss.activeLayerId] = pixelsRef.current;
         finish();
       };
       img.src = src;
