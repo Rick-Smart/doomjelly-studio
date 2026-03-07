@@ -283,6 +283,8 @@ export function jellySpriteReducer(state, action) {
       return { ...state, gridVisible: payload };
     case A.SET_FRAME_GRID_VISIBLE:
       return { ...state, frameGridVisible: payload };
+    case A.SET_FRAME_CONFIG:
+      return { ...state, frameConfig: payload };
     case A.SET_REF_IMAGE:
       return { ...state, refImage: payload };
     case A.SET_REF_OPACITY:

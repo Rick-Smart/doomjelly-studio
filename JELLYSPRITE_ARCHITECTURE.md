@@ -311,7 +311,8 @@ These start as no-ops (`() => {}`) and are overwritten by the hooks that create 
 
   // ── View overlays ─────────────────────────────────────────────────────────
   gridVisible:      true,       // pixel grid (only drawn at zoom >= 4)
-  frameGridVisible: true,       // frame boundary grid (uses state.frameConfig)
+  frameGridVisible: false,      // custom overlay grid; off by default
+  frameConfig:      { frameW: 16, frameH: 16 }, // custom grid cell size in pixels
   refImage:         null,       // data URL of the reference image | null
   refOpacity:       0.5,        // reference image overlay opacity
   refVisible:       true,       // reference image visibility toggle
@@ -424,6 +425,7 @@ RESTORE_HISTORY         payload: { layers, activeLayerId, canUndo, canRedo }
 ── View ───────────────────────────────────────────────────────────────────────
 SET_GRID_VISIBLE        payload: boolean
 SET_FRAME_GRID_VISIBLE  payload: boolean
+SET_FRAME_CONFIG        payload: { frameW: number, frameH: number }
 SET_REF_IMAGE           payload: dataUrl | null
 SET_REF_OPACITY         payload: 0–1
 SET_REF_VISIBLE         payload: boolean
@@ -1091,25 +1093,77 @@ PANEL_TABS; // right-panel tab definitions
 
 ---
 
-### 16.2 Zoom Updater-Function Bug (Fixed `2ec6d9e`)
+### 16.2 Boolean Toggle Updater-Function Bug (Fixed `2ec6d9e` + expanded)
 
-**Problem:** Zoom was dispatched as a function: `dispatch({ type: SET_ZOOM, payload: (z) => Math.max(1, z - 1) })`. The reducer treated this as `Math.max(1, Math.min(16, fn))` → `NaN`.
-
-**Fix:** The `setZoom` action creator in `JellySprite.jsx` unwraps updater functions before dispatching:
+**Problem:** Several toggle buttons in `LeftToolbar.jsx` use the React-style updater pattern:
 
 ```js
-const setZoom = (v) =>
+onClick={() => setSymmetryH((v) => !v)
+```
+
+This passes a _function_ as `v` to the action creator. The original action creators dispatched the function directly as the payload:
+
+```js
+const setSymmetryH = (v) => sd({ type: A.SET_SYMMETRY_H, payload: v });
+```
+
+The reducer then stored the function itself as `state.symmetryH`. Because a function is always truthy, the toggle appeared to turn on but could never turn off.
+
+The same bug applied to: `setSymmetryV`, `setGridVisible`, `setFrameGridVisible`.
+
+**Fix:** Every boolean toggle action creator now unwraps updater functions before dispatching:
+
+```js
+const setSymmetryH = (v) =>
   sd({
-    type: A.SET_ZOOM,
-    payload: typeof v === "function" ? v(zoom) : v,
+    type: A.SET_SYMMETRY_H,
+    payload: typeof v === "function" ? v(symmetryH) : v,
+  });
+const setSymmetryV = (v) =>
+  sd({
+    type: A.SET_SYMMETRY_V,
+    payload: typeof v === "function" ? v(symmetryV) : v,
+  });
+const setGridVisible = (v) =>
+  sd({
+    type: A.SET_GRID_VISIBLE,
+    payload: typeof v === "function" ? v(gridVisible) : v,
+  });
+const setFrameGridVisible = (v) =>
+  sd({
+    type: A.SET_FRAME_GRID_VISIBLE,
+    payload: typeof v === "function" ? v(frameGridVisible) : v,
   });
 ```
 
-**Rule:** The reducer is a pure function — never pass a callback as a payload.
+**Rule:** The reducer is a pure function — never pass a callback as a payload. Any action creator that can receive an updater function must resolve it against the current state value before dispatching.
 
 ---
 
-### 16.3 `tileCanvasEl` / `refImgEl` Wiring (Fixed M14 — `7cbddf0`)
+### 16.3 Custom Grid (`frameConfig`) Missing from State
+
+**Problem:** The renderer's frame-grid branch checks `if (frameGridVisible && frameConfig)` and reads `frameConfig.frameW/frameH`. However, `frameConfig` was never added to `jellySpriteInitialState.js` or the reducer, so `state.frameConfig` was always `undefined`. The frame-grid button appeared active (since `frameGridVisible` defaulted to `true`) but the grid never drew — the `&& frameConfig` guard silently swallowed the render call.
+
+**Fixes:**
+
+- Added `frameConfig: { frameW: 16, frameH: 16 }` to `jellySpriteInitialState.js`.
+- Added `SET_FRAME_CONFIG` action constant and reducer `case A.SET_FRAME_CONFIG: return { ...state, frameConfig: payload }`.
+- Changed `frameGridVisible` default to `false` so the grid only appears when explicitly enabled by the user.
+- Added a "Grid" section to the View tab (`RightPanel.jsx` → `ViewTabBody`) with pixel-grid and custom-grid checkboxes plus W×H cell-size inputs that dispatch `SET_FRAME_CONFIG`.
+
+**Grid system summary:**
+
+| Button / control        | State field        | What it draws                                                                     |
+| ----------------------- | ------------------ | --------------------------------------------------------------------------------- |
+| ⊞ Pixel grid (toolbar)  | `gridVisible`      | 1-pixel cell grid at zoom ≥ 4×                                                    |
+| ▦ Custom grid (toolbar) | `frameGridVisible` | Configurable grid overlay with `frameConfig.frameW × frameConfig.frameH` px cells |
+| W / H inputs (View tab) | `frameConfig`      | Cell size for the custom grid                                                     |
+
+The custom grid is useful for: sprite sheet layout (e.g., 16×16 frame boundaries), tile alignment, or any repeating structure the user wants to see overlaid on the canvas.
+
+---
+
+### 16.4 `tileCanvasEl` / `refImgEl` Wiring (Fixed M14 — `7cbddf0`)
 
 **Problem:** The renderer reads `refs.tileCanvasEl` and `refs.refImgEl`, but those fields were initialized to `null` in the provider and never populated.
 
@@ -1122,7 +1176,7 @@ const setZoom = (v) =>
 
 ---
 
-### 16.4 Selection Synchronization
+### 16.5 Selection Synchronization
 
 **Problem:** The selection state has three representations that must all stay in sync: `refs.selection` (engine writes), `state.selection` read via `refs.stateRef.current` (renderer reads), and React state `state.selection` (UI reads). Missing any one causes the selection to appear stuck or invisible.
 
@@ -1146,13 +1200,13 @@ refs.redraw();
 
 ---
 
-### 16.5 History Index Seeding
+### 16.6 History Index Seeding
 
 `wireHistoryEngine` calls `pushHistory(refs)` once immediately to seed index 0. This means `undoHistory()` stops at index 0 (the blank canvas), never going below it. If you call `wireHistoryEngine` a second time (e.g., after project load), call `refs.historyStack = []; refs.historyIndex = -1` first to avoid duplicate initial entries.
 
 ---
 
-### 16.6 `stateRef` Staleness Guard
+### 16.7 `stateRef` Staleness Guard
 
 The drawing engine and renderer closures read `refs.stateRef.current` instead of closing over `state`. This is safe because `JellySpriteProvider` updates `refs.stateRef.current = state` **synchronously every render**. However, during the very first render before any engine hook runs, `stateRef.current` is `jellySpriteInitialState`. This is intentional and correct.
 
@@ -1160,7 +1214,7 @@ Do **not** read `refs.stateRef.current` in event handlers that run _during_ a Re
 
 ---
 
-### 16.7 `makeLayer` / `makeFrame` Counter Persistence
+### 16.8 `makeLayer` / `makeFrame` Counter Persistence
 
 `_layerIdCounter` and `_frameIdCounter` in `jellySprite.constants.js` are module-scope incremental counters. They do not reset between project loads. IDs are therefore unique per session but not globally persistent. If you need stable IDs across saves (for project files), generate UUIDs at creation time and store them in the project JSON.
 

@@ -40,6 +40,7 @@ function JellySpriteBody({ onSwitchToAnimator }) {
     symmetryV,
     gridVisible,
     frameGridVisible,
+    frameConfig,
     brushType,
     brushSize,
     brushOpacity,
@@ -80,11 +81,27 @@ function JellySpriteBody({ onSwitchToAnimator }) {
     sd({ type: A.SET_ZOOM, payload: typeof v === "function" ? v(zoom) : v });
   const setTool = (v) => sd({ type: A.SET_TOOL, payload: v });
   const setFillShapes = (v) => sd({ type: A.SET_FILL_SHAPES, payload: v });
-  const setSymmetryH = (v) => sd({ type: A.SET_SYMMETRY_H, payload: v });
-  const setSymmetryV = (v) => sd({ type: A.SET_SYMMETRY_V, payload: v });
-  const setGridVisible = (v) => sd({ type: A.SET_GRID_VISIBLE, payload: v });
+  const setSymmetryH = (v) =>
+    sd({
+      type: A.SET_SYMMETRY_H,
+      payload: typeof v === "function" ? v(symmetryH) : v,
+    });
+  const setSymmetryV = (v) =>
+    sd({
+      type: A.SET_SYMMETRY_V,
+      payload: typeof v === "function" ? v(symmetryV) : v,
+    });
+  const setGridVisible = (v) =>
+    sd({
+      type: A.SET_GRID_VISIBLE,
+      payload: typeof v === "function" ? v(gridVisible) : v,
+    });
   const setFrameGridVisible = (v) =>
-    sd({ type: A.SET_FRAME_GRID_VISIBLE, payload: v });
+    sd({
+      type: A.SET_FRAME_GRID_VISIBLE,
+      payload: typeof v === "function" ? v(frameGridVisible) : v,
+    });
+  const setFrameConfig = (v) => sd({ type: A.SET_FRAME_CONFIG, payload: v });
   const setBrushType = (v) => sd({ type: A.SET_BRUSH_TYPE, payload: v });
   const setBrushSize = (v) => sd({ type: A.SET_BRUSH_SIZE, payload: v });
   const setBrushOpacity = (v) => sd({ type: A.SET_BRUSH_OPACITY, payload: v });
@@ -1311,6 +1328,8 @@ function JellySpriteBody({ onSwitchToAnimator }) {
     setGridVisible,
     frameGridVisible,
     setFrameGridVisible,
+    frameConfig,
+    setFrameConfig,
     brushType,
     setBrushType,
     brushSize,

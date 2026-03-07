@@ -67,7 +67,9 @@ export const jellySpriteInitialState = {
 
   // ── View ─────────────────────────────────────────────────────────────────
   gridVisible: true,
-  frameGridVisible: true,
+  frameGridVisible: false,
+  // Custom overlay grid — cell dimensions in pixels. null disables drawing.
+  frameConfig: { frameW: 16, frameH: 16 },
   refImage: null, // data URL of reference image, or null
   refOpacity: 0.5,
   refVisible: true,

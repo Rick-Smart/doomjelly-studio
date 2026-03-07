@@ -73,6 +73,7 @@ export const RESTORE_HISTORY = "RESTORE_HISTORY"; // { layers, activeLayerId, ca
 // ── View ──────────────────────────────────────────────────────────────────────
 export const SET_GRID_VISIBLE = "SET_GRID_VISIBLE"; // boolean
 export const SET_FRAME_GRID_VISIBLE = "SET_FRAME_GRID_VISIBLE"; // boolean
+export const SET_FRAME_CONFIG = "SET_FRAME_CONFIG"; // { frameW, frameH } | null
 export const SET_REF_IMAGE = "SET_REF_IMAGE"; // dataUrl string | null
 export const SET_REF_OPACITY = "SET_REF_OPACITY"; // number 0–1
 export const SET_REF_VISIBLE = "SET_REF_VISIBLE"; // boolean

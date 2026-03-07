@@ -645,10 +645,100 @@ function ViewTabBody() {
     setTileCount,
     tileCanvasRef,
     redrawRef,
+    gridVisible,
+    setGridVisible,
+    frameGridVisible,
+    setFrameGridVisible,
+    frameConfig,
+    setFrameConfig,
   } = useJellySprite();
 
   return (
     <>
+      <div className="jelly-sprite__section">
+        <div className="jelly-sprite__section-label">Grid</div>
+        <div className="jelly-sprite__export-row">
+          <label className="jelly-sprite__export-label" style={{ flex: 1 }}>
+            <input
+              type="checkbox"
+              checked={gridVisible}
+              onChange={(e) => setGridVisible(e.target.checked)}
+              style={{ marginRight: 6 }}
+            />
+            Pixel grid
+          </label>
+          <span
+            className="jelly-sprite__ref-opacity-label"
+            style={{ color: "var(--color-text-muted, #888)", fontSize: 11 }}
+          >
+            zoom ≥ 4×
+          </span>
+        </div>
+        <div className="jelly-sprite__export-row">
+          <label className="jelly-sprite__export-label" style={{ flex: 1 }}>
+            <input
+              type="checkbox"
+              checked={frameGridVisible}
+              onChange={(e) => setFrameGridVisible(e.target.checked)}
+              style={{ marginRight: 6 }}
+            />
+            Custom grid
+          </label>
+        </div>
+        {frameGridVisible && (
+          <div
+            className="jelly-sprite__export-row"
+            style={{ gap: 6, alignItems: "center" }}
+          >
+            <label
+              className="jelly-sprite__export-label"
+              style={{ minWidth: 0 }}
+            >
+              W
+            </label>
+            <input
+              type="number"
+              min={1}
+              max={512}
+              value={frameConfig?.frameW ?? 16}
+              onChange={(e) =>
+                setFrameConfig({
+                  ...frameConfig,
+                  frameW: Math.max(1, Number(e.target.value)),
+                })
+              }
+              className="jelly-sprite__custom-size-input"
+              style={{ width: 52 }}
+            />
+            <label
+              className="jelly-sprite__export-label"
+              style={{ minWidth: 0 }}
+            >
+              H
+            </label>
+            <input
+              type="number"
+              min={1}
+              max={512}
+              value={frameConfig?.frameH ?? 16}
+              onChange={(e) =>
+                setFrameConfig({
+                  ...frameConfig,
+                  frameH: Math.max(1, Number(e.target.value)),
+                })
+              }
+              className="jelly-sprite__custom-size-input"
+              style={{ width: 52 }}
+            />
+            <span
+              className="jelly-sprite__ref-opacity-label"
+              style={{ color: "var(--color-text-muted, #888)", fontSize: 11 }}
+            >
+              px
+            </span>
+          </div>
+        )}
+      </div>
       <div className="jelly-sprite__section">
         <div className="jelly-sprite__section-label">
           Reference
