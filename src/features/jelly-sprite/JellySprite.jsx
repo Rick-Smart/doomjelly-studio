@@ -320,6 +320,20 @@ export function JellySprite({ onSwitchToAnimator }) {
   const [exportPadding, setExportPadding] = useState(1);
   const [exportLabels, setExportLabels] = useState(false);
 
+  // Tile preview
+  const [tileVisible, setTileVisible] = useState(false);
+  const [tileCount, setTileCount] = useState(2);
+  const tileCanvasRef = useRef(null);
+  const tileUpdateRef = useRef(null);
+
+  // Reference image overlay
+  const [refImage, setRefImage] = useState(null);
+  const [refOpacity, setRefOpacity] = useState(0.5);
+  const [refVisible, setRefVisible] = useState(true);
+  const refImgElRef = useRef(null);
+  const refOpacityRef = useRef(0.5);
+  const refVisibleRef = useRef(true);
+
   // Undo/redo — stores full {layerData, layers, activeLayerId} snapshots
   const historyRef = useRef([]);
   const histIdxRef = useRef(0);
@@ -470,6 +484,10 @@ export function JellySprite({ onSwitchToAnimator }) {
   useEffect(() => {
     redrawRef.current = redraw;
   }); // always latest
+  // Re-draw when tile visibility/count changes so the canvas populates after mount
+  useEffect(() => {
+    if (tileVisible) redrawRef.current?.();
+  }, [tileVisible, tileCount]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!selection) {
       if (marchingAntsRef.current)
@@ -571,6 +589,15 @@ export function JellySprite({ onSwitchToAnimator }) {
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(off, 0, 0, w * z, h * z);
 
+    // Reference image overlay
+    if (refImgElRef.current && refVisibleRef.current) {
+      ctx.globalAlpha = refOpacityRef.current;
+      ctx.imageSmoothingEnabled = true;
+      ctx.drawImage(refImgElRef.current, 0, 0, w * z, h * z);
+      ctx.globalAlpha = 1;
+      ctx.imageSmoothingEnabled = false;
+    }
+
     if (gridVisible && z >= 4) {
       ctx.strokeStyle = "rgba(0,0,0,0.1)";
       ctx.lineWidth = 0.5;
@@ -623,6 +650,9 @@ export function JellySprite({ onSwitchToAnimator }) {
       ctx.strokeRect(x * z + 0.5, y * z + 0.5, sw * z, sh * z);
       ctx.restore();
     }
+
+    // Update tile preview canvas
+    tileUpdateRef.current?.();
   }, [
     canvasW,
     canvasH,
@@ -1372,6 +1402,27 @@ export function JellySprite({ onSwitchToAnimator }) {
     );
   }
 
+  // ── Reference image ───────────────────────────────────────────────────────
+  function loadRefImage(file) {
+    if (!file || !file.type.startsWith("image/")) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        refImgElRef.current = img;
+        redrawRef.current?.();
+      };
+      img.src = e.target.result;
+      setRefImage(e.target.result);
+    };
+    reader.readAsDataURL(file);
+  }
+  function clearRefImage() {
+    refImgElRef.current = null;
+    setRefImage(null);
+    redrawRef.current?.();
+  }
+
   // ── Cross-workspace actions ────────────────────────────────────────────────
   function clearCanvas() {
     pixelsRef.current.fill(0);
@@ -1954,6 +2005,24 @@ export function JellySprite({ onSwitchToAnimator }) {
           : ["line", "rect", "ellipse"].includes(tool)
             ? "crosshair"
             : "cell";
+
+  // Keep tile-update fn fresh every render so it reads latest closure values
+  tileUpdateRef.current = () => {
+    const tc = tileCanvasRef.current;
+    const off2 = offscreenRef.current;
+    if (!tc || !off2 || !tileVisible) return;
+    const n = tileCount;
+    tc.width = canvasW * n;
+    tc.height = canvasH * n;
+    const tCtx = tc.getContext("2d");
+    tCtx.imageSmoothingEnabled = false;
+    tCtx.clearRect(0, 0, tc.width, tc.height);
+    for (let row = 0; row < n; row++) {
+      for (let col = 0; col < n; col++) {
+        tCtx.drawImage(off2, col * canvasW, row * canvasH);
+      }
+    }
+  };
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
@@ -2566,6 +2635,124 @@ export function JellySprite({ onSwitchToAnimator }) {
           <button className="jelly-sprite__use-btn" onClick={useInAnimator}>
             Send to Animator →
           </button>
+        </div>
+
+        {/* Reference image */}
+        <div className="jelly-sprite__section">
+          <div className="jelly-sprite__section-label">
+            Reference
+            {refImage && (
+              <button
+                className="jelly-sprite__deselect-btn"
+                onClick={clearRefImage}
+                title="Remove reference image"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+          {refImage ? (
+            <>
+              <img
+                src={refImage}
+                className="jelly-sprite__ref-preview"
+                alt="Reference"
+              />
+              <div className="jelly-sprite__export-row">
+                <label className="jelly-sprite__export-label">
+                  <input
+                    type="checkbox"
+                    checked={refVisible}
+                    onChange={(e) => {
+                      refVisibleRef.current = e.target.checked;
+                      setRefVisible(e.target.checked);
+                      redrawRef.current?.();
+                    }}
+                    style={{ marginRight: 6 }}
+                  />
+                  Visible
+                </label>
+              </div>
+              <div className="jelly-sprite__export-row">
+                <label className="jelly-sprite__export-label">Opacity</label>
+                <input
+                  type="range"
+                  min={5}
+                  max={100}
+                  value={Math.round(refOpacity * 100)}
+                  onChange={(e) => {
+                    const v = Number(e.target.value) / 100;
+                    refOpacityRef.current = v;
+                    setRefOpacity(v);
+                    redrawRef.current?.();
+                  }}
+                  className="jelly-sprite__brush-slider"
+                  style={{ flex: 1 }}
+                />
+                <span className="jelly-sprite__ref-opacity-label">
+                  {Math.round(refOpacity * 100)}%
+                </span>
+              </div>
+            </>
+          ) : (
+            <label className="jelly-sprite__ref-load-btn">
+              Load image…
+              <input
+                type="file"
+                accept="image/*"
+                hidden
+                onChange={(e) =>
+                  e.target.files[0] && loadRefImage(e.target.files[0])
+                }
+              />
+            </label>
+          )}
+        </div>
+
+        {/* Tile preview */}
+        <div className="jelly-sprite__section">
+          <div className="jelly-sprite__section-label">
+            Tile preview
+            <div className="jelly-sprite__tile-mode-btns">
+              <button
+                className={`jelly-sprite__tile-mode-btn${
+                  tileVisible && tileCount === 2
+                    ? " jelly-sprite__tile-mode-btn--active"
+                    : ""
+                }`}
+                onClick={() => {
+                  setTileVisible(true);
+                  setTileCount(2);
+                }}
+              >
+                2×2
+              </button>
+              <button
+                className={`jelly-sprite__tile-mode-btn${
+                  tileVisible && tileCount === 3
+                    ? " jelly-sprite__tile-mode-btn--active"
+                    : ""
+                }`}
+                onClick={() => {
+                  setTileVisible(true);
+                  setTileCount(3);
+                }}
+              >
+                3×3
+              </button>
+              {tileVisible && (
+                <button
+                  className="jelly-sprite__tile-mode-btn"
+                  onClick={() => setTileVisible(false)}
+                >
+                  off
+                </button>
+              )}
+            </div>
+          </div>
+          {tileVisible && (
+            <canvas ref={tileCanvasRef} className="jelly-sprite__tile-canvas" />
+          )}
         </div>
 
         {/* Export */}
