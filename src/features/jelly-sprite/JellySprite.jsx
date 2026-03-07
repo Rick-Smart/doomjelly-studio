@@ -69,6 +69,20 @@ const BRUSH_TYPES = [
 const MAX_HISTORY = 50;
 const MAX_COLOUR_HISTORY = 10;
 let _layerIdCounter = 1;
+const BLEND_MODES = [
+  { id: "normal", label: "Normal" },
+  { id: "multiply", label: "Multiply" },
+  { id: "screen", label: "Screen" },
+  { id: "overlay", label: "Overlay" },
+  { id: "lighter", label: "Add" },
+  { id: "color-dodge", label: "Dodge" },
+  { id: "color-burn", label: "Burn" },
+  { id: "hard-light", label: "Hard Lt" },
+  { id: "soft-light", label: "Soft Lt" },
+  { id: "difference", label: "Diff" },
+  { id: "exclusion", label: "Excl" },
+];
+
 function makeLayer(name) {
   return {
     id: `layer-${_layerIdCounter++}`,
@@ -76,6 +90,7 @@ function makeLayer(name) {
     visible: true,
     opacity: 1.0,
     locked: false,
+    blendMode: "normal",
   };
 }
 let _frameIdCounter = 0;
@@ -536,8 +551,10 @@ export function JellySprite({ onSwitchToAnimator }) {
         tmp.height = h;
         tmp.getContext("2d").putImageData(imgData, 0, 0);
         offCtx.globalAlpha = layer.opacity;
+        offCtx.globalCompositeOperation = layer.blendMode ?? "normal";
         offCtx.drawImage(tmp, 0, 0);
         offCtx.globalAlpha = 1;
+        offCtx.globalCompositeOperation = "source-over";
       });
     }
 
@@ -2546,8 +2563,24 @@ export function JellySprite({ onSwitchToAnimator }) {
                   key={`op-${layer.id}`}
                   className="jelly-sprite__layer-opacity-row"
                 >
+                  <select
+                    className="jelly-sprite__blend-select"
+                    value={layer.blendMode ?? "normal"}
+                    onClick={(e) => e.stopPropagation()}
+                    onChange={(e) => {
+                      updateLayer(layer.id, { blendMode: e.target.value });
+                      redraw();
+                    }}
+                    title="Blend mode"
+                  >
+                    {BLEND_MODES.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.label}
+                      </option>
+                    ))}
+                  </select>
                   <span className="jelly-sprite__brush-size-label">
-                    Opacity {Math.round(layer.opacity * 100)}%
+                    {Math.round(layer.opacity * 100)}%
                   </span>
                   <input
                     type="range"
@@ -2561,6 +2594,7 @@ export function JellySprite({ onSwitchToAnimator }) {
                       redraw();
                     }}
                     className="jelly-sprite__brush-slider"
+                    style={{ flex: 1 }}
                   />
                 </div>
               ) : null,

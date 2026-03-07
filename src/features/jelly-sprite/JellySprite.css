@@ -421,7 +421,21 @@
   padding: 4px 6px;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
+}
+
+.jelly-sprite__blend-select {
+  width: 100%;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-size: 11px;
+  padding: 3px 4px;
+  cursor: pointer;
+}
+.jelly-sprite__blend-select:focus {
+  outline: 1px solid var(--accent);
 }
 
 .jelly-sprite__layer-add-btn {
@@ -1213,7 +1227,9 @@
   color: var(--text-muted);
   font-size: 12px;
   cursor: pointer;
-  transition: border-color 0.15s, color 0.15s;
+  transition:
+    border-color 0.15s,
+    color 0.15s;
   text-align: center;
 }
 .jelly-sprite__ref-load-btn:hover {
@@ -1228,9 +1244,10 @@
   border-radius: 4px;
   border: 1px solid var(--border);
   background: repeating-conic-gradient(
-    color-mix(in srgb, var(--surface3) 90%, var(--text-muted)) 0% 25%,
-    color-mix(in srgb, var(--surface2) 90%, var(--text-muted)) 0% 50%
-  ) 0 0 / 8px 8px;
+      color-mix(in srgb, var(--surface3) 90%, var(--text-muted)) 0% 25%,
+      color-mix(in srgb, var(--surface2) 90%, var(--text-muted)) 0% 50%
+    )
+    0 0 / 8px 8px;
   image-rendering: pixelated;
 }
 .jelly-sprite__ref-opacity-label {
@@ -1255,7 +1272,10 @@
   border-radius: 4px;
   color: var(--text-muted);
   cursor: pointer;
-  transition: background 0.1s, border-color 0.1s, color 0.1s;
+  transition:
+    background 0.1s,
+    border-color 0.1s,
+    color 0.1s;
 }
 .jelly-sprite__tile-mode-btn:hover {
   background: var(--surface3);
@@ -1274,7 +1294,8 @@
   image-rendering: pixelated;
   image-rendering: crisp-edges;
   background: repeating-conic-gradient(
-    color-mix(in srgb, var(--surface3) 90%, var(--text-muted)) 0% 25%,
-    color-mix(in srgb, var(--surface2) 90%, var(--text-muted)) 0% 50%
-  ) 0 0 / 8px 8px;
+      color-mix(in srgb, var(--surface3) 90%, var(--text-muted)) 0% 25%,
+      color-mix(in srgb, var(--surface2) 90%, var(--text-muted)) 0% 50%
+    )
+    0 0 / 8px 8px;
 }
