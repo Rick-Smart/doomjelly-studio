@@ -59,6 +59,7 @@ export const UPDATE_THUMBNAIL = "UPDATE_THUMBNAIL"; // { frameId, dataUrl }
 // ── Playback ──────────────────────────────────────────────────────────────────
 export const SET_IS_PLAYING = "SET_IS_PLAYING"; // boolean
 export const SET_FPS = "SET_FPS"; // number
+export const SET_PLAYBACK_FRAME_IDX = "SET_PLAYBACK_FRAME_IDX"; // number
 export const SET_ONION_SKINNING = "SET_ONION_SKINNING"; // boolean
 
 // ── Selection ─────────────────────────────────────────────────────────────────

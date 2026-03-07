@@ -248,6 +248,8 @@ export function jellySpriteReducer(state, action) {
       return { ...state, isPlaying: payload };
     case A.SET_FPS:
       return { ...state, fps: payload };
+    case A.SET_PLAYBACK_FRAME_IDX:
+      return { ...state, playbackFrameIdx: payload };
     case A.SET_ONION_SKINNING:
       return { ...state, onionSkinning: payload };
 

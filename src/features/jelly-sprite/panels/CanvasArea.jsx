@@ -22,6 +22,7 @@ export function CanvasArea() {
     frames,
     activeFrameIdx,
     frameThumbnails,
+    playbackFrameIdx,
     playbackFrameIdxRef,
     switchToFrame,
     duplicateFrame,
@@ -98,7 +99,7 @@ export function CanvasArea() {
               name={frame.name}
               active={idx === activeFrameIdx}
               idx={idx}
-              playbackIdx={isPlaying ? playbackFrameIdxRef.current : -1}
+              playbackIdx={isPlaying ? playbackFrameIdx : -1}
               isPlaying={isPlaying}
               onClick={() => !isPlaying && switchToFrame(idx)}
               onDuplicate={() => duplicateFrame(idx)}

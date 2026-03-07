@@ -29,6 +29,7 @@ export const jellySpriteInitialState = {
   // ── Playback ─────────────────────────────────────────────────────────────
   isPlaying: false,
   fps: 8,
+  playbackFrameIdx: 0,
   onionSkinning: false,
 
   // ── Tools ────────────────────────────────────────────────────────────────
