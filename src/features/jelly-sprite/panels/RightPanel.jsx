@@ -307,25 +307,177 @@ function BrushTabBody() {
 }
 
 // ── Layers tab ────────────────────────────────────────────────────────────────
-function LayersTabBody() {
+// ── LayerRow card ─────────────────────────────────────────────────────────────
+function LayerRow({ layer, isActive }) {
   const {
-    layers,
     activeLayerId,
     setActiveLayerId,
     editingMaskId,
     setEditingMaskId,
-    addLayer,
     deleteLayer,
     duplicateLayer,
-    mergeLayerDown,
     moveLayerUp,
     moveLayerDown,
     updateLayer,
-    flattenAll,
     addLayerMask,
     removeLayerMask,
     redraw,
   } = useJellySprite();
+
+  return (
+    <>
+      <div
+        className={`jelly-sprite__layer-row${isActive ? " jelly-sprite__layer-row--active" : ""}`}
+        onClick={() => setActiveLayerId(layer.id)}
+      >
+        <button
+          className="jelly-sprite__layer-vis-btn"
+          title={layer.visible ? "Hide layer" : "Show layer"}
+          onClick={(e) => {
+            e.stopPropagation();
+            updateLayer(layer.id, { visible: !layer.visible });
+            redraw();
+          }}
+        >
+          {layer.visible ? "👁" : "⊘"}
+        </button>
+        <span className="jelly-sprite__layer-name">{layer.name}</span>
+        {layer.hasMask && (
+          <button
+            className={`jelly-sprite__mask-chip${editingMaskId === layer.id ? " jelly-sprite__mask-chip--editing" : ""}`}
+            title={
+              editingMaskId === layer.id ? "Stop editing mask" : "Edit mask"
+            }
+            onClick={(e) => {
+              e.stopPropagation();
+              setActiveLayerId(layer.id);
+              setEditingMaskId((prev) => (prev === layer.id ? null : layer.id));
+            }}
+          >
+            ⬡
+          </button>
+        )}
+        <div className="jelly-sprite__layer-actions">
+          <button
+            className="jelly-sprite__layer-icon-btn"
+            title="Move up"
+            onClick={(e) => {
+              e.stopPropagation();
+              moveLayerUp(layer.id);
+            }}
+          >
+            ↑
+          </button>
+          <button
+            className="jelly-sprite__layer-icon-btn"
+            title="Move down"
+            onClick={(e) => {
+              e.stopPropagation();
+              moveLayerDown(layer.id);
+            }}
+          >
+            ↓
+          </button>
+          <button
+            className="jelly-sprite__layer-icon-btn"
+            title="Duplicate"
+            onClick={(e) => {
+              e.stopPropagation();
+              duplicateLayer(layer.id);
+            }}
+          >
+            ⎘
+          </button>
+          <button
+            className="jelly-sprite__layer-icon-btn jelly-sprite__layer-icon-btn--danger"
+            title="Delete layer"
+            onClick={(e) => {
+              e.stopPropagation();
+              deleteLayer(layer.id);
+            }}
+          >
+            ✕
+          </button>
+        </div>
+      </div>
+
+      {isActive && (
+        <>
+          <div className="jelly-sprite__layer-opacity-row">
+            <select
+              className="jelly-sprite__blend-select"
+              value={layer.blendMode ?? "normal"}
+              onClick={(e) => e.stopPropagation()}
+              onChange={(e) => {
+                updateLayer(layer.id, { blendMode: e.target.value });
+                redraw();
+              }}
+              title="Blend mode"
+            >
+              {BLEND_MODES.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.label}
+                </option>
+              ))}
+            </select>
+            <span className="jelly-sprite__brush-size-label">
+              {Math.round(layer.opacity * 100)}%
+            </span>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              value={Math.round(layer.opacity * 100)}
+              onChange={(e) => {
+                updateLayer(layer.id, {
+                  opacity: Number(e.target.value) / 100,
+                });
+                redraw();
+              }}
+              className="jelly-sprite__brush-slider"
+              style={{ flex: 1 }}
+            />
+          </div>
+          <div className="jelly-sprite__layer-mask-row">
+            {layer.hasMask ? (
+              <>
+                <button
+                  className={`jelly-sprite__size-btn${editingMaskId === layer.id ? " jelly-sprite__size-btn--active" : ""}`}
+                  onClick={() =>
+                    setEditingMaskId((p) => (p === layer.id ? null : layer.id))
+                  }
+                  title="Toggle mask editing"
+                >
+                  {editingMaskId === layer.id ? "✦ Editing Mask" : "Edit Mask"}
+                </button>
+                <button
+                  className="jelly-sprite__size-btn jelly-sprite__size-btn--danger"
+                  onClick={() => removeLayerMask(layer.id)}
+                  title="Delete layer mask"
+                >
+                  Del Mask
+                </button>
+              </>
+            ) : (
+              <button
+                className="jelly-sprite__size-btn"
+                onClick={() => addLayerMask(layer.id)}
+                title="Add layer mask (white = fully revealed)"
+              >
+                + Add Mask
+              </button>
+            )}
+          </div>
+        </>
+      )}
+    </>
+  );
+}
+
+// ── Layers tab ────────────────────────────────────────────────────────────────
+function LayersTabBody() {
+  const { layers, activeLayerId, addLayer, mergeLayerDown, flattenAll } =
+    useJellySprite();
 
   return (
     <div className="jelly-sprite__section">
@@ -341,166 +493,12 @@ function LayersTabBody() {
       </div>
       <div className="jelly-sprite__layers-list">
         {[...layers].reverse().map((layer) => (
-          <div
+          <LayerRow
             key={layer.id}
-            className={`jelly-sprite__layer-row${layer.id === activeLayerId ? " jelly-sprite__layer-row--active" : ""}`}
-            onClick={() => setActiveLayerId(layer.id)}
-          >
-            <button
-              className="jelly-sprite__layer-vis-btn"
-              title={layer.visible ? "Hide layer" : "Show layer"}
-              onClick={(e) => {
-                e.stopPropagation();
-                updateLayer(layer.id, { visible: !layer.visible });
-                redraw();
-              }}
-            >
-              {layer.visible ? "👁" : "⊘"}
-            </button>
-            <span className="jelly-sprite__layer-name">{layer.name}</span>
-            {layer.hasMask && (
-              <button
-                className={`jelly-sprite__mask-chip${editingMaskId === layer.id ? " jelly-sprite__mask-chip--editing" : ""}`}
-                title={
-                  editingMaskId === layer.id ? "Stop editing mask" : "Edit mask"
-                }
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setActiveLayerId(layer.id);
-                  setEditingMaskId((prev) =>
-                    prev === layer.id ? null : layer.id,
-                  );
-                }}
-              >
-                ⬡
-              </button>
-            )}
-            <div className="jelly-sprite__layer-actions">
-              <button
-                className="jelly-sprite__layer-icon-btn"
-                title="Move up"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  moveLayerUp(layer.id);
-                }}
-              >
-                ↑
-              </button>
-              <button
-                className="jelly-sprite__layer-icon-btn"
-                title="Move down"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  moveLayerDown(layer.id);
-                }}
-              >
-                ↓
-              </button>
-              <button
-                className="jelly-sprite__layer-icon-btn"
-                title="Duplicate"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  duplicateLayer(layer.id);
-                }}
-              >
-                ⎘
-              </button>
-              <button
-                className="jelly-sprite__layer-icon-btn jelly-sprite__layer-icon-btn--danger"
-                title="Delete layer"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  deleteLayer(layer.id);
-                }}
-              >
-                ✕
-              </button>
-            </div>
-          </div>
+            layer={layer}
+            isActive={layer.id === activeLayerId}
+          />
         ))}
-
-        {[...layers].reverse().map((layer) =>
-          layer.id === activeLayerId ? (
-            <>
-              <div
-                key={`op-${layer.id}`}
-                className="jelly-sprite__layer-opacity-row"
-              >
-                <select
-                  className="jelly-sprite__blend-select"
-                  value={layer.blendMode ?? "normal"}
-                  onClick={(e) => e.stopPropagation()}
-                  onChange={(e) => {
-                    updateLayer(layer.id, { blendMode: e.target.value });
-                    redraw();
-                  }}
-                  title="Blend mode"
-                >
-                  {BLEND_MODES.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.label}
-                    </option>
-                  ))}
-                </select>
-                <span className="jelly-sprite__brush-size-label">
-                  {Math.round(layer.opacity * 100)}%
-                </span>
-                <input
-                  type="range"
-                  min={0}
-                  max={100}
-                  value={Math.round(layer.opacity * 100)}
-                  onChange={(e) => {
-                    updateLayer(layer.id, {
-                      opacity: Number(e.target.value) / 100,
-                    });
-                    redraw();
-                  }}
-                  className="jelly-sprite__brush-slider"
-                  style={{ flex: 1 }}
-                />
-              </div>
-              <div
-                key={`mask-${layer.id}`}
-                className="jelly-sprite__layer-mask-row"
-              >
-                {layer.hasMask ? (
-                  <>
-                    <button
-                      className={`jelly-sprite__size-btn${editingMaskId === layer.id ? " jelly-sprite__size-btn--active" : ""}`}
-                      onClick={() =>
-                        setEditingMaskId((p) =>
-                          p === layer.id ? null : layer.id,
-                        )
-                      }
-                      title="Toggle mask editing"
-                    >
-                      {editingMaskId === layer.id
-                        ? "✦ Editing Mask"
-                        : "Edit Mask"}
-                    </button>
-                    <button
-                      className="jelly-sprite__size-btn jelly-sprite__size-btn--danger"
-                      onClick={() => removeLayerMask(layer.id)}
-                      title="Delete layer mask"
-                    >
-                      Del Mask
-                    </button>
-                  </>
-                ) : (
-                  <button
-                    className="jelly-sprite__size-btn"
-                    onClick={() => addLayerMask(layer.id)}
-                    title="Add layer mask (white = fully revealed)"
-                  >
-                    + Add Mask
-                  </button>
-                )}
-              </div>
-            </>
-          ) : null,
-        )}
       </div>
       <div className="jelly-sprite__layer-merge-row">
         <button

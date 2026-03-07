@@ -1157,3 +1157,264 @@
 .jelly-sprite__mask-edit-done:hover {
   background: #d08000;
 }
+
+/* ── Layers list ── */
+
+.jelly-sprite__layer-add-btn {
+  margin-left: auto;
+  width: 18px;
+  height: 18px;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface3);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition:
+    background 0.1s,
+    color 0.1s,
+    border-color 0.1s;
+}
+.jelly-sprite__layer-add-btn:hover {
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface3));
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.jelly-sprite__layers-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 220px;
+  overflow-y: auto;
+  margin-bottom: 4px;
+}
+
+.jelly-sprite__layer-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px;
+  border-radius: 5px;
+  border: 1px solid transparent;
+  background: var(--surface2);
+  cursor: pointer;
+  transition:
+    background 0.1s,
+    border-color 0.1s;
+}
+.jelly-sprite__layer-row:hover {
+  background: var(--surface3);
+}
+.jelly-sprite__layer-row--active {
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface2));
+  border-color: var(--accent);
+}
+
+.jelly-sprite__layer-vis-btn {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  font-size: 11px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 3px;
+  transition:
+    color 0.1s,
+    background 0.1s;
+}
+.jelly-sprite__layer-vis-btn:hover {
+  color: var(--text);
+  background: var(--surface3);
+}
+
+.jelly-sprite__layer-name {
+  flex: 1;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.jelly-sprite__layer-actions {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+.jelly-sprite__layer-row:hover .jelly-sprite__layer-actions,
+.jelly-sprite__layer-row--active .jelly-sprite__layer-actions {
+  opacity: 1;
+}
+
+.jelly-sprite__layer-icon-btn {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  font-size: 11px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 3px;
+  transition:
+    color 0.1s,
+    background 0.1s;
+}
+.jelly-sprite__layer-icon-btn:hover {
+  color: var(--text);
+  background: var(--surface3);
+}
+.jelly-sprite__layer-icon-btn--danger {
+  color: var(--text-muted);
+}
+.jelly-sprite__layer-icon-btn--danger:hover {
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 15%, var(--surface3));
+}
+
+.jelly-sprite__layer-opacity-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0 2px;
+}
+
+.jelly-sprite__layer-merge-row {
+  display: flex;
+  gap: 4px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+  margin-top: 4px;
+}
+.jelly-sprite__layer-merge-row .jelly-sprite__size-btn {
+  flex: 1;
+}
+
+/* Blend mode select (used in layer opacity row) */
+.jelly-sprite__blend-select {
+  font-size: 10px;
+  padding: 2px 4px;
+  background: var(--surface3);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  cursor: pointer;
+  flex-shrink: 0;
+  max-width: 80px;
+}
+
+/* Percentage/value label next to sliders */
+.jelly-sprite__brush-size-label {
+  font-size: 10px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  min-width: 28px;
+  text-align: right;
+}
+
+/* ── Selection info ── */
+
+.jelly-sprite__selection-info {
+  font-size: 10px;
+  color: var(--text-muted);
+  padding: 2px 0 4px;
+}
+
+.jelly-sprite__selection-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.jelly-sprite__deselect-btn {
+  margin-left: auto;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  font-size: 10px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 3px;
+  transition: color 0.1s;
+}
+.jelly-sprite__deselect-btn:hover {
+  color: var(--danger);
+}
+
+/* ── Canvas custom size row ── */
+
+.jelly-sprite__custom-size-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.jelly-sprite__custom-size-input {
+  width: 52px;
+  padding: 3px 5px;
+  font-size: 11px;
+  background: var(--surface3);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  text-align: center;
+}
+.jelly-sprite__custom-size-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.jelly-sprite__custom-size-sep {
+  font-size: 11px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.jelly-sprite__custom-size-apply {
+  padding: 3px 7px;
+  font-size: 12px;
+  background: var(--surface3);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition:
+    background 0.1s,
+    color 0.1s,
+    border-color 0.1s;
+}
+.jelly-sprite__custom-size-apply:hover {
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface3));
+  border-color: var(--accent);
+  color: var(--accent);
+}
