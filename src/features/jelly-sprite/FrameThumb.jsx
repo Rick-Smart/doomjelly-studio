@@ -1,3 +1,5 @@
+import { useState, useRef, useEffect } from "react";
+
 export function FrameThumb({
   thumb,
   name,
@@ -8,8 +10,37 @@ export function FrameThumb({
   onClick,
   onDuplicate,
   onDelete,
+  onRename,
   canDelete,
 }) {
+  const [renaming, setRenaming] = useState(false);
+  const [draft, setDraft] = useState("");
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    if (renaming) inputRef.current?.select();
+  }, [renaming]);
+
+  function startRename(e) {
+    e.stopPropagation();
+    setDraft(name);
+    setRenaming(true);
+  }
+
+  function commitRename() {
+    const trimmed = draft.trim();
+    if (trimmed && trimmed !== name) onRename(trimmed);
+    setRenaming(false);
+  }
+
+  function onKeyDown(e) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      commitRename();
+    }
+    if (e.key === "Escape") setRenaming(false);
+  }
+
   return (
     <div
       className={[
@@ -29,6 +60,25 @@ export function FrameThumb({
         <img className="jelly-sprite__frame-thumb-img" src={thumb} alt={name} />
       ) : (
         <div className="jelly-sprite__frame-thumb-empty" />
+      )}
+      {renaming ? (
+        <input
+          ref={inputRef}
+          className="jelly-sprite__frame-thumb-rename"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commitRename}
+          onKeyDown={onKeyDown}
+          onClick={(e) => e.stopPropagation()}
+        />
+      ) : (
+        <div
+          className="jelly-sprite__frame-thumb-name"
+          onDoubleClick={!isPlaying ? startRename : undefined}
+          title="Double-click to rename"
+        >
+          {name}
+        </div>
       )}
       <div className="jelly-sprite__frame-thumb-actions">
         <button

@@ -425,6 +425,10 @@ function JellySpriteBody({ onSwitchToAnimator }) {
     refs.redraw?.();
   }
 
+  function renameFrame(frameId, name) {
+    sd({ type: A.RENAME_FRAME, payload: { frameId, name } });
+  }
+
   // ── useDrawingTools ────────────────────────────────────────────────────────
   const {
     selection,
@@ -1272,6 +1276,7 @@ function JellySpriteBody({ onSwitchToAnimator }) {
     duplicateFrame,
     deleteFrame,
     addFrame,
+    renameFrame,
     startPlayback,
     stopPlayback,
     resizeAnchor,

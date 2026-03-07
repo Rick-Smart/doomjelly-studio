@@ -27,6 +27,7 @@ export function CanvasArea() {
     duplicateFrame,
     deleteFrame,
     addFrame,
+    renameFrame,
     startPlayback,
     stopPlayback,
   } = useJellySprite();
@@ -102,6 +103,7 @@ export function CanvasArea() {
               onClick={() => !isPlaying && switchToFrame(idx)}
               onDuplicate={() => duplicateFrame(idx)}
               onDelete={() => deleteFrame(idx)}
+              onRename={(name) => renameFrame(frame.id, name)}
               canDelete={frames.length > 1 && !isPlaying}
             />
           ))}
