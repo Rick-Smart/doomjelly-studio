@@ -321,6 +321,29 @@ function LayerRow({ layer, isActive }) {
     redraw,
   } = useJellySprite();
 
+  const [renaming, setRenaming] = useState(false);
+  const [draft, setDraft] = useState(layer.name);
+  const renameInputRef = useRef(null);
+
+  function startRename() {
+    setDraft(layer.name);
+    setRenaming(true);
+    setTimeout(() => renameInputRef.current?.select(), 0);
+  }
+
+  function commitRename() {
+    const trimmed = draft.trim();
+    if (trimmed && trimmed !== layer.name) {
+      updateLayer(layer.id, { name: trimmed });
+    }
+    setRenaming(false);
+  }
+
+  function onRenameKey(e) {
+    if (e.key === "Enter") commitRename();
+    if (e.key === "Escape") setRenaming(false);
+  }
+
   return (
     <>
       <div
