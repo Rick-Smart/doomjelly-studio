@@ -29,18 +29,54 @@ const CANVAS_SIZES = [
   { label: "256×256", w: 256, h: 256 },
 ];
 
-const TOOLS = [
-  { id: "pencil", icon: "✏", title: "Pencil (P)" },
-  { id: "eraser", icon: "⌫", title: "Eraser (E)" },
-  { id: "fill", icon: "▨", title: "Fill bucket (F)" },
-  { id: "line", icon: "╱", title: "Line (L)" },
-  { id: "rect", icon: "□", title: "Rectangle (R)" },
-  { id: "ellipse", icon: "○", title: "Ellipse (O)" },
-  { id: "picker", icon: "⊕", title: "Color picker (I)" },
+const TOOL_GROUPS = [
+  {
+    label: "Select",
+    tools: [
+      { id: "select-rect", icon: "⬚", title: "Rect Select (M)" },
+      { id: "select-lasso", icon: "⌾", title: "Lasso Select" },
+      { id: "select-wand", icon: "⁂", title: "Magic Wand (W)" },
+      { id: "move", icon: "✥", title: "Move Selection (V)" },
+    ],
+  },
+  {
+    label: "Draw",
+    tools: [
+      { id: "pencil", icon: "✏", title: "Pencil (P)" },
+      { id: "eraser", icon: "⌫", title: "Eraser (E)" },
+      { id: "fill", icon: "▨", title: "Fill Bucket (F)" },
+      { id: "picker", icon: "⊕", title: "Color Picker (I)" },
+    ],
+  },
+  {
+    label: "Shape",
+    tools: [
+      { id: "line", icon: "╱", title: "Line (L)" },
+      { id: "rect", icon: "□", title: "Rectangle (R)" },
+      { id: "ellipse", icon: "○", title: "Ellipse (O)" },
+      { id: "spray", icon: "⋮⋮", title: "Spray (A)" },
+    ],
+  },
+];
+
+const BRUSH_TYPES = [
+  { id: "round", icon: "●", title: "Round brush" },
+  { id: "square", icon: "■", title: "Square brush" },
+  { id: "dither", icon: "░", title: "Dither brush" },
 ];
 
 const MAX_HISTORY = 50;
 const MAX_COLOUR_HISTORY = 10;
+let _layerIdCounter = 1;
+function makeLayer(name) {
+  return {
+    id: `layer-${_layerIdCounter++}`,
+    name,
+    visible: true,
+    opacity: 1.0,
+    locked: false,
+  };
+}
 
 // ── Pixel-drawing algorithms ──────────────────────────────────────────────────
 function bresenhamLine(x0, y0, x1, y1, cb) {
@@ -145,6 +181,20 @@ export function JellySprite({ onSwitchToAnimator }) {
   const [gridVisible, setGridVisible] = useState(true);
   const [frameGridVisible, setFrameGridVisible] = useState(true);
 
+  // Brush options
+  const [brushType, setBrushType] = useState("round");
+  const [brushSize, setBrushSize] = useState(1);
+
+  // Selection state — {x, y, w, h} | null; lasso path for marching ants
+  const [selection, setSelection] = useState(null);
+  const selectionRef = useRef(null);
+  const lassoPathRef = useRef([]); // array of {x,y} for lasso
+  const marchingAntsRef = useRef(null); // requestAnimationFrame id
+  const marchOffsetRef = useRef(0);
+  // Move tool state
+  const moveOriginRef = useRef(null);
+  const movePixelSnapRef = useRef(null);
+
   // Colour — foreground, background, alpha, history
   const [fgColor, setFgColor] = useState("#000000");
   const [bgColor, setBgColor] = useState("#ffffff");
@@ -155,7 +205,13 @@ export function JellySprite({ onSwitchToAnimator }) {
   const [palettes, setPalettes] = useState(BUILTIN_PALETTES);
   const [activePalette, setActivePalette] = useState("DoomJelly 32");
 
-  // Undo/redo
+  // Layers
+  const initLayer = makeLayer("Layer 1");
+  const [layers, setLayers] = useState([initLayer]);
+  const [activeLayerId, setActiveLayerId] = useState(initLayer.id);
+  const layerDataRef = useRef({ [initLayer.id]: null }); // id → Uint8ClampedArray | null
+
+  // Undo/redo — stores full {layerData, layers, activeLayerId} snapshots
   const historyRef = useRef([]);
   const histIdxRef = useRef(0);
   const [canUndo, setCanUndo] = useState(false);
@@ -164,6 +220,7 @@ export function JellySprite({ onSwitchToAnimator }) {
   // Canvas refs
   const canvasRef = useRef(null);
   const offscreenRef = useRef(null);
+  // pixelsRef points to the ACTIVE layer's data for backward-compat with drawing code
   const pixelsRef = useRef(null);
   const isDrawing = useRef(false);
   const startPixel = useRef(null); // for line/rect/ellipse preview
@@ -180,19 +237,39 @@ export function JellySprite({ onSwitchToAnimator }) {
       setFgColor(bgColor);
       setBgColor(fgColor);
     },
+    deselectAll: () => {
+      setSelection(null);
+      selectionRef.current = null;
+    },
   };
 
   // ── Init / resize ─────────────────────────────────────────────────────────
   useEffect(() => {
     const w = canvasW,
       h = canvasH;
-    pixelsRef.current = new Uint8ClampedArray(w * h * 4);
+    const size = w * h * 4;
+
+    // Resize all existing layer buffers (clear on resize)
+    const newLayerData = {};
+    setLayers((prevLayers) => {
+      prevLayers.forEach((l) => {
+        newLayerData[l.id] = new Uint8ClampedArray(size);
+      });
+      return prevLayers;
+    });
+    layerDataRef.current = newLayerData;
+
+    // Sync pixelsRef to active layer
+    pixelsRef.current =
+      layerDataRef.current[activeLayerId] ??
+      (layerDataRef.current[activeLayerId] = new Uint8ClampedArray(size));
+
     offscreenRef.current = document.createElement("canvas");
     offscreenRef.current.width = w;
     offscreenRef.current.height = h;
 
     function finish() {
-      historyRef.current = [new Uint8ClampedArray(pixelsRef.current)];
+      historyRef.current = [snapshotHistory()];
       histIdxRef.current = 0;
       setCanUndo(false);
       setCanRedo(false);
@@ -207,6 +284,7 @@ export function JellySprite({ onSwitchToAnimator }) {
         ctx.clearRect(0, 0, w, h);
         ctx.drawImage(img, 0, 0, w, h);
         pixelsRef.current.set(ctx.getImageData(0, 0, w, h).data);
+        layerDataRef.current[activeLayerId] = pixelsRef.current;
         finish();
       };
       img.src = src;
@@ -215,27 +293,65 @@ export function JellySprite({ onSwitchToAnimator }) {
     }
   }, [canvasW, canvasH]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Sync pixelsRef when active layer changes
+  useEffect(() => {
+    const w = canvasW,
+      h = canvasH;
+    if (!layerDataRef.current[activeLayerId]) {
+      layerDataRef.current[activeLayerId] = new Uint8ClampedArray(w * h * 4);
+    }
+    pixelsRef.current = layerDataRef.current[activeLayerId];
+    redraw();
+  }, [activeLayerId]); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     redraw();
   }, [zoom, gridVisible, frameGridVisible]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Marching ants animation for selection
+  useEffect(() => {
+    if (!selection) {
+      if (marchingAntsRef.current)
+        cancelAnimationFrame(marchingAntsRef.current);
+      return;
+    }
+    const animate = () => {
+      marchOffsetRef.current = (marchOffsetRef.current + 1) % 16;
+      redraw();
+      marchingAntsRef.current = requestAnimationFrame(animate);
+    };
+    marchingAntsRef.current = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(marchingAntsRef.current);
+  }, [selection]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Rendering ──────────────────────────────────────────────────────────────
   const redraw = useCallback(() => {
     const canvas = canvasRef.current;
     const off = offscreenRef.current;
-    if (!canvas || !off || !pixelsRef.current) return;
+    if (!canvas || !off) return;
 
     const ctx = canvas.getContext("2d");
     const w = canvasW,
       h = canvasH,
       z = zoom;
-
     const offCtx = off.getContext("2d");
-    offCtx.putImageData(
-      new ImageData(new Uint8ClampedArray(pixelsRef.current), w, h),
-      0,
-      0,
-    );
+
+    // Composite all visible layers bottom to top
+    offCtx.clearRect(0, 0, w, h);
+    const currentLayers = layers; // closed over from render
+    currentLayers.forEach((layer) => {
+      if (!layer.visible) return;
+      const data = layerDataRef.current[layer.id];
+      if (!data) return;
+      const imgData = new ImageData(new Uint8ClampedArray(data), w, h);
+      const tmp = document.createElement("canvas");
+      tmp.width = w;
+      tmp.height = h;
+      tmp.getContext("2d").putImageData(imgData, 0, 0);
+      offCtx.globalAlpha = layer.opacity;
+      offCtx.drawImage(tmp, 0, 0);
+      offCtx.globalAlpha = 1;
+    });
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.imageSmoothingEnabled = false;
@@ -277,6 +393,22 @@ export function JellySprite({ onSwitchToAnimator }) {
         }
       }
     }
+
+    // Draw selection overlay (marching ants)
+    const sel = selectionRef.current;
+    if (sel) {
+      const { x, y, w: sw, h: sh } = sel;
+      ctx.save();
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 4]);
+      ctx.lineDashOffset = -marchOffsetRef.current;
+      ctx.strokeRect(x * z + 0.5, y * z + 0.5, sw * z, sh * z);
+      ctx.strokeStyle = "#000000";
+      ctx.lineDashOffset = -marchOffsetRef.current + 4;
+      ctx.strokeRect(x * z + 0.5, y * z + 0.5, sw * z, sh * z);
+      ctx.restore();
+    }
   }, [
     canvasW,
     canvasH,
@@ -284,6 +416,7 @@ export function JellySprite({ onSwitchToAnimator }) {
     gridVisible,
     frameGridVisible,
     state.frameConfig,
+    layers,
   ]);
 
   // ── Pixel helpers ─────────────────────────────────────────────────────────
@@ -294,6 +427,13 @@ export function JellySprite({ onSwitchToAnimator }) {
   }
   function setPixel(x, y, rgba, buf = pixelsRef.current) {
     if (x < 0 || x >= canvasW || y < 0 || y >= canvasH) return;
+    // Clip to selection if active
+    const sel = selectionRef.current;
+    if (
+      sel &&
+      (x < sel.x || x >= sel.x + sel.w || y < sel.y || y >= sel.y + sel.h)
+    )
+      return;
     const i = (y * canvasW + x) * 4;
     buf[i] = rgba[0];
     buf[i + 1] = rgba[1];
@@ -335,6 +475,35 @@ export function JellySprite({ onSwitchToAnimator }) {
     };
   }
 
+  // Paint a brush stamp — round, square, or dither at given size
+  function stampBrush(cx, cy, rgba, buf) {
+    const r = Math.max(0, brushSize - 1);
+    if (r === 0) {
+      paintWithSymmetry(cx, cy, rgba, buf);
+      return;
+    }
+    for (let dy = -r; dy <= r; dy++) {
+      for (let dx = -r; dx <= r; dx++) {
+        if (brushType === "round" && dx * dx + dy * dy > r * r) continue;
+        if (brushType === "dither" && (cx + cy + dx + dy) % 2 !== 0) continue;
+        paintWithSymmetry(cx + dx, cy + dy, rgba, buf);
+      }
+    }
+  }
+
+  // Spray brush: random scatter in radius
+  function sprayBrush(cx, cy, rgba) {
+    const r = brushSize * 3 + 3;
+    const count = Math.max(4, brushSize * 4);
+    for (let i = 0; i < count; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const dist = Math.random() * r;
+      const x = Math.round(cx + Math.cos(angle) * dist);
+      const y = Math.round(cy + Math.sin(angle) * dist);
+      paintWithSymmetry(x, y, rgba, pixelsRef.current);
+    }
+  }
+
   // Apply symmetry: paint mirror pixels too
   function paintWithSymmetry(x, y, rgba, buf) {
     setPixel(x, y, rgba, buf);
@@ -351,9 +520,12 @@ export function JellySprite({ onSwitchToAnimator }) {
 
   function applyFreehand(x, y) {
     const rgba = getActiveRgba();
-    if (tool === "pencil" || tool === "eraser") {
-      const px = tool === "eraser" ? [0, 0, 0, 0] : rgba;
-      paintWithSymmetry(x, y, px, pixelsRef.current);
+    if (tool === "pencil") {
+      stampBrush(x, y, rgba, pixelsRef.current);
+    } else if (tool === "eraser") {
+      stampBrush(x, y, [0, 0, 0, 0], pixelsRef.current);
+    } else if (tool === "spray") {
+      sprayBrush(x, y, rgba);
     } else if (tool === "fill") {
       floodFill(x, y, rgba);
     } else if (tool === "picker") {
@@ -388,6 +560,13 @@ export function JellySprite({ onSwitchToAnimator }) {
         fillShapes,
         (px, py) => paintWithSymmetry(px, py, rgba, pixelsRef.current),
       );
+    } else if (tool === "select-rect") {
+      // Preview rect selection — just update selectionRef, don't paint pixels
+      const lx = Math.min(x0, x1),
+        ty = Math.min(y0, y1);
+      const sw = Math.abs(x1 - x0) + 1,
+        sh = Math.abs(y1 - y0) + 1;
+      selectionRef.current = { x: lx, y: ty, w: sw, h: sh };
     }
   }
 
@@ -399,12 +578,46 @@ export function JellySprite({ onSwitchToAnimator }) {
     startPixel.current = { x, y };
     lastPixel.current = { x, y };
 
-    if (["line", "rect", "ellipse"].includes(tool)) {
+    if (tool === "move") {
+      const sel = selectionRef.current;
+      if (sel) {
+        moveOriginRef.current = { x, y, selX: sel.x, selY: sel.y };
+        // Copy selected pixels for moving
+        const buf = new Uint8ClampedArray(sel.w * sel.h * 4);
+        for (let dy = 0; dy < sel.h; dy++) {
+          for (let dx = 0; dx < sel.w; dx++) {
+            const si = ((sel.y + dy) * canvasW + (sel.x + dx)) * 4;
+            const di = (dy * sel.w + dx) * 4;
+            for (let c = 0; c < 4; c++) buf[di + c] = pixelsRef.current[si + c];
+            // Clear source
+            for (let c = 0; c < 4; c++) pixelsRef.current[si + c] = 0;
+          }
+        }
+        movePixelSnapRef.current = buf;
+        previewSnap.current = new Uint8ClampedArray(pixelsRef.current);
+        redraw();
+        return;
+      }
+    }
+
+    if (["line", "rect", "ellipse", "select-rect"].includes(tool)) {
       previewSnap.current = new Uint8ClampedArray(pixelsRef.current);
     }
 
-    applyFreehand(x, y);
-    redraw();
+    if (tool === "select-lasso") {
+      lassoPathRef.current = [{ x, y }];
+      return;
+    }
+
+    if (tool === "select-wand") {
+      applyMagicWand(x, y);
+      return;
+    }
+
+    if (!["select-rect", "move"].includes(tool)) {
+      applyFreehand(x, y);
+      redraw();
+    }
   }
 
   function onMouseMove(e) {
@@ -412,18 +625,61 @@ export function JellySprite({ onSwitchToAnimator }) {
     const { x, y } = getCanvasCoords(e);
     const last = lastPixel.current;
 
-    if (["line", "rect", "ellipse"].includes(tool)) {
+    if (tool === "move" && moveOriginRef.current) {
+      const orig = moveOriginRef.current;
+      const dx = x - orig.x,
+        dy = y - orig.y;
+      const newSel = {
+        ...selectionRef.current,
+        x: orig.selX + dx,
+        y: orig.selY + dy,
+      };
+      // Restore snap, paste pixels at new position
+      pixelsRef.current.set(previewSnap.current);
+      const buf = movePixelSnapRef.current;
+      for (let ddy = 0; ddy < newSel.h; ddy++) {
+        for (let ddx = 0; ddx < newSel.w; ddx++) {
+          const di = (ddy * newSel.w + ddx) * 4;
+          const tx = newSel.x + ddx,
+            ty = newSel.y + ddy;
+          if (tx < 0 || tx >= canvasW || ty < 0 || ty >= canvasH) continue;
+          const si = (ty * canvasW + tx) * 4;
+          for (let c = 0; c < 4; c++) pixelsRef.current[si + c] = buf[di + c];
+        }
+      }
+      selectionRef.current = newSel;
+      setSelection({ ...newSel });
+      redraw();
+      return;
+    }
+
+    if (tool === "select-lasso") {
+      lassoPathRef.current.push({ x, y });
+      // Update selection as bounding box of lasso path
+      const pts = lassoPathRef.current;
+      const xs = pts.map((p) => p.x),
+        ys = pts.map((p) => p.y);
+      const lx = Math.min(...xs),
+        rx = Math.max(...xs);
+      const ty = Math.min(...ys),
+        by = Math.max(...ys);
+      selectionRef.current = { x: lx, y: ty, w: rx - lx + 1, h: by - ty + 1 };
+      redraw();
+      return;
+    }
+
+    if (["line", "rect", "ellipse", "select-rect"].includes(tool)) {
       const { x: sx, y: sy } = startPixel.current;
       previewShape(sx, sy, x, y);
       redraw();
     } else if (last && (last.x !== x || last.y !== y)) {
-      const dx = x - last.x,
-        dy = y - last.y;
-      const steps = Math.max(Math.abs(dx), Math.abs(dy));
+      const ddx = x - last.x,
+        ddy = y - last.y;
+      const steps = Math.max(Math.abs(ddx), Math.abs(ddy));
       for (let i = 0; i <= steps; i++) {
         applyFreehand(
-          Math.round(last.x + (dx * i) / steps),
-          Math.round(last.y + (dy * i) / steps),
+          Math.round(last.x + (ddx * i) / steps),
+          Math.round(last.y + (ddy * i) / steps),
         );
       }
       redraw();
@@ -434,6 +690,39 @@ export function JellySprite({ onSwitchToAnimator }) {
   function onMouseUp(e) {
     if (!isDrawing.current) return;
     isDrawing.current = false;
+
+    if (tool === "move" && moveOriginRef.current) {
+      moveOriginRef.current = null;
+      movePixelSnapRef.current = null;
+      previewSnap.current = null;
+      pushHistoryEntry();
+      saveToProject();
+      return;
+    }
+
+    if (tool === "select-lasso") {
+      lassoPathRef.current = [];
+      setSelection(selectionRef.current ? { ...selectionRef.current } : null);
+      lastPixel.current = null;
+      startPixel.current = null;
+      return;
+    }
+
+    if (tool === "select-rect") {
+      const { x, y } = getCanvasCoords(e);
+      const { x: sx, y: sy } = startPixel.current;
+      const lx = Math.min(sx, x),
+        ty = Math.min(sy, y);
+      const sw = Math.abs(x - sx) + 1,
+        sh = Math.abs(y - sy) + 1;
+      const newSel = { x: lx, y: ty, w: sw, h: sh };
+      selectionRef.current = newSel;
+      setSelection(newSel);
+      lastPixel.current = null;
+      startPixel.current = null;
+      previewSnap.current = null;
+      return;
+    }
 
     if (["line", "rect", "ellipse"].includes(tool)) {
       const { x, y } = getCanvasCoords(e);
@@ -459,13 +748,52 @@ export function JellySprite({ onSwitchToAnimator }) {
     isDrawing.current = false;
     lastPixel.current = null;
     startPixel.current = null;
-    pushHistoryEntry();
-    saveToProject();
+    if (
+      !["select-rect", "select-lasso", "select-wand", "move"].includes(tool)
+    ) {
+      pushHistoryEntry();
+      saveToProject();
+    }
+  }
+
+  // Magic wand: flood-select contiguous same-colour region → bounding box selection
+  function applyMagicWand(sx, sy) {
+    const target = getPixel(sx, sy);
+    const visited = new Set();
+    const queue = [[sx, sy]];
+    let minX = sx,
+      maxX = sx,
+      minY = sy,
+      maxY = sy;
+    while (queue.length) {
+      const [x, y] = queue.pop();
+      const key = y * canvasW + x;
+      if (visited.has(key)) continue;
+      if (x < 0 || x >= canvasW || y < 0 || y >= canvasH) continue;
+      if (!colorsMatch(getPixel(x, y), target)) continue;
+      visited.add(key);
+      minX = Math.min(minX, x);
+      maxX = Math.max(maxX, x);
+      minY = Math.min(minY, y);
+      maxY = Math.max(maxY, y);
+      queue.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
+    }
+    const newSel = { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 };
+    selectionRef.current = newSel;
+    setSelection(newSel);
   }
 
   // ── History ────────────────────────────────────────────────────────────────
+  function snapshotHistory() {
+    const snap = {};
+    for (const [id, data] of Object.entries(layerDataRef.current)) {
+      snap[id] = data ? new Uint8ClampedArray(data) : null;
+    }
+    return snap;
+  }
+
   function pushHistoryEntry() {
-    const snap = new Uint8ClampedArray(pixelsRef.current);
+    const snap = snapshotHistory();
     const h = historyRef.current.slice(0, histIdxRef.current + 1);
     h.push(snap);
     if (h.length > MAX_HISTORY) h.shift();
@@ -475,10 +803,24 @@ export function JellySprite({ onSwitchToAnimator }) {
     setCanRedo(false);
   }
 
+  function restoreHistory(snap) {
+    for (const [id, data] of Object.entries(snap)) {
+      if (data) {
+        if (!layerDataRef.current[id]) {
+          layerDataRef.current[id] = new Uint8ClampedArray(data);
+        } else {
+          layerDataRef.current[id].set(data);
+        }
+      }
+    }
+    // Keep pixelsRef pointed at active layer
+    pixelsRef.current = layerDataRef.current[activeLayerId];
+  }
+
   function doUndo() {
     if (histIdxRef.current <= 0) return;
     histIdxRef.current--;
-    pixelsRef.current.set(historyRef.current[histIdxRef.current]);
+    restoreHistory(historyRef.current[histIdxRef.current]);
     setCanUndo(histIdxRef.current > 0);
     setCanRedo(true);
     redraw();
@@ -488,7 +830,7 @@ export function JellySprite({ onSwitchToAnimator }) {
   function doRedo() {
     if (histIdxRef.current >= historyRef.current.length - 1) return;
     histIdxRef.current++;
-    pixelsRef.current.set(historyRef.current[histIdxRef.current]);
+    restoreHistory(historyRef.current[histIdxRef.current]);
     setCanUndo(true);
     setCanRedo(histIdxRef.current < historyRef.current.length - 1);
     redraw();
@@ -601,6 +943,9 @@ export function JellySprite({ onSwitchToAnimator }) {
       ) {
         e.preventDefault();
         a.doRedo();
+      } else if ((e.ctrlKey || e.metaKey) && e.key === "d") {
+        e.preventDefault();
+        a.deselectAll();
       } else if (e.key === "p") a.setTool("pencil");
       else if (e.key === "e") a.setTool("eraser");
       else if (e.key === "f") a.setTool("fill");
@@ -608,7 +953,12 @@ export function JellySprite({ onSwitchToAnimator }) {
       else if (e.key === "r") a.setTool("rect");
       else if (e.key === "o") a.setTool("ellipse");
       else if (e.key === "i") a.setTool("picker");
+      else if (e.key === "m") a.setTool("select-rect");
+      else if (e.key === "w") a.setTool("select-wand");
+      else if (e.key === "v") a.setTool("move");
+      else if (e.key === "a") a.setTool("spray");
       else if (e.key === "x") a.swapColors();
+      else if (e.key === "Escape") a.deselectAll();
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -630,6 +980,138 @@ export function JellySprite({ onSwitchToAnimator }) {
     pushHistoryEntry();
     redraw();
     saveToProject();
+  }
+
+  // ── Layer management ───────────────────────────────────────────────────────
+  function addLayer() {
+    const newLayer = makeLayer(`Layer ${layers.length + 1}`);
+    layerDataRef.current[newLayer.id] = new Uint8ClampedArray(
+      canvasW * canvasH * 4,
+    );
+    setLayers((prev) => [...prev, newLayer]);
+    setActiveLayerId(newLayer.id);
+  }
+
+  function deleteLayer(id) {
+    if (layers.length <= 1) return; // must keep at least one
+    const remaining = layers.filter((l) => l.id !== id);
+    delete layerDataRef.current[id];
+    setLayers(remaining);
+    const newActive =
+      id === activeLayerId ? remaining[remaining.length - 1].id : activeLayerId;
+    setActiveLayerId(newActive);
+  }
+
+  function duplicateLayer(id) {
+    const src = layers.find((l) => l.id === id);
+    if (!src) return;
+    const dup = makeLayer(src.name + " copy");
+    const srcData = layerDataRef.current[id];
+    layerDataRef.current[dup.id] = srcData
+      ? new Uint8ClampedArray(srcData)
+      : new Uint8ClampedArray(canvasW * canvasH * 4);
+    const idx = layers.findIndex((l) => l.id === id);
+    setLayers((prev) => {
+      const next = [...prev];
+      next.splice(idx + 1, 0, dup);
+      return next;
+    });
+    setActiveLayerId(dup.id);
+  }
+
+  function mergeLayerDown(id) {
+    const idx = layers.findIndex((l) => l.id === id);
+    if (idx <= 0) return;
+    const below = layers[idx - 1];
+    const topData = layerDataRef.current[id];
+    const botData = layerDataRef.current[below.id];
+    if (!topData || !botData) return;
+    const topLayer = layers[idx];
+    // Composite top onto bottom using top's opacity
+    for (let i = 0; i < botData.length; i += 4) {
+      const ta = (topData[i + 3] / 255) * topLayer.opacity;
+      const ba = botData[i + 3] / 255;
+      const outA = ta + ba * (1 - ta);
+      if (outA === 0) {
+        botData[i] = botData[i + 1] = botData[i + 2] = botData[i + 3] = 0;
+        continue;
+      }
+      botData[i] = Math.round(
+        (topData[i] * ta + botData[i] * ba * (1 - ta)) / outA,
+      );
+      botData[i + 1] = Math.round(
+        (topData[i + 1] * ta + botData[i + 1] * ba * (1 - ta)) / outA,
+      );
+      botData[i + 2] = Math.round(
+        (topData[i + 2] * ta + botData[i + 2] * ba * (1 - ta)) / outA,
+      );
+      botData[i + 3] = Math.round(outA * 255);
+    }
+    delete layerDataRef.current[id];
+    setLayers((prev) => prev.filter((l) => l.id !== id));
+    setActiveLayerId(below.id);
+    pushHistoryEntry();
+    redraw();
+    saveToProject();
+  }
+
+  function flattenAll() {
+    const w = canvasW,
+      h = canvasH;
+    const flat = new Uint8ClampedArray(w * h * 4);
+    layers.forEach((layer) => {
+      if (!layer.visible) return;
+      const data = layerDataRef.current[layer.id];
+      if (!data) return;
+      for (let i = 0; i < flat.length; i += 4) {
+        const ta = (data[i + 3] / 255) * layer.opacity;
+        const ba = flat[i + 3] / 255;
+        const outA = ta + ba * (1 - ta);
+        if (outA === 0) continue;
+        flat[i] = Math.round((data[i] * ta + flat[i] * ba * (1 - ta)) / outA);
+        flat[i + 1] = Math.round(
+          (data[i + 1] * ta + flat[i + 1] * ba * (1 - ta)) / outA,
+        );
+        flat[i + 2] = Math.round(
+          (data[i + 2] * ta + flat[i + 2] * ba * (1 - ta)) / outA,
+        );
+        flat[i + 3] = Math.round(outA * 255);
+      }
+    });
+    const baseLayer = makeLayer("Flattened");
+    layerDataRef.current = { [baseLayer.id]: flat };
+    pixelsRef.current = flat;
+    setLayers([baseLayer]);
+    setActiveLayerId(baseLayer.id);
+    pushHistoryEntry();
+    redraw();
+    saveToProject();
+  }
+
+  function moveLayerUp(id) {
+    const idx = layers.findIndex((l) => l.id === id);
+    if (idx >= layers.length - 1) return;
+    setLayers((prev) => {
+      const next = [...prev];
+      [next[idx], next[idx + 1]] = [next[idx + 1], next[idx]];
+      return next;
+    });
+  }
+
+  function moveLayerDown(id) {
+    const idx = layers.findIndex((l) => l.id === id);
+    if (idx <= 0) return;
+    setLayers((prev) => {
+      const next = [...prev];
+      [next[idx], next[idx - 1]] = [next[idx - 1], next[idx]];
+      return next;
+    });
+  }
+
+  function updateLayer(id, patch) {
+    setLayers((prev) =>
+      prev.map((l) => (l.id === id ? { ...l, ...patch } : l)),
+    );
   }
 
   function useInAnimator() {
@@ -737,172 +1219,208 @@ export function JellySprite({ onSwitchToAnimator }) {
   }
 
   // ── Cursor ────────────────────────────────────────────────────────────────
+  const selectTools = ["select-rect", "select-lasso", "select-wand"];
   const cursorStyle =
     tool === "picker"
       ? "crosshair"
-      : ["line", "rect", "ellipse"].includes(tool)
-        ? "crosshair"
-        : "cell";
+      : tool === "move"
+        ? isDrawing.current
+          ? "grabbing"
+          : "grab"
+        : selectTools.includes(tool)
+          ? "crosshair"
+          : ["line", "rect", "ellipse"].includes(tool)
+            ? "crosshair"
+            : "cell";
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="jelly-sprite">
       {/* ── Left toolbar ── */}
       <div className="jelly-sprite__toolbar">
-        {/* Drawing tools */}
-        <div className="jelly-sprite__tool-group">
-          {TOOLS.map((t) => (
-            <button
-              key={t.id}
-              className={`jelly-sprite__tool-btn${tool === t.id ? " jelly-sprite__tool-btn--active" : ""}`}
-              onClick={() => setTool(t.id)}
-              title={t.title}
-            >
-              {t.icon}
-            </button>
-          ))}
-        </div>
+        {/* Tool groups */}
+        {TOOL_GROUPS.map((group) => (
+          <div key={group.label} className="jelly-sprite__tool-section">
+            <div className="jelly-sprite__tool-section-label">
+              {group.label}
+            </div>
+            <div className="jelly-sprite__tool-group">
+              {group.tools.map((t) => (
+                <button
+                  key={t.id}
+                  className={`jelly-sprite__tool-btn${tool === t.id ? " jelly-sprite__tool-btn--active" : ""}`}
+                  onClick={() => setTool(t.id)}
+                  title={t.title}
+                >
+                  {t.icon}
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
 
         <div className="jelly-sprite__toolbar-sep" />
 
-        {/* Shape fill toggle */}
+        {/* Shape fill toggle — only for rect/ellipse */}
         {["rect", "ellipse"].includes(tool) && (
-          <>
-            <button
-              className={`jelly-sprite__tool-btn${fillShapes ? " jelly-sprite__tool-btn--active" : ""}`}
-              onClick={() => setFillShapes((v) => !v)}
-              title={fillShapes ? "Filled shape" : "Outlined shape"}
-            >
-              {fillShapes ? "■" : "□"}
-            </button>
-            <div className="jelly-sprite__toolbar-sep" />
-          </>
+          <div className="jelly-sprite__tool-section">
+            <div className="jelly-sprite__tool-section-label">Fill</div>
+            <div className="jelly-sprite__tool-group">
+              <button
+                className={`jelly-sprite__tool-btn${!fillShapes ? " jelly-sprite__tool-btn--active" : ""}`}
+                onClick={() => setFillShapes(false)}
+                title="Outlined shape"
+              >
+                □
+              </button>
+              <button
+                className={`jelly-sprite__tool-btn${fillShapes ? " jelly-sprite__tool-btn--active" : ""}`}
+                onClick={() => setFillShapes(true)}
+                title="Filled shape"
+              >
+                ■
+              </button>
+            </div>
+          </div>
         )}
 
         {/* Symmetry */}
-        <div className="jelly-sprite__tool-group">
-          <button
-            className={`jelly-sprite__tool-btn${symmetryH ? " jelly-sprite__tool-btn--active" : ""}`}
-            onClick={() => setSymmetryH((v) => !v)}
-            title="Mirror horizontal (S)"
-          >
-            ⇔
-          </button>
-          <button
-            className={`jelly-sprite__tool-btn${symmetryV ? " jelly-sprite__tool-btn--active" : ""}`}
-            onClick={() => setSymmetryV((v) => !v)}
-            title="Mirror vertical"
-          >
-            ⇕
-          </button>
+        <div className="jelly-sprite__tool-section">
+          <div className="jelly-sprite__tool-section-label">Mirror</div>
+          <div className="jelly-sprite__tool-group">
+            <button
+              className={`jelly-sprite__tool-btn${symmetryH ? " jelly-sprite__tool-btn--active" : ""}`}
+              onClick={() => setSymmetryH((v) => !v)}
+              title="Mirror horizontal"
+            >
+              ⇔
+            </button>
+            <button
+              className={`jelly-sprite__tool-btn${symmetryV ? " jelly-sprite__tool-btn--active" : ""}`}
+              onClick={() => setSymmetryV((v) => !v)}
+              title="Mirror vertical"
+            >
+              ⇕
+            </button>
+          </div>
         </div>
 
         <div className="jelly-sprite__toolbar-sep" />
 
         {/* Zoom */}
-        <div className="jelly-sprite__tool-group">
-          <button
-            className="jelly-sprite__tool-btn"
-            onClick={() => setZoom((z) => Math.max(1, z - 1))}
-            title="Zoom out (-)"
-          >
-            −
-          </button>
+        <div className="jelly-sprite__tool-section">
+          <div className="jelly-sprite__tool-section-label">Zoom</div>
+          <div className="jelly-sprite__tool-group">
+            <button
+              className="jelly-sprite__tool-btn"
+              onClick={() => setZoom((z) => Math.max(1, z - 1))}
+              title="Zoom out (-)"
+            >
+              −
+            </button>
+            <button
+              className="jelly-sprite__tool-btn"
+              onClick={() => setZoom((z) => Math.min(16, z + 1))}
+              title="Zoom in (+)"
+            >
+              +
+            </button>
+          </div>
           <span className="jelly-sprite__zoom-label">{zoom}×</span>
-          <button
-            className="jelly-sprite__tool-btn"
-            onClick={() => setZoom((z) => Math.min(16, z + 1))}
-            title="Zoom in (+)"
-          >
-            +
-          </button>
         </div>
 
         <div className="jelly-sprite__toolbar-sep" />
 
         {/* Grid toggles */}
-        <div className="jelly-sprite__tool-group">
-          <button
-            className={`jelly-sprite__tool-btn${gridVisible ? " jelly-sprite__tool-btn--active" : ""}`}
-            onClick={() => setGridVisible((v) => !v)}
-            title="Toggle pixel grid"
-          >
-            ⊞
-          </button>
-          <button
-            className={`jelly-sprite__tool-btn${frameGridVisible ? " jelly-sprite__tool-btn--active" : ""}`}
-            onClick={() => setFrameGridVisible((v) => !v)}
-            title="Toggle frame grid"
-          >
-            ▦
-          </button>
+        <div className="jelly-sprite__tool-section">
+          <div className="jelly-sprite__tool-section-label">Grid</div>
+          <div className="jelly-sprite__tool-group">
+            <button
+              className={`jelly-sprite__tool-btn${gridVisible ? " jelly-sprite__tool-btn--active" : ""}`}
+              onClick={() => setGridVisible((v) => !v)}
+              title="Toggle pixel grid"
+            >
+              ⊞
+            </button>
+            <button
+              className={`jelly-sprite__tool-btn${frameGridVisible ? " jelly-sprite__tool-btn--active" : ""}`}
+              onClick={() => setFrameGridVisible((v) => !v)}
+              title="Toggle frame grid"
+            >
+              ▦
+            </button>
+          </div>
         </div>
 
         <div className="jelly-sprite__toolbar-sep" />
 
         {/* Flip / rotate */}
-        <div className="jelly-sprite__tool-group">
-          <button
-            className="jelly-sprite__tool-btn"
-            onClick={flipH}
-            title="Flip horizontal"
-          >
-            ↔
-          </button>
-          <button
-            className="jelly-sprite__tool-btn"
-            onClick={flipV}
-            title="Flip vertical"
-          >
-            ↕
-          </button>
-          <button
-            className="jelly-sprite__tool-btn"
-            onClick={rotateCW}
-            title="Rotate 90° CW"
-          >
-            ↻
-          </button>
-          <button
-            className="jelly-sprite__tool-btn"
-            onClick={rotateCCW}
-            title="Rotate 90° CCW"
-          >
-            ↺
-          </button>
+        <div className="jelly-sprite__tool-section">
+          <div className="jelly-sprite__tool-section-label">Transform</div>
+          <div className="jelly-sprite__tool-group">
+            <button
+              className="jelly-sprite__tool-btn"
+              onClick={flipH}
+              title="Flip horizontal"
+            >
+              ↔
+            </button>
+            <button
+              className="jelly-sprite__tool-btn"
+              onClick={flipV}
+              title="Flip vertical"
+            >
+              ↕
+            </button>
+            <button
+              className="jelly-sprite__tool-btn"
+              onClick={rotateCW}
+              title="Rotate 90° CW"
+            >
+              ↻
+            </button>
+            <button
+              className="jelly-sprite__tool-btn"
+              onClick={rotateCCW}
+              title="Rotate 90° CCW"
+            >
+              ↺
+            </button>
+          </div>
         </div>
 
         <div className="jelly-sprite__toolbar-sep" />
 
-        {/* Undo / redo */}
-        <div className="jelly-sprite__tool-group">
-          <button
-            className="jelly-sprite__tool-btn"
-            onClick={doUndo}
-            disabled={!canUndo}
-            title="Undo (Ctrl+Z)"
-          >
-            ↩
-          </button>
-          <button
-            className="jelly-sprite__tool-btn"
-            onClick={doRedo}
-            disabled={!canRedo}
-            title="Redo (Ctrl+Y)"
-          >
-            ↪
-          </button>
+        {/* Undo / redo + clear */}
+        <div className="jelly-sprite__tool-section">
+          <div className="jelly-sprite__tool-section-label">History</div>
+          <div className="jelly-sprite__tool-group">
+            <button
+              className="jelly-sprite__tool-btn"
+              onClick={doUndo}
+              disabled={!canUndo}
+              title="Undo (Ctrl+Z)"
+            >
+              ↩
+            </button>
+            <button
+              className="jelly-sprite__tool-btn"
+              onClick={doRedo}
+              disabled={!canRedo}
+              title="Redo (Ctrl+Y)"
+            >
+              ↪
+            </button>
+            <button
+              className="jelly-sprite__tool-btn jelly-sprite__tool-btn--danger"
+              onClick={clearCanvas}
+              title="Clear layer"
+              style={{ gridColumn: "span 2" }}
+            >
+              ✕ Clear
+            </button>
+          </div>
         </div>
-
-        <div className="jelly-sprite__toolbar-sep" />
-
-        <button
-          className="jelly-sprite__tool-btn jelly-sprite__tool-btn--danger"
-          onClick={clearCanvas}
-          title="Clear canvas"
-        >
-          ✕
-        </button>
       </div>
 
       {/* ── Canvas ── */}
@@ -1012,6 +1530,207 @@ export function JellySprite({ onSwitchToAnimator }) {
           />
         </div>
 
+        {/* Brush options */}
+        <div className="jelly-sprite__section">
+          <div className="jelly-sprite__section-label">Brush</div>
+          <div className="jelly-sprite__brush-types">
+            {BRUSH_TYPES.map((b) => (
+              <button
+                key={b.id}
+                className={`jelly-sprite__tool-btn${brushType === b.id ? " jelly-sprite__tool-btn--active" : ""}`}
+                onClick={() => setBrushType(b.id)}
+                title={b.title}
+              >
+                {b.icon}
+              </button>
+            ))}
+          </div>
+          <div className="jelly-sprite__brush-size-row">
+            <span className="jelly-sprite__brush-size-label">
+              Size {brushSize}px
+            </span>
+            <input
+              type="range"
+              min={1}
+              max={32}
+              value={brushSize}
+              onChange={(e) => setBrushSize(Number(e.target.value))}
+              className="jelly-sprite__brush-slider"
+            />
+          </div>
+        </div>
+
+        {/* Selection info */}
+        {selection && (
+          <div className="jelly-sprite__section">
+            <div className="jelly-sprite__section-label">
+              Selection
+              <button
+                className="jelly-sprite__deselect-btn"
+                onClick={() => {
+                  setSelection(null);
+                  selectionRef.current = null;
+                }}
+                title="Deselect (Esc / Ctrl+D)"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="jelly-sprite__selection-info">
+              {selection.x},{selection.y} — {selection.w}×{selection.h}px
+            </div>
+            <div className="jelly-sprite__selection-actions">
+              <button
+                className="jelly-sprite__size-btn"
+                title="Delete selection contents"
+                onClick={() => {
+                  const sel = selectionRef.current;
+                  if (!sel) return;
+                  for (let dy = 0; dy < sel.h; dy++) {
+                    for (let dx = 0; dx < sel.w; dx++) {
+                      const i = ((sel.y + dy) * canvasW + (sel.x + dx)) * 4;
+                      pixelsRef.current[i] =
+                        pixelsRef.current[i + 1] =
+                        pixelsRef.current[i + 2] =
+                        pixelsRef.current[i + 3] =
+                          0;
+                    }
+                  }
+                  pushHistoryEntry();
+                  redraw();
+                  saveToProject();
+                }}
+              >
+                Delete contents
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Layers panel */}
+        <div className="jelly-sprite__section">
+          <div className="jelly-sprite__section-label">
+            Layers
+            <button
+              className="jelly-sprite__layer-add-btn"
+              onClick={addLayer}
+              title="Add layer"
+            >
+              +
+            </button>
+          </div>
+          <div className="jelly-sprite__layers-list">
+            {[...layers].reverse().map((layer) => (
+              <div
+                key={layer.id}
+                className={`jelly-sprite__layer-row${layer.id === activeLayerId ? " jelly-sprite__layer-row--active" : ""}`}
+                onClick={() => setActiveLayerId(layer.id)}
+              >
+                <button
+                  className="jelly-sprite__layer-vis-btn"
+                  title={layer.visible ? "Hide layer" : "Show layer"}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    updateLayer(layer.id, { visible: !layer.visible });
+                    redraw();
+                  }}
+                >
+                  {layer.visible ? "👁" : "⊘"}
+                </button>
+                <span className="jelly-sprite__layer-name">{layer.name}</span>
+                <div className="jelly-sprite__layer-actions">
+                  <button
+                    className="jelly-sprite__layer-icon-btn"
+                    title="Move up"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      moveLayerUp(layer.id);
+                    }}
+                  >
+                    ↑
+                  </button>
+                  <button
+                    className="jelly-sprite__layer-icon-btn"
+                    title="Move down"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      moveLayerDown(layer.id);
+                    }}
+                  >
+                    ↓
+                  </button>
+                  <button
+                    className="jelly-sprite__layer-icon-btn"
+                    title="Duplicate layer"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      duplicateLayer(layer.id);
+                    }}
+                  >
+                    ⎘
+                  </button>
+                  <button
+                    className="jelly-sprite__layer-icon-btn jelly-sprite__layer-icon-btn--danger"
+                    title="Delete layer"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteLayer(layer.id);
+                    }}
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+            ))}
+            {[...layers].reverse().map((layer) =>
+              layer.id === activeLayerId ? (
+                <div
+                  key={`op-${layer.id}`}
+                  className="jelly-sprite__layer-opacity-row"
+                >
+                  <span className="jelly-sprite__brush-size-label">
+                    Opacity {Math.round(layer.opacity * 100)}%
+                  </span>
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    value={Math.round(layer.opacity * 100)}
+                    onChange={(e) => {
+                      updateLayer(layer.id, {
+                        opacity: Number(e.target.value) / 100,
+                      });
+                      redraw();
+                    }}
+                    className="jelly-sprite__brush-slider"
+                  />
+                </div>
+              ) : null,
+            )}
+          </div>
+          <div className="jelly-sprite__layer-merge-row">
+            <button
+              className="jelly-sprite__size-btn"
+              onClick={() => {
+                const idx = layers.findIndex((l) => l.id === activeLayerId);
+                mergeLayerDown(activeLayerId);
+              }}
+              disabled={layers.findIndex((l) => l.id === activeLayerId) <= 0}
+              title="Merge active layer down"
+            >
+              Merge Down
+            </button>
+            <button
+              className="jelly-sprite__size-btn"
+              onClick={flattenAll}
+              disabled={layers.length <= 1}
+              title="Flatten all layers into one"
+            >
+              Flatten All
+            </button>
+          </div>
+        </div>
+
         {/* Canvas size presets */}
         <div className="jelly-sprite__section">
           <div className="jelly-sprite__section-label">Canvas size</div>
@@ -1046,4 +1765,3 @@ export function JellySprite({ onSwitchToAnimator }) {
     </div>
   );
 }
-
