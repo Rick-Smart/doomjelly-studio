@@ -39,7 +39,10 @@ export function LeftToolbar() {
               <button
                 key={t.id}
                 className={`jelly-sprite__tool-btn${tool === t.id ? " jelly-sprite__tool-btn--active" : ""}`}
-                onClick={() => setTool(t.id)}
+                onClick={() => {
+                  setTool(t.id);
+                  if (t.id === "picker") setPanelTab("palette");
+                }}
                 title={t.title}
               >
                 {t.icon}
