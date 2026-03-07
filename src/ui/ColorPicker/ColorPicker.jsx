@@ -137,8 +137,8 @@ function SVPad({ hue, sv, onChange }) {
       <div
         className="cp-sv-cursor"
         style={{
-          left: sv[0] * 160,
-          top: (1 - sv[1]) * 120,
+          left: `${sv[0] * 100}%`,
+          top: `${(1 - sv[1]) * 100}%`,
         }}
       />
     </div>
