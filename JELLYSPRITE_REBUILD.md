@@ -2,6 +2,40 @@
 
 ---
 
+> ## ⚠️ NUMBERING NOTE — This file's M1–M16 are INDEPENDENT of ROADMAP.md
+>
+> `ROADMAP.md` uses M8–M18 to track the original Animator/Editor feature work (all
+> now complete). **This file uses M1–M16 exclusively for the JellySprite component
+> rebuild.** When you see "M10" in a commit message or conversation about JellySprite,
+> it refers to "Selection Tools + Transforms" (this file, line ~550), NOT
+> "Resizable Panel Dividers" (ROADMAP.md). Never update ROADMAP.md with JellySprite
+> rebuild progress — update only this file.
+
+---
+
+## Progress Tracker
+
+| Milestone | Name                             | Status         | Commit    |
+| --------- | -------------------------------- | -------------- | --------- |
+| M1        | Store Skeleton                   | ✅ Done        | `ea4eacb` |
+| M2        | Core Canvas Rendering            | ✅ Done        | `4acc409` |
+| M3        | Drawing Engine (Pencil + Eraser) | ✅ Done        | `2538c78` |
+| M4        | All Remaining Drawing Tools      | ✅ Done        | `b21875b` |
+| M5        | Brush Shapes + Symmetry          | ✅ Done        | `07b4505` |
+| M6        | Layer System                     | ✅ Done        | `07b4505` |
+| M7        | History (Undo/Redo)              | ✅ Done        | `c96011d` |
+| M8        | Frame System                     | ✅ Done        | `809e51b` |
+| M9        | Playback + Onion Skinning        | ✅ Done        | `c53263e` |
+| M10       | Selection Tools + Transforms     | 🔄 In Progress | —         |
+| M11       | Canvas Resize                    | ⬜ Pending     | —         |
+| M12       | Export + Workspace Integration   | ⬜ Pending     | —         |
+| M13       | Color System + Palette Manager   | ⬜ Pending     | —         |
+| M14       | View Tools                       | ⬜ Pending     | —         |
+| M15       | Keyboard Shortcuts               | ⬜ Pending     | —         |
+| M16       | UI Polish + CSS                  | ⬜ Pending     | —         |
+
+---
+
 > ## ⚠️ MANDATORY RULE — SAVE AND PUSH AFTER EVERY MILESTONE
 >
 > After completing each numbered milestone below:
@@ -748,4 +782,4 @@ actions.switchToFrame(newIdx)
 
 ---
 
-_Last updated: 2026-03-07 — Feature audit complete, rebuild plan drafted, ready to begin M1._
+_Last updated: 2026-03-07 — M1–M9 complete and committed. M10 in progress._

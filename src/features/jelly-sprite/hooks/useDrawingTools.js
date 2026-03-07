@@ -649,6 +649,7 @@ export function useDrawingTools({
     const w = canvasW,
       h = canvasH,
       src = pixelsRef.current;
+    // dst is interpreted as h-wide × w-tall (dimensions swap on rotation)
     const dst = new Uint8ClampedArray(w * h * 4);
     for (let y = 0; y < h; y++) {
       for (let x = 0; x < w; x++) {
@@ -660,17 +661,26 @@ export function useDrawingTools({
         dst[di + 3] = src[si + 3];
       }
     }
-    pixelsRef.current = dst;
-    layerDataRef.current[activeLayerIdRef.current] = dst;
-    pushHistoryEntry();
-    redraw();
-    saveToProject();
+    if (w !== h) {
+      // Non-square: canvas dimensions swap — use the resize path so the
+      // renderer knows the new width/height (same pattern as cropToSelection)
+      pendingResizeDataRef.current = { [activeLayerIdRef.current]: dst };
+      setCanvasW(h);
+      setCanvasH(w);
+    } else {
+      pixelsRef.current = dst;
+      layerDataRef.current[activeLayerIdRef.current] = dst;
+      pushHistoryEntry();
+      redraw();
+      saveToProject();
+    }
   }
 
   function rotateCCW() {
     const w = canvasW,
       h = canvasH,
       src = pixelsRef.current;
+    // dst is interpreted as h-wide × w-tall (dimensions swap on rotation)
     const dst = new Uint8ClampedArray(w * h * 4);
     for (let y = 0; y < h; y++) {
       for (let x = 0; x < w; x++) {
@@ -682,11 +692,17 @@ export function useDrawingTools({
         dst[di + 3] = src[si + 3];
       }
     }
-    pixelsRef.current = dst;
-    layerDataRef.current[activeLayerIdRef.current] = dst;
-    pushHistoryEntry();
-    redraw();
-    saveToProject();
+    if (w !== h) {
+      pendingResizeDataRef.current = { [activeLayerIdRef.current]: dst };
+      setCanvasW(h);
+      setCanvasH(w);
+    } else {
+      pixelsRef.current = dst;
+      layerDataRef.current[activeLayerIdRef.current] = dst;
+      pushHistoryEntry();
+      redraw();
+      saveToProject();
+    }
   }
 
   return {
