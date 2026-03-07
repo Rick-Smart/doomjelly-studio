@@ -26,7 +26,8 @@
 | M7        | History (Undo/Redo)              | ✅ Done        | `c96011d` |
 | M8        | Frame System                     | ✅ Done        | `809e51b` |
 | M9        | Playback + Onion Skinning        | ✅ Done        | `c53263e` |
-| M10       | Selection Tools + Transforms     | 🔄 In Progress | —         |
+| M10       | Selection Tools + Transforms     | ✅ Done        | `b9c6fbe` |
+| QA        | Tool + Panel Audit               | 🔄 In Progress | —         |
 | M11       | Canvas Resize                    | ⬜ Pending     | —         |
 | M12       | Export + Workspace Integration   | ⬜ Pending     | —         |
 | M13       | Color System + Palette Manager   | ⬜ Pending     | —         |
@@ -782,4 +783,171 @@ actions.switchToFrame(newIdx)
 
 ---
 
-_Last updated: 2026-03-07 — M1–M9 complete and committed. M10 in progress._
+## QA Audit — Tool & Panel Verification
+
+> **Purpose:** Confirm every tool and every panel control works correctly with
+> the new Option B architecture (store → refs → engine). Work through these
+> one item at a time, checking the box only after live testing in the dev server.
+> Fix any bug found before moving to the next item. Commit fixes as they land.
+>
+> **Architecture checklist per item:**
+>
+> - State reads from `useJellySprite()` / store, not a stale local copy
+> - Pixel writes go through `refs.pixelBuffers` (not an orphaned buffer)
+> - UI changes dispatch to the store (not `useState` detached from context)
+> - `refs.onStrokeComplete()` is called after any stroke (enables undo, updates thumbnail)
+
+---
+
+### Tool Bar (Left column)
+
+#### SELECT group
+
+- [ ] **Rect Select** — drag draws selection rect; marching ants animate; coords appear in Brush tab; Esc/✕ clears
+- [ ] **Lasso Select** — freehand path drawn while dragging; releases as closed polygon selection; marching ants; Esc/✕ clears
+- [ ] **Magic Wand** — click flood-selects a colour region; selection shown with marching ants; Esc/✕ clears
+- [ ] **Move** — with an active selection, drag moves the selected pixels; commits on mouse-up; undo restores
+
+#### DRAW group
+
+- [ ] **Pencil** — paints with current FG colour + opacity; interpolates between mouse positions; undo enabled after stroke; frame thumbnail updates
+- [ ] **Eraser** — paints transparent; respects brush size/shape; undo enabled after stroke
+- [ ] **Fill Bucket** — flood-fills from click point with FG colour; respects selection boundary if active; undo works
+- [ ] **Color Picker** — click sets FG colour to pixel under cursor; adds to recent colour history; no pixel write, no undo entry
+
+#### SHAPE group
+
+- [ ] **Line** — Bresenham line with live preview from mouseDown to current position; commits on mouseUp; undo works
+- [ ] **Rectangle** — live preview rect while dragging; outline or filled per Shape Mode toggle; commits on mouseUp; undo works
+- [ ] **Ellipse** — live preview ellipse while dragging; outline or filled; commits on mouseUp; undo works
+- [ ] **Spray** — random scatter within brush radius while dragging; sizes and density follow brush settings; undo after mouseUp
+
+#### MIRROR section
+
+- [ ] **H mirror (⇔)** — button toggles; active state highlighted; strokes paint mirrored across vertical centre simultaneously
+- [ ] **V mirror (⇕)** — button toggles; active state highlighted; strokes paint mirrored across horizontal centre simultaneously
+- [ ] **Both active** — 4-way symmetry; all four quadrants receive strokes
+
+#### ZOOM section
+
+- [ ] **− button** — decrements zoom by 1, floor 1×; display updates; canvas rescales
+- [ ] **+ button** — increments zoom by 1, ceiling 16×; display updates; canvas rescales
+- [ ] **N× label** — always shows a whole number (not NaN)
+
+#### GRID section
+
+- [ ] **Pixel grid (⊞)** — toggles overlay of 1×1 pixel lines; only visible at zoom ≥ 4×; button shows active state
+- [ ] **Frame grid (▦)** — toggles overlay of frame-boundary lines; button shows active state
+
+#### TRANSFORM section
+
+- [ ] **Flip H (↔)** — mirrors active layer pixels horizontally; undo works; does NOT change canvas dimensions
+- [ ] **Flip V (↕)** — mirrors active layer pixels vertically; undo works
+- [ ] **Rotate CW (↻)** — rotates active layer 90° clockwise; square canvas: in-place; non-square: canvas dims swap correctly via resize path
+- [ ] **Rotate CCW (↺)** — rotates active layer 90° counter-clockwise; same dimension behaviour as CW
+
+#### HISTORY section
+
+- [ ] **Undo (↩)** — disabled on fresh canvas; enabled after first stroke; restores previous pixel state; canUndo/canRedo flags update
+- [ ] **Redo (↪)** — disabled until after an undo; re-applies the undone stroke; disabled again at head of stack
+- [ ] **Clear ✕** — fills active layer with transparent; pushes history (so undo restores); confirmation not required (per current design)
+
+---
+
+### Props Panel (Right column)
+
+#### Always-visible top section
+
+- [ ] **FG swatch** — shows current foreground colour + alpha as combined RGBA preview
+- [ ] **BG swatch** — shows background colour; clicking it swaps FG ↔ BG (same as ⇄ button and X key)
+- [ ] **⇄ swap button** — swaps FG and BG correctly
+- [ ] **Color picker** — HSV gradient + hue bar + alpha bar + hex input + RGB sliders all update `fgColor` / `fgAlpha` in the store
+- [ ] **Recent colour row** — appears after first colour pick; last 10 colours; clicking sets FG colour; active colour highlighted
+
+#### PALETTE tab
+
+- [ ] **Palette selector** — dropdown lists all palettes; switching palette updates swatch grid
+- [ ] **Swatch grid** — clicking a swatch sets FG colour and adds to recent history
+- [ ] **+ swatch** — adds current FG colour to active palette
+- [ ] **− swatch** — removes clicked colour from palette (builtins protected)
+- [ ] **New palette button** — creates empty named palette; becomes active
+- [ ] **Delete palette button** — deletes custom palette; disabled for builtins
+- [ ] **Rename palette** — inline rename works
+- [ ] **Import .hex button** — loads Lospec-format hex file into a new palette
+- [ ] **Ramp button** — generates N interpolated steps between two colours and adds to palette
+- [ ] **Preset buttons (DoomJelly 32, CGA, Pico-8, NES)** — load that palette
+
+#### BRUSH tab
+
+- [ ] **Brush shape grid** — 7 shapes (Round, Square, Diamond, Cross, Pixel, Dither, 50% Dith); clicking activates; BrushThumb preview updates
+- [ ] **Size slider** — 1–32px; disabled and locked to 1 when Pixel brush active; value label updates live
+- [ ] **Opacity slider** — 1–100%; value label updates live; affects stroke alpha
+- [ ] **Shape Mode section** — only visible when Rect or Ellipse tool active; Outline/Filled toggle works
+- [ ] **Selection section** — only visible when a selection is active; shows `x,y — w×h px`; ✕ button deselects
+- [ ] **Copy button** — copies selected pixels to clipboard; Paste button enables
+- [ ] **Paste button** — pastes clipboard at selection position; disabled when clipboard empty
+- [ ] **Crop button** — resizes canvas to selection bounds; selection clears; pixel content preserved
+- [ ] **Delete button** — fills selection region with transparent; pushes history
+
+#### LAYERS tab
+
+- [ ] **Layer list** — shows all layers in reverse order (top layer first); active layer highlighted
+- [ ] **Click layer row** — sets active layer; pixel writes then go to that layer's buffer
+- [ ] **Visibility toggle (👁/⊘)** — hides/shows layer in composite; canvas redraws immediately
+- [ ] **Double-click name** — enters inline rename; Enter/blur commits; Escape cancels
+- [ ] **↑ / ↓ buttons** — reorder layer in stack; composite order updates immediately
+- [ ] **⎘ Duplicate** — deep-copies pixel buffer + metadata; new layer inserted above; undo works
+- [ ] **✕ Delete** — removes layer; blocked if only one layer remains; undo works
+- [ ] **Blend mode select** — only visible on active layer row; changes composite operation; canvas redraws
+- [ ] **Opacity slider** — only visible on active layer row; 0–100%; canvas redraws live
+- [ ] **+ Add layer button** — inserts blank layer above active; becomes new active layer
+- [ ] **Merge Down** — alpha-composites active layer into the one below; disabled if active is bottom layer
+- [ ] **Flatten All** — composites all visible layers into one; disabled if only one layer
+- [ ] **+ Add Mask** — creates white mask on active layer; mask chip (⬡) appears on row
+- [ ] **Edit Mask toggle** — clicking ⬡ chip enters mask-editing mode; brush strokes write greyscale to mask buffer
+- [ ] **Del Mask** — removes mask from layer; mask chip disappears
+
+#### CANVAS tab
+
+- [ ] **Anchor picker** — 9 buttons (3×3 grid); active button highlighted; determines where existing pixels land after resize
+- [ ] **Preset size buttons** — 64×64, 128×128, 256×128, 256×256; active preset highlighted when canvas matches; clicking resizes
+- [ ] **Custom W / H inputs** — number inputs 1–1024; Enter key applies; Apply (↵) button applies
+- [ ] **Resize preserves content** — pixels shifted per anchor; no corruption of pixel data
+
+#### VIEW tab
+
+- [ ] **Load image… button** — file picker accepts images; loaded image appears as ref preview thumbnail
+- [ ] **Visible checkbox** — toggles ref image overlay on canvas; canvas redraws immediately
+- [ ] **Opacity slider** — 5–100%; canvas redraws live; label shows current %
+- [ ] **✕ Remove ref** — clears ref image; controls hide; canvas redraws
+- [ ] **2×2 tile button** — shows tiled preview canvas with 2×2 repetitions; updates as you draw
+- [ ] **3×3 tile button** — shows tiled preview canvas with 3×3 repetitions; updates as you draw
+- [ ] **off button** — hides tile preview canvas
+
+#### MORE tab
+
+- [ ] **← From Animator button** — only visible when project has a sprite sheet; imports sheet into active layer buffer
+- [ ] **Send to Animator → button** — composites active frame; sends data URL to ProjectContext; button always visible
+- [ ] **⬇ Export… button** — opens Export modal
+
+#### Export modal
+
+- [ ] **PNG — active frame** — downloads composite of all visible layers for active frame
+- [ ] **PNG — sprite sheet** — downloads all frames arranged in a grid per column/padding settings
+- [ ] **ZIP — all frames** — downloads zip of individually named PNGs per frame
+- [ ] **Palette .hex** — downloads active palette as Lospec `.hex` text file
+- [ ] **Columns / Padding / Labels inputs** — persist during session; affect sprite sheet output
+- [ ] **✕ close / backdrop click** — closes modal without action
+
+#### Frame Strip (Bottom)
+
+- [ ] **▶ Play button** — starts playback; button changes to ■ Stop; onion skin hides during playback
+- [ ] **FPS slider** — adjusts playback speed live; range 1–30fps
+- [ ] **Frame thumbnails** — shows composite of each frame; clicking switches active frame; thumbnail updates after every stroke
+- [ ] **+ Frame** — adds new blank frame; becomes active
+- [ ] **Double-click frame name** — inline rename; Enter/blur commits; Escape cancels
+- [ ] **Onion skin** — when enabled in playback controls, previous frame tinted red and next frame tinted blue at 30% opacity behind active frame
+
+---
+
+_Last updated: 2026-03-07 — M1–M10 complete and committed. QA audit in progress._
