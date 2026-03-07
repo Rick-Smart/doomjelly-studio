@@ -17,6 +17,7 @@ export function LeftToolbar() {
     setGridVisible,
     frameGridVisible,
     setFrameGridVisible,
+    setPanelTab,
     flipH,
     flipV,
     rotateCW,
@@ -129,8 +130,12 @@ export function LeftToolbar() {
           </button>
           <button
             className={`jelly-sprite__tool-btn${frameGridVisible ? " jelly-sprite__tool-btn--active" : ""}`}
-            onClick={() => setFrameGridVisible((v) => !v)}
-            title="Toggle frame grid"
+            onClick={() => {
+              const next = !frameGridVisible;
+              setFrameGridVisible(next);
+              if (next) setPanelTab("view");
+            }}
+            title="Toggle custom grid (configure size in View tab)"
           >
             ▦
           </button>
