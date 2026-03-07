@@ -1,11 +1,11 @@
-.pixel-lab {
+.jelly-sprite {
   display: flex;
   height: 100%;
   overflow: hidden;
 }
 
 /* ── Left toolbar ── */
-.pixel-lab__toolbar {
+.jelly-sprite__toolbar {
   width: 52px;
   flex-shrink: 0;
   background: var(--surface);
@@ -18,14 +18,14 @@
   overflow-y: auto;
 }
 
-.pixel-lab__tool-group {
+.jelly-sprite__tool-group {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 2px;
 }
 
-.pixel-lab__toolbar-sep {
+.jelly-sprite__toolbar-sep {
   width: 30px;
   height: 1px;
   background: var(--border);
@@ -33,7 +33,7 @@
   flex-shrink: 0;
 }
 
-.pixel-lab__tool-btn {
+.jelly-sprite__tool-btn {
   width: 36px;
   height: 36px;
   display: flex;
@@ -52,32 +52,32 @@
   padding: 0;
 }
 
-.pixel-lab__tool-btn:hover:not(:disabled) {
+.jelly-sprite__tool-btn:hover:not(:disabled) {
   background: var(--surface2);
   color: var(--text);
 }
 
-.pixel-lab__tool-btn--active {
+.jelly-sprite__tool-btn--active {
   background: color-mix(in srgb, var(--accent) 15%, var(--surface2));
   border-color: var(--accent);
   color: var(--accent);
 }
 
-.pixel-lab__tool-btn--danger {
+.jelly-sprite__tool-btn--danger {
   color: var(--danger);
 }
 
-.pixel-lab__tool-btn--danger:hover:not(:disabled) {
+.jelly-sprite__tool-btn--danger:hover:not(:disabled) {
   background: var(--danger);
   color: #fff;
 }
 
-.pixel-lab__tool-btn:disabled {
+.jelly-sprite__tool-btn:disabled {
   opacity: 0.35;
   cursor: not-allowed;
 }
 
-.pixel-lab__zoom-label {
+.jelly-sprite__zoom-label {
   font-size: 10px;
   color: var(--text-muted);
   font-weight: 600;
@@ -87,7 +87,7 @@
 }
 
 /* ── Canvas area ── */
-.pixel-lab__canvas-wrap {
+.jelly-sprite__canvas-wrap {
   flex: 1;
   overflow: auto;
   background: var(--surface2);
@@ -97,7 +97,7 @@
   padding: 20px;
 }
 
-.pixel-lab__canvas {
+.jelly-sprite__canvas {
   image-rendering: pixelated;
   image-rendering: crisp-edges;
   /* Checkerboard transparency indicator */
@@ -112,7 +112,7 @@
 }
 
 /* ── Right panel ── */
-.pixel-lab__panel {
+.jelly-sprite__panel {
   width: 228px;
   flex-shrink: 0;
   background: var(--surface);
@@ -124,13 +124,13 @@
   gap: 16px;
 }
 
-.pixel-lab__section {
+.jelly-sprite__section {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.pixel-lab__section-label {
+.jelly-sprite__section-label {
   font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
@@ -141,7 +141,7 @@
   gap: 6px;
 }
 
-.pixel-lab__key-hint {
+.jelly-sprite__key-hint {
   font-size: 9px;
   font-weight: 400;
   text-transform: none;
@@ -151,13 +151,13 @@
 }
 
 /* Foreground / background colour slots */
-.pixel-lab__fg-bg {
+.jelly-sprite__fg-bg {
   position: relative;
   height: 52px;
   margin-bottom: 4px;
 }
 
-.pixel-lab__fg-bg-bg {
+.jelly-sprite__fg-bg-bg {
   position: absolute;
   bottom: 0;
   right: 12px;
@@ -169,11 +169,11 @@
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
   transition: border-color 0.1s;
 }
-.pixel-lab__fg-bg-bg:hover {
+.jelly-sprite__fg-bg-bg:hover {
   border-color: var(--text-muted);
 }
 
-.pixel-lab__fg-bg-fg {
+.jelly-sprite__fg-bg-fg {
   position: absolute;
   top: 0;
   left: 0;
@@ -189,7 +189,7 @@
 /* The fg swatch sits on top via stacking context — overlay colour via ::after */
 /* (colour is set inline via bg directly) */
 
-.pixel-lab__swap-btn {
+.jelly-sprite__swap-btn {
   position: absolute;
   bottom: 18px;
   right: 0;
@@ -207,19 +207,19 @@
   align-items: center;
   justify-content: center;
 }
-.pixel-lab__swap-btn:hover {
+.jelly-sprite__swap-btn:hover {
   color: var(--text);
   border-color: var(--text-muted);
 }
 
 /* Recent colour history */
-.pixel-lab__history {
+.jelly-sprite__history {
   display: flex;
   flex-wrap: wrap;
   gap: 3px;
 }
 
-.pixel-lab__history-cell {
+.jelly-sprite__history-cell {
   width: 18px;
   height: 18px;
   border-radius: 3px;
@@ -228,20 +228,20 @@
   padding: 0;
   transition: transform 0.08s;
 }
-.pixel-lab__history-cell:hover {
+.jelly-sprite__history-cell:hover {
   transform: scale(1.25);
   z-index: 1;
   position: relative;
 }
 
 /* Color controls */
-.pixel-lab__color-row {
+.jelly-sprite__color-row {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.pixel-lab__color-swatch {
+.jelly-sprite__color-swatch {
   width: 32px;
   height: 32px;
   border-radius: 4px;
@@ -249,7 +249,7 @@
   flex-shrink: 0;
 }
 
-.pixel-lab__color-input {
+.jelly-sprite__color-input {
   width: 36px;
   height: 32px;
   padding: 2px;
@@ -260,13 +260,13 @@
 }
 
 /* Palette grid */
-.pixel-lab__palette {
+.jelly-sprite__palette {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 3px;
 }
 
-.pixel-lab__palette-cell {
+.jelly-sprite__palette-cell {
   aspect-ratio: 1;
   border-radius: 3px;
   border: 2px solid transparent;
@@ -275,25 +275,25 @@
   transition: transform 0.08s;
 }
 
-.pixel-lab__palette-cell:hover {
+.jelly-sprite__palette-cell:hover {
   transform: scale(1.2);
   z-index: 1;
   position: relative;
 }
 
-.pixel-lab__palette-cell--active {
+.jelly-sprite__palette-cell--active {
   border-color: var(--text);
   box-shadow: 0 0 0 1px var(--bg);
 }
 
 /* Canvas size presets */
-.pixel-lab__size-btns {
+.jelly-sprite__size-btns {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-.pixel-lab__size-btn {
+.jelly-sprite__size-btn {
   font-size: 11px;
   padding: 4px 8px;
   background: var(--surface3);
@@ -305,11 +305,11 @@
   transition: background 0.1s;
 }
 
-.pixel-lab__size-btn:hover {
+.jelly-sprite__size-btn:hover {
   background: var(--surface2);
 }
 
-.pixel-lab__size-btn--active {
+.jelly-sprite__size-btn--active {
   border-color: var(--accent);
   background: color-mix(in srgb, var(--accent) 10%, var(--surface3));
   color: var(--accent);
@@ -317,7 +317,7 @@
 }
 
 /* Use in Animator */
-.pixel-lab__use-btn {
+.jelly-sprite__use-btn {
   width: 100%;
   padding: 8px 12px;
   background: var(--accent);
@@ -330,12 +330,12 @@
   transition: opacity 0.1s;
 }
 
-.pixel-lab__use-btn:hover {
+.jelly-sprite__use-btn:hover {
   opacity: 0.85;
 }
 
 /* Import from Animator */
-.pixel-lab__import-btn {
+.jelly-sprite__import-btn {
   width: 100%;
   margin-bottom: 6px;
   padding: 7px 12px;
@@ -351,7 +351,7 @@
     color 0.1s;
 }
 
-.pixel-lab__import-btn:hover {
+.jelly-sprite__import-btn:hover {
   border-color: var(--accent);
   color: var(--accent);
 }

@@ -7,7 +7,7 @@ import {
   serialiseProject,
   saveProjectToStorage,
 } from "../../services/projectService";
-import { PixelLab } from "./PixelLab";
+import { JellySprite } from "./JellySprite";
 
 function EditableTitle({ value, onChange }) {
   const [editing, setEditing] = useState(false);
@@ -55,7 +55,7 @@ function EditableTitle({ value, onChange }) {
   );
 }
 
-export function PixelLabWorkspace() {
+export function JellySpriteWorkspace() {
   const { state, dispatch } = useProject();
   const { showToast } = useNotification();
   const navigate = useNavigate();
@@ -102,7 +102,7 @@ export function PixelLabWorkspace() {
       scrollable={false}
       padding={false}
     >
-      <PixelLab onSwitchToAnimator={() => navigate("/editor")} />
+      <JellySprite onSwitchToAnimator={() => navigate("/editor")} />
     </Page>
   );
 }

@@ -61,7 +61,7 @@ export function serialiseProject(state) {
         dy: f.dy ?? 0,
       })),
     })),
-    pixelLabDataUrl: state.pixelLabDataUrl ?? null,
+    jellySpriteDataUrl: state.jellySpriteDataUrl ?? null,
   };
 }
 

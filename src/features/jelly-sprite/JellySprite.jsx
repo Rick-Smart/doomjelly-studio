@@ -2,7 +2,7 @@ import { useRef, useEffect, useState, useCallback } from "react";
 import { useProject } from "../../contexts/ProjectContext";
 import { ColorPicker } from "./ColorPicker";
 import { PaletteManager, BUILTIN_PALETTES } from "./PaletteManager";
-import "./PixelLab.css";
+import "./JellySprite.css";
 
 // ── Colour helpers ────────────────────────────────────────────────────────────
 function hexToRgba(hex, alpha = 255) {
@@ -129,7 +129,7 @@ function rasterEllipse(cx, cy, rx, ry, filled, cb) {
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
-export function PixelLab({ onSwitchToAnimator }) {
+export function JellySprite({ onSwitchToAnimator }) {
   const { state, dispatch } = useProject();
 
   // Canvas dimensions
@@ -199,7 +199,7 @@ export function PixelLab({ onSwitchToAnimator }) {
       redraw();
     }
 
-    const src = state.PixelLabDataUrl;
+    const src = state.JellySpriteDataUrl;
     if (src) {
       const img = new Image();
       img.onload = () => {
@@ -746,15 +746,15 @@ export function PixelLab({ onSwitchToAnimator }) {
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="pixel-lab">
+    <div className="jelly-sprite">
       {/* ── Left toolbar ── */}
-      <div className="pixel-lab__toolbar">
+      <div className="jelly-sprite__toolbar">
         {/* Drawing tools */}
-        <div className="pixel-lab__tool-group">
+        <div className="jelly-sprite__tool-group">
           {TOOLS.map((t) => (
             <button
               key={t.id}
-              className={`pixel-lab__tool-btn${tool === t.id ? " pixel-lab__tool-btn--active" : ""}`}
+              className={`jelly-sprite__tool-btn${tool === t.id ? " jelly-sprite__tool-btn--active" : ""}`}
               onClick={() => setTool(t.id)}
               title={t.title}
             >
@@ -763,33 +763,33 @@ export function PixelLab({ onSwitchToAnimator }) {
           ))}
         </div>
 
-        <div className="pixel-lab__toolbar-sep" />
+        <div className="jelly-sprite__toolbar-sep" />
 
         {/* Shape fill toggle */}
         {["rect", "ellipse"].includes(tool) && (
           <>
             <button
-              className={`pixel-lab__tool-btn${fillShapes ? " pixel-lab__tool-btn--active" : ""}`}
+              className={`jelly-sprite__tool-btn${fillShapes ? " jelly-sprite__tool-btn--active" : ""}`}
               onClick={() => setFillShapes((v) => !v)}
               title={fillShapes ? "Filled shape" : "Outlined shape"}
             >
               {fillShapes ? "■" : "□"}
             </button>
-            <div className="pixel-lab__toolbar-sep" />
+            <div className="jelly-sprite__toolbar-sep" />
           </>
         )}
 
         {/* Symmetry */}
-        <div className="pixel-lab__tool-group">
+        <div className="jelly-sprite__tool-group">
           <button
-            className={`pixel-lab__tool-btn${symmetryH ? " pixel-lab__tool-btn--active" : ""}`}
+            className={`jelly-sprite__tool-btn${symmetryH ? " jelly-sprite__tool-btn--active" : ""}`}
             onClick={() => setSymmetryH((v) => !v)}
             title="Mirror horizontal (S)"
           >
             ⇔
           </button>
           <button
-            className={`pixel-lab__tool-btn${symmetryV ? " pixel-lab__tool-btn--active" : ""}`}
+            className={`jelly-sprite__tool-btn${symmetryV ? " jelly-sprite__tool-btn--active" : ""}`}
             onClick={() => setSymmetryV((v) => !v)}
             title="Mirror vertical"
           >
@@ -797,20 +797,20 @@ export function PixelLab({ onSwitchToAnimator }) {
           </button>
         </div>
 
-        <div className="pixel-lab__toolbar-sep" />
+        <div className="jelly-sprite__toolbar-sep" />
 
         {/* Zoom */}
-        <div className="pixel-lab__tool-group">
+        <div className="jelly-sprite__tool-group">
           <button
-            className="pixel-lab__tool-btn"
+            className="jelly-sprite__tool-btn"
             onClick={() => setZoom((z) => Math.max(1, z - 1))}
             title="Zoom out (-)"
           >
             −
           </button>
-          <span className="pixel-lab__zoom-label">{zoom}×</span>
+          <span className="jelly-sprite__zoom-label">{zoom}×</span>
           <button
-            className="pixel-lab__tool-btn"
+            className="jelly-sprite__tool-btn"
             onClick={() => setZoom((z) => Math.min(16, z + 1))}
             title="Zoom in (+)"
           >
@@ -818,19 +818,19 @@ export function PixelLab({ onSwitchToAnimator }) {
           </button>
         </div>
 
-        <div className="pixel-lab__toolbar-sep" />
+        <div className="jelly-sprite__toolbar-sep" />
 
         {/* Grid toggles */}
-        <div className="pixel-lab__tool-group">
+        <div className="jelly-sprite__tool-group">
           <button
-            className={`pixel-lab__tool-btn${gridVisible ? " pixel-lab__tool-btn--active" : ""}`}
+            className={`jelly-sprite__tool-btn${gridVisible ? " jelly-sprite__tool-btn--active" : ""}`}
             onClick={() => setGridVisible((v) => !v)}
             title="Toggle pixel grid"
           >
             ⊞
           </button>
           <button
-            className={`pixel-lab__tool-btn${frameGridVisible ? " pixel-lab__tool-btn--active" : ""}`}
+            className={`jelly-sprite__tool-btn${frameGridVisible ? " jelly-sprite__tool-btn--active" : ""}`}
             onClick={() => setFrameGridVisible((v) => !v)}
             title="Toggle frame grid"
           >
@@ -838,33 +838,33 @@ export function PixelLab({ onSwitchToAnimator }) {
           </button>
         </div>
 
-        <div className="pixel-lab__toolbar-sep" />
+        <div className="jelly-sprite__toolbar-sep" />
 
         {/* Flip / rotate */}
-        <div className="pixel-lab__tool-group">
+        <div className="jelly-sprite__tool-group">
           <button
-            className="pixel-lab__tool-btn"
+            className="jelly-sprite__tool-btn"
             onClick={flipH}
             title="Flip horizontal"
           >
             ↔
           </button>
           <button
-            className="pixel-lab__tool-btn"
+            className="jelly-sprite__tool-btn"
             onClick={flipV}
             title="Flip vertical"
           >
             ↕
           </button>
           <button
-            className="pixel-lab__tool-btn"
+            className="jelly-sprite__tool-btn"
             onClick={rotateCW}
             title="Rotate 90° CW"
           >
             ↻
           </button>
           <button
-            className="pixel-lab__tool-btn"
+            className="jelly-sprite__tool-btn"
             onClick={rotateCCW}
             title="Rotate 90° CCW"
           >
@@ -872,12 +872,12 @@ export function PixelLab({ onSwitchToAnimator }) {
           </button>
         </div>
 
-        <div className="pixel-lab__toolbar-sep" />
+        <div className="jelly-sprite__toolbar-sep" />
 
         {/* Undo / redo */}
-        <div className="pixel-lab__tool-group">
+        <div className="jelly-sprite__tool-group">
           <button
-            className="pixel-lab__tool-btn"
+            className="jelly-sprite__tool-btn"
             onClick={doUndo}
             disabled={!canUndo}
             title="Undo (Ctrl+Z)"
@@ -885,7 +885,7 @@ export function PixelLab({ onSwitchToAnimator }) {
             ↩
           </button>
           <button
-            className="pixel-lab__tool-btn"
+            className="jelly-sprite__tool-btn"
             onClick={doRedo}
             disabled={!canRedo}
             title="Redo (Ctrl+Y)"
@@ -894,10 +894,10 @@ export function PixelLab({ onSwitchToAnimator }) {
           </button>
         </div>
 
-        <div className="pixel-lab__toolbar-sep" />
+        <div className="jelly-sprite__toolbar-sep" />
 
         <button
-          className="pixel-lab__tool-btn pixel-lab__tool-btn--danger"
+          className="jelly-sprite__tool-btn jelly-sprite__tool-btn--danger"
           onClick={clearCanvas}
           title="Clear canvas"
         >
@@ -906,10 +906,10 @@ export function PixelLab({ onSwitchToAnimator }) {
       </div>
 
       {/* ── Canvas ── */}
-      <div className="pixel-lab__canvas-wrap">
+      <div className="jelly-sprite__canvas-wrap">
         <canvas
           ref={canvasRef}
-          className="pixel-lab__canvas"
+          className="jelly-sprite__canvas"
           width={canvasW * zoom}
           height={canvasH * zoom}
           onMouseDown={onMouseDown}
@@ -921,15 +921,15 @@ export function PixelLab({ onSwitchToAnimator }) {
       </div>
 
       {/* ── Right panel ── */}
-      <div className="pixel-lab__panel">
+      <div className="jelly-sprite__panel">
         {/* Foreground / background colour slots */}
-        <div className="pixel-lab__section">
-          <div className="pixel-lab__section-label">
-            Color <span className="pixel-lab__key-hint">X=swap</span>
+        <div className="jelly-sprite__section">
+          <div className="jelly-sprite__section-label">
+            Color <span className="jelly-sprite__key-hint">X=swap</span>
           </div>
-          <div className="pixel-lab__fg-bg">
+          <div className="jelly-sprite__fg-bg">
             <div
-              className="pixel-lab__fg-bg-bg"
+              className="jelly-sprite__fg-bg-bg"
               style={{ background: bgColor }}
               title="Background colour (click to edit)"
               onClick={() => {
@@ -939,7 +939,7 @@ export function PixelLab({ onSwitchToAnimator }) {
               }}
             />
             <div
-              className="pixel-lab__fg-bg-fg"
+              className="jelly-sprite__fg-bg-fg"
               style={{
                 background: `rgba(${hexToRgba(
                   fgColor,
@@ -951,7 +951,7 @@ export function PixelLab({ onSwitchToAnimator }) {
               title="Foreground colour (active)"
             />
             <button
-              className="pixel-lab__swap-btn"
+              className="jelly-sprite__swap-btn"
               title="Swap colours (X)"
               onClick={() => {
                 const tmp = fgColor;
@@ -965,7 +965,7 @@ export function PixelLab({ onSwitchToAnimator }) {
         </div>
 
         {/* Inline HSV picker */}
-        <div className="pixel-lab__section">
+        <div className="jelly-sprite__section">
           <ColorPicker
             hex={fgColor}
             alpha={fgAlpha}
@@ -978,13 +978,13 @@ export function PixelLab({ onSwitchToAnimator }) {
 
         {/* Colour history */}
         {colorHistory.length > 0 && (
-          <div className="pixel-lab__section">
-            <div className="pixel-lab__section-label">Recent</div>
-            <div className="pixel-lab__history">
+          <div className="jelly-sprite__section">
+            <div className="jelly-sprite__section-label">Recent</div>
+            <div className="jelly-sprite__history">
               {colorHistory.map((c, i) => (
                 <button
                   key={i}
-                  className={`pixel-lab__history-cell${fgColor === c ? " pixel-lab__palette-cell--active" : ""}`}
+                  className={`jelly-sprite__history-cell${fgColor === c ? " jelly-sprite__palette-cell--active" : ""}`}
                   style={{ background: c }}
                   title={c}
                   onClick={() => pickColor(c)}
@@ -995,8 +995,8 @@ export function PixelLab({ onSwitchToAnimator }) {
         )}
 
         {/* Palette manager */}
-        <div className="pixel-lab__section">
-          <div className="pixel-lab__section-label">Palette</div>
+        <div className="jelly-sprite__section">
+          <div className="jelly-sprite__section-label">Palette</div>
           <PaletteManager
             activeColor={fgColor}
             palettes={palettes}
@@ -1013,13 +1013,13 @@ export function PixelLab({ onSwitchToAnimator }) {
         </div>
 
         {/* Canvas size presets */}
-        <div className="pixel-lab__section">
-          <div className="pixel-lab__section-label">Canvas size</div>
-          <div className="pixel-lab__size-btns">
+        <div className="jelly-sprite__section">
+          <div className="jelly-sprite__section-label">Canvas size</div>
+          <div className="jelly-sprite__size-btns">
             {CANVAS_SIZES.map((s) => (
               <button
                 key={s.label}
-                className={`pixel-lab__size-btn${canvasW === s.w && canvasH === s.h ? " pixel-lab__size-btn--active" : ""}`}
+                className={`jelly-sprite__size-btn${canvasW === s.w && canvasH === s.h ? " jelly-sprite__size-btn--active" : ""}`}
                 onClick={() => changeSize(s.w, s.h)}
               >
                 {s.label}
@@ -1029,16 +1029,16 @@ export function PixelLab({ onSwitchToAnimator }) {
         </div>
 
         {/* Cross-workspace */}
-        <div className="pixel-lab__section">
+        <div className="jelly-sprite__section">
           {state.spriteSheet && (
             <button
-              className="pixel-lab__import-btn"
+              className="jelly-sprite__import-btn"
               onClick={importFromAnimator}
             >
               ← From Animator
             </button>
           )}
-          <button className="pixel-lab__use-btn" onClick={useInAnimator}>
+          <button className="jelly-sprite__use-btn" onClick={useInAnimator}>
             Send to Animator →
           </button>
         </div>
