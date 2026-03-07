@@ -77,6 +77,70 @@ function makeLayer(name) {
     locked: false,
   };
 }
+let _frameIdCounter = 0;
+function makeFrame(name) {
+  return { id: `frame-${_frameIdCounter++}`, name };
+}
+
+// ── Frame thumbnail strip item ────────────────────────────────────────────────
+function FrameThumb({
+  thumb,
+  name,
+  active,
+  idx,
+  isPlaying,
+  playbackIdx,
+  onClick,
+  onDuplicate,
+  onDelete,
+  canDelete,
+}) {
+  return (
+    <div
+      className={[
+        "jelly-sprite__frame-thumb",
+        active ? "jelly-sprite__frame-thumb--active" : "",
+        isPlaying && playbackIdx === idx
+          ? "jelly-sprite__frame-thumb--playing"
+          : "",
+      ]
+        .join(" ")
+        .trim()}
+      onClick={onClick}
+      title={name}
+    >
+      <div className="jelly-sprite__frame-thumb-num">{idx + 1}</div>
+      {thumb ? (
+        <img className="jelly-sprite__frame-thumb-img" src={thumb} alt={name} />
+      ) : (
+        <div className="jelly-sprite__frame-thumb-empty" />
+      )}
+      <div className="jelly-sprite__frame-thumb-actions">
+        <button
+          className="jelly-sprite__frame-thumb-btn"
+          title="Duplicate frame"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDuplicate();
+          }}
+        >
+          ⎘
+        </button>
+        <button
+          className="jelly-sprite__frame-thumb-btn jelly-sprite__frame-thumb-btn--danger"
+          title="Delete frame"
+          disabled={!canDelete}
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete();
+          }}
+        >
+          ✕
+        </button>
+      </div>
+    </div>
+  );
+}
 
 // ── Pixel-drawing algorithms ──────────────────────────────────────────────────
 function bresenhamLine(x0, y0, x1, y1, cb) {
@@ -211,6 +275,38 @@ export function JellySprite({ onSwitchToAnimator }) {
   const [activeLayerId, setActiveLayerId] = useState(initLayer.id);
   const layerDataRef = useRef({ [initLayer.id]: null }); // id → Uint8ClampedArray | null
 
+  // Frames — each frame owns its own layer stack
+  const initFrame = makeFrame("Frame 1");
+  const [frames, setFrames] = useState([initFrame]);
+  const [activeFrameIdx, setActiveFrameIdx] = useState(0);
+  // frameDataRef: {frameId: {layers, activeLayerId, pixelData: {layerId: Uint8ClampedArray}}}
+  // For the active frame, pixelData IS layerDataRef.current (aliased, not copied)
+  const frameDataRef = useRef({
+    [initFrame.id]: {
+      layers: [initLayer],
+      activeLayerId: initLayer.id,
+      pixelData: null,
+    },
+  });
+  // Stable refs that mirror state (used in callbacks/effects that can't capture fresh state)
+  const framesRef = useRef([initFrame]);
+  const layersRef = useRef([initLayer]);
+  const activeLayerIdRef = useRef(initLayer.id);
+  const activeFrameIdxRef = useRef(0);
+
+  // Playback & onion skin
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [fps, setFps] = useState(8);
+  const [onionSkinning, setOnionSkinning] = useState(false);
+  const onionOpacity = 0.3;
+  const isPlayingRef = useRef(false);
+  const playbackFrameIdxRef = useRef(0);
+  const playIntervalRef = useRef(null);
+  const redrawRef = useRef(null); // stable pointer to latest redraw fn
+
+  // Frame thumbnails: {frameId: dataURL}
+  const [frameThumbnails, setFrameThumbnails] = useState({});
+
   // Undo/redo — stores full {layerData, layers, activeLayerId} snapshots
   const historyRef = useRef([]);
   const histIdxRef = useRef(0);
@@ -241,6 +337,19 @@ export function JellySprite({ onSwitchToAnimator }) {
       setSelection(null);
       selectionRef.current = null;
     },
+    prevFrame: () => {
+      if (!isPlayingRef.current)
+        switchToFrame(Math.max(0, activeFrameIdxRef.current - 1));
+    },
+    nextFrame: () => {
+      if (!isPlayingRef.current)
+        switchToFrame(
+          Math.min(framesRef.current.length - 1, activeFrameIdxRef.current + 1),
+        );
+    },
+    togglePlay: () => {
+      isPlayingRef.current ? stopPlayback() : startPlayback();
+    },
   };
 
   // ── Init / resize ─────────────────────────────────────────────────────────
@@ -263,6 +372,16 @@ export function JellySprite({ onSwitchToAnimator }) {
     pixelsRef.current =
       layerDataRef.current[activeLayerId] ??
       (layerDataRef.current[activeLayerId] = new Uint8ClampedArray(size));
+
+    // Wire frameDataRef for the active frame
+    const activeFrameId = framesRef.current[activeFrameIdxRef.current]?.id;
+    if (activeFrameId) {
+      frameDataRef.current[activeFrameId] = {
+        layers: [...layersRef.current],
+        activeLayerId: activeLayerIdRef.current,
+        pixelData: layerDataRef.current,
+      };
+    }
 
     offscreenRef.current = document.createElement("canvas");
     offscreenRef.current.width = w;
@@ -308,7 +427,22 @@ export function JellySprite({ onSwitchToAnimator }) {
     redraw();
   }, [zoom, gridVisible, frameGridVisible]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Marching ants animation for selection
+  // Keep stable refs in sync with state
+  useEffect(() => {
+    framesRef.current = frames;
+  }, [frames]);
+  useEffect(() => {
+    layersRef.current = layers;
+  }, [layers]);
+  useEffect(() => {
+    activeLayerIdRef.current = activeLayerId;
+  }, [activeLayerId]);
+  useEffect(() => {
+    activeFrameIdxRef.current = activeFrameIdx;
+  }, [activeFrameIdx]);
+  useEffect(() => {
+    redrawRef.current = redraw;
+  }); // always latest
   useEffect(() => {
     if (!selection) {
       if (marchingAntsRef.current)
@@ -336,24 +470,77 @@ export function JellySprite({ onSwitchToAnimator }) {
       z = zoom;
     const offCtx = off.getContext("2d");
 
-    // Composite all visible layers bottom to top
-    offCtx.clearRect(0, 0, w, h);
-    const currentLayers = layers; // closed over from render
-    currentLayers.forEach((layer) => {
-      if (!layer.visible) return;
-      const data = layerDataRef.current[layer.id];
-      if (!data) return;
-      const imgData = new ImageData(new Uint8ClampedArray(data), w, h);
-      const tmp = document.createElement("canvas");
-      tmp.width = w;
-      tmp.height = h;
-      tmp.getContext("2d").putImageData(imgData, 0, 0);
-      offCtx.globalAlpha = layer.opacity;
-      offCtx.drawImage(tmp, 0, 0);
-      offCtx.globalAlpha = 1;
-    });
+    // Composite a frame's layers onto the offscreen canvas
+    function compositeFrame(frameId) {
+      const isActive =
+        framesRef.current[activeFrameIdxRef.current]?.id === frameId;
+      const renderLayers = isActive
+        ? layersRef.current
+        : (frameDataRef.current[frameId]?.layers ?? []);
+      const renderPixelData = isActive
+        ? layerDataRef.current
+        : (frameDataRef.current[frameId]?.pixelData ?? {});
+      offCtx.clearRect(0, 0, w, h);
+      renderLayers.forEach((layer) => {
+        if (!layer.visible) return;
+        const data = renderPixelData[layer.id];
+        if (!data) return;
+        const imgData = new ImageData(new Uint8ClampedArray(data), w, h);
+        const tmp = document.createElement("canvas");
+        tmp.width = w;
+        tmp.height = h;
+        tmp.getContext("2d").putImageData(imgData, 0, 0);
+        offCtx.globalAlpha = layer.opacity;
+        offCtx.drawImage(tmp, 0, 0);
+        offCtx.globalAlpha = 1;
+      });
+    }
+
+    const currentFrames = framesRef.current;
+    const dispIdx = isPlayingRef.current
+      ? playbackFrameIdxRef.current
+      : activeFrameIdxRef.current;
+    const displayFrameId = currentFrames[dispIdx]?.id;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Onion skinning (edit mode only, 2+ frames)
+    if (onionSkinning && !isPlayingRef.current && currentFrames.length > 1) {
+      const curIdx = activeFrameIdxRef.current;
+      if (curIdx > 0) {
+        compositeFrame(currentFrames[curIdx - 1].id);
+        const ghost = document.createElement("canvas");
+        ghost.width = w;
+        ghost.height = h;
+        const gCtx = ghost.getContext("2d");
+        gCtx.drawImage(off, 0, 0);
+        gCtx.globalCompositeOperation = "source-atop";
+        gCtx.fillStyle = "rgba(255,80,80,0.5)";
+        gCtx.fillRect(0, 0, w, h);
+        ctx.globalAlpha = onionOpacity;
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(ghost, 0, 0, w * z, h * z);
+        ctx.globalAlpha = 1;
+      }
+      if (curIdx < currentFrames.length - 1) {
+        compositeFrame(currentFrames[curIdx + 1].id);
+        const ghost = document.createElement("canvas");
+        ghost.width = w;
+        ghost.height = h;
+        const gCtx = ghost.getContext("2d");
+        gCtx.drawImage(off, 0, 0);
+        gCtx.globalCompositeOperation = "source-atop";
+        gCtx.fillStyle = "rgba(80,80,255,0.5)";
+        gCtx.fillRect(0, 0, w, h);
+        ctx.globalAlpha = onionOpacity;
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(ghost, 0, 0, w * z, h * z);
+        ctx.globalAlpha = 1;
+      }
+    }
+
+    // Main / playback frame
+    if (displayFrameId) compositeFrame(displayFrameId);
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(off, 0, 0, w * z, h * z);
 
@@ -416,8 +603,9 @@ export function JellySprite({ onSwitchToAnimator }) {
     gridVisible,
     frameGridVisible,
     state.frameConfig,
-    layers,
-  ]);
+    onionSkinning,
+    onionOpacity,
+  ]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Pixel helpers ─────────────────────────────────────────────────────────
   function getPixel(x, y) {
@@ -801,6 +989,13 @@ export function JellySprite({ onSwitchToAnimator }) {
     histIdxRef.current = h.length - 1;
     setCanUndo(histIdxRef.current > 0);
     setCanRedo(false);
+    // Update thumbnail for the active frame
+    const activeFrameId = framesRef.current[activeFrameIdxRef.current]?.id;
+    if (activeFrameId) {
+      const thumb = generateFrameThumbnail(activeFrameId);
+      if (thumb)
+        setFrameThumbnails((prev) => ({ ...prev, [activeFrameId]: thumb }));
+    }
   }
 
   function restoreHistory(snap) {
@@ -902,6 +1097,7 @@ export function JellySprite({ onSwitchToAnimator }) {
       }
     }
     pixelsRef.current = dst;
+    layerDataRef.current[activeLayerIdRef.current] = dst;
     pushHistoryEntry();
     redraw();
     saveToProject();
@@ -923,6 +1119,7 @@ export function JellySprite({ onSwitchToAnimator }) {
       }
     }
     pixelsRef.current = dst;
+    layerDataRef.current[activeLayerIdRef.current] = dst;
     pushHistoryEntry();
     redraw();
     saveToProject();
@@ -959,6 +1156,11 @@ export function JellySprite({ onSwitchToAnimator }) {
       else if (e.key === "a") a.setTool("spray");
       else if (e.key === "x") a.swapColors();
       else if (e.key === "Escape") a.deselectAll();
+      else if (e.key === " ") {
+        e.preventDefault();
+        a.togglePlay();
+      } else if (e.key === ",") a.prevFrame();
+      else if (e.key === ".") a.nextFrame();
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -974,6 +1176,38 @@ export function JellySprite({ onSwitchToAnimator }) {
     });
   }
 
+  // ── Frame thumbnail generator ─────────────────────────────────────────────
+  function generateFrameThumbnail(frameId) {
+    const w = canvasW,
+      h = canvasH;
+    const tmp = document.createElement("canvas");
+    tmp.width = w;
+    tmp.height = h;
+    const ctx = tmp.getContext("2d");
+    const isActiveFrame =
+      framesRef.current[activeFrameIdxRef.current]?.id === frameId;
+    const renderLayers = isActiveFrame
+      ? layersRef.current
+      : (frameDataRef.current[frameId]?.layers ?? []);
+    const renderPixelData = isActiveFrame
+      ? layerDataRef.current
+      : (frameDataRef.current[frameId]?.pixelData ?? {});
+    renderLayers.forEach((layer) => {
+      if (!layer.visible) return;
+      const data = renderPixelData[layer.id];
+      if (!data) return;
+      const imgData = new ImageData(new Uint8ClampedArray(data), w, h);
+      const ltmp = document.createElement("canvas");
+      ltmp.width = w;
+      ltmp.height = h;
+      ltmp.getContext("2d").putImageData(imgData, 0, 0);
+      ctx.globalAlpha = layer.opacity;
+      ctx.drawImage(ltmp, 0, 0);
+      ctx.globalAlpha = 1;
+    });
+    return tmp.toDataURL("image/png");
+  }
+
   // ── Cross-workspace actions ────────────────────────────────────────────────
   function clearCanvas() {
     pixelsRef.current.fill(0);
@@ -981,6 +1215,36 @@ export function JellySprite({ onSwitchToAnimator }) {
     redraw();
     saveToProject();
   }
+
+  // ── Playback ───────────────────────────────────────────────────────────────
+  function startPlayback() {
+    if (framesRef.current.length <= 1) return;
+    saveCurrentFrameToRef();
+    playbackFrameIdxRef.current = activeFrameIdxRef.current;
+    isPlayingRef.current = true;
+    setIsPlaying(true);
+  }
+
+  function stopPlayback() {
+    clearInterval(playIntervalRef.current);
+    isPlayingRef.current = false;
+    setIsPlaying(false);
+    redrawRef.current?.();
+  }
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!isPlaying || framesRef.current.length <= 1) {
+      clearInterval(playIntervalRef.current);
+      return;
+    }
+    playIntervalRef.current = setInterval(() => {
+      playbackFrameIdxRef.current =
+        (playbackFrameIdxRef.current + 1) % framesRef.current.length;
+      redrawRef.current?.();
+    }, 1000 / fps);
+    return () => clearInterval(playIntervalRef.current);
+  }, [isPlaying, fps]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Layer management ───────────────────────────────────────────────────────
   function addLayer() {
@@ -1112,6 +1376,147 @@ export function JellySprite({ onSwitchToAnimator }) {
     setLayers((prev) =>
       prev.map((l) => (l.id === id ? { ...l, ...patch } : l)),
     );
+  }
+
+  // ── Frame management ───────────────────────────────────────────────────────
+  function saveCurrentFrameToRef() {
+    const frameId = framesRef.current[activeFrameIdxRef.current]?.id;
+    if (!frameId) return;
+    frameDataRef.current[frameId] = {
+      layers: [...layersRef.current],
+      activeLayerId: activeLayerIdRef.current,
+      pixelData: layerDataRef.current, // aliased — same object
+    };
+  }
+
+  function loadFrameFromRef(frameId) {
+    const data = frameDataRef.current[frameId];
+    if (!data) {
+      const newLayer = makeLayer("Layer 1");
+      const pixelData = {
+        [newLayer.id]: new Uint8ClampedArray(canvasW * canvasH * 4),
+      };
+      frameDataRef.current[frameId] = {
+        layers: [newLayer],
+        activeLayerId: newLayer.id,
+        pixelData,
+      };
+      layerDataRef.current = pixelData;
+      pixelsRef.current = pixelData[newLayer.id];
+      setLayers([newLayer]);
+      setActiveLayerId(newLayer.id);
+      return;
+    }
+    layerDataRef.current = data.pixelData;
+    pixelsRef.current = layerDataRef.current[data.activeLayerId] ?? null;
+    setLayers([...data.layers]);
+    setActiveLayerId(data.activeLayerId);
+  }
+
+  function switchToFrame(newIdx) {
+    if (newIdx === activeFrameIdxRef.current) return;
+    saveCurrentFrameToRef();
+    const newFrameId = framesRef.current[newIdx]?.id;
+    if (!newFrameId) return;
+    loadFrameFromRef(newFrameId);
+    setActiveFrameIdx(newIdx);
+  }
+
+  function addFrame() {
+    saveCurrentFrameToRef();
+    const newFrame = makeFrame(`Frame ${framesRef.current.length + 1}`);
+    const newLayer = makeLayer("Layer 1");
+    const pixelData = {
+      [newLayer.id]: new Uint8ClampedArray(canvasW * canvasH * 4),
+    };
+    frameDataRef.current[newFrame.id] = {
+      layers: [newLayer],
+      activeLayerId: newLayer.id,
+      pixelData,
+    };
+    const newIdx = framesRef.current.length;
+    setFrames((prev) => [...prev, newFrame]);
+    layerDataRef.current = pixelData;
+    pixelsRef.current = pixelData[newLayer.id];
+    setLayers([newLayer]);
+    setActiveLayerId(newLayer.id);
+    setActiveFrameIdx(newIdx);
+    historyRef.current = [snapshotHistory()];
+    histIdxRef.current = 0;
+    setCanUndo(false);
+    setCanRedo(false);
+  }
+
+  function duplicateFrame(idx) {
+    saveCurrentFrameToRef();
+    const srcId = framesRef.current[idx].id;
+    const srcData = frameDataRef.current[srcId];
+    const newFrame = makeFrame(framesRef.current[idx].name + " dup");
+    const newPixelData = {};
+    const newLayers = (srcData?.layers ?? layersRef.current).map((l) => {
+      const dup = makeLayer(l.name);
+      dup.visible = l.visible;
+      dup.opacity = l.opacity;
+      const srcBuf = srcData?.pixelData[l.id] ?? layerDataRef.current[l.id];
+      newPixelData[dup.id] = srcBuf
+        ? new Uint8ClampedArray(srcBuf)
+        : new Uint8ClampedArray(canvasW * canvasH * 4);
+      return dup;
+    });
+    const newActiveLayerId = newLayers[newLayers.length - 1].id;
+    frameDataRef.current[newFrame.id] = {
+      layers: newLayers,
+      activeLayerId: newActiveLayerId,
+      pixelData: newPixelData,
+    };
+    const newIdx = idx + 1;
+    setFrames((prev) => {
+      const next = [...prev];
+      next.splice(newIdx, 0, newFrame);
+      return next;
+    });
+    layerDataRef.current = newPixelData;
+    pixelsRef.current = newPixelData[newActiveLayerId];
+    setLayers(newLayers);
+    setActiveLayerId(newActiveLayerId);
+    setActiveFrameIdx(newIdx);
+  }
+
+  function deleteFrame(idx) {
+    if (framesRef.current.length <= 1) return;
+    const delId = framesRef.current[idx].id;
+    delete frameDataRef.current[delId];
+    const remaining = framesRef.current.filter((_, i) => i !== idx);
+    const newIdx = Math.min(idx, remaining.length - 1);
+    setFrames(remaining);
+    loadFrameFromRef(remaining[newIdx].id);
+    setActiveFrameIdx(newIdx);
+    historyRef.current = [snapshotHistory()];
+    histIdxRef.current = 0;
+    setCanUndo(false);
+    setCanRedo(false);
+  }
+
+  function moveFrameLeft(idx) {
+    if (idx <= 0) return;
+    saveCurrentFrameToRef();
+    setFrames((prev) => {
+      const next = [...prev];
+      [next[idx], next[idx - 1]] = [next[idx - 1], next[idx]];
+      return next;
+    });
+    setActiveFrameIdx(idx - 1);
+  }
+
+  function moveFrameRight(idx) {
+    if (idx >= framesRef.current.length - 1) return;
+    saveCurrentFrameToRef();
+    setFrames((prev) => {
+      const next = [...prev];
+      [next[idx], next[idx + 1]] = [next[idx + 1], next[idx]];
+      return next;
+    });
+    setActiveFrameIdx(idx + 1);
   }
 
   function useInAnimator() {
@@ -1423,19 +1828,80 @@ export function JellySprite({ onSwitchToAnimator }) {
         </div>
       </div>
 
-      {/* ── Canvas ── */}
-      <div className="jelly-sprite__canvas-wrap">
-        <canvas
-          ref={canvasRef}
-          className="jelly-sprite__canvas"
-          width={canvasW * zoom}
-          height={canvasH * zoom}
-          onMouseDown={onMouseDown}
-          onMouseMove={onMouseMove}
-          onMouseUp={onMouseUp}
-          onMouseLeave={onMouseLeave}
-          style={{ cursor: cursorStyle }}
-        />
+      {/* ── Canvas + Frame Strip area ── */}
+      <div className="jelly-sprite__canvas-area">
+        <div className="jelly-sprite__canvas-wrap">
+          <canvas
+            ref={canvasRef}
+            className="jelly-sprite__canvas"
+            width={canvasW * zoom}
+            height={canvasH * zoom}
+            onMouseDown={onMouseDown}
+            onMouseMove={onMouseMove}
+            onMouseUp={onMouseUp}
+            onMouseLeave={onMouseLeave}
+            style={{ cursor: cursorStyle }}
+          />
+        </div>
+
+        {/* ── Frame strip ── */}
+        <div className="jelly-sprite__frame-strip">
+          <div className="jelly-sprite__frame-strip-controls">
+            <button
+              className={`jelly-sprite__playback-btn${isPlaying ? " jelly-sprite__playback-btn--active" : ""}`}
+              onClick={isPlaying ? stopPlayback : startPlayback}
+              disabled={frames.length <= 1}
+              title={isPlaying ? "Stop (Space)" : "Play (Space)"}
+            >
+              {isPlaying ? "⏹" : "▶"}
+            </button>
+            <div className="jelly-sprite__fps-control">
+              <span className="jelly-sprite__fps-label">{fps} FPS</span>
+              <input
+                type="range"
+                min={1}
+                max={30}
+                value={fps}
+                onChange={(e) => setFps(Number(e.target.value))}
+                className="jelly-sprite__fps-slider"
+                disabled={isPlaying}
+              />
+            </div>
+            <button
+              className={`jelly-sprite__playback-btn${onionSkinning ? " jelly-sprite__playback-btn--active" : ""}`}
+              onClick={() => setOnionSkinning((v) => !v)}
+              title="Onion skinning"
+              disabled={isPlaying || frames.length <= 1}
+            >
+              👻
+            </button>
+          </div>
+          <div className="jelly-sprite__frames-scroll">
+            {frames.map((frame, idx) => (
+              <FrameThumb
+                key={frame.id}
+                thumb={frameThumbnails[frame.id]}
+                name={frame.name}
+                active={idx === activeFrameIdx}
+                idx={idx}
+                playbackIdx={isPlaying ? playbackFrameIdxRef.current : -1}
+                isPlaying={isPlaying}
+                onClick={() => !isPlaying && switchToFrame(idx)}
+                onDuplicate={() => duplicateFrame(idx)}
+                onDelete={() => deleteFrame(idx)}
+                canDelete={frames.length > 1 && !isPlaying}
+              />
+            ))}
+            <button
+              className="jelly-sprite__add-frame-btn"
+              onClick={addFrame}
+              disabled={isPlaying}
+              title="Add frame"
+            >
+              + Frame
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* ── Right panel ── */}
