@@ -12,7 +12,7 @@ import { CanvasArea } from "./panels/CanvasArea";
 import { RightPanel, ExportModal } from "./panels/RightPanel";
 import { makeFrame } from "./jellySprite.constants";
 import { useCanvas } from "./hooks/useCanvas";
-import { useHistory } from "./hooks/useHistory";
+import { wireHistoryEngine } from "./engine/historyEngine";
 import { useDrawingTools } from "./hooks/useDrawingTools";
 
 // ── Outer component — just provides the store context ─────────────────────────
@@ -71,6 +71,8 @@ function JellySpriteBody({ onSwitchToAnimator }) {
     isPlaying,
     fps,
     onionSkinning,
+    canUndo,
+    canRedo,
   } = ss;
 
   // Dispatch wrappers — keep the same setter names so all callers are unchanged
@@ -129,8 +131,8 @@ function JellySpriteBody({ onSwitchToAnimator }) {
 
   // ── Bridge refs (M5) ───────────────────────────────────────────────────────
   // layerDataRef / layerMaskDataRef are getter/setter proxies so that legacy
-  // hooks (useHistory, useFramePlayback, useDrawingTools) read and write the
-  // same pixel store as the new engine (refs.pixelBuffers / refs.maskBuffers).
+  // hooks (useDrawingTools) read and write the same pixel store as the new
+  // engine (refs.pixelBuffers / refs.maskBuffers).
   // Assigning `layerDataRef.current = obj` replaces refs.pixelBuffers entirely
   // (correct semantics for frame-switching) rather than mutating in-place.
   const layerDataRef = {
@@ -176,7 +178,7 @@ function JellySpriteBody({ onSwitchToAnimator }) {
   // ── useCanvas (M2 store-based) ─────────────────────────────────────────────
   const { canvasRef } = useCanvas();
 
-  // Backward-compat refs: old hooks (useHistory, useDrawingTools, etc.) still
+  // Backward-compat refs: useDrawingTools still
   // read these. They are populated by the init useEffect below, exactly as
   // before. The old offscreen canvas and pixel buffers keep the old rendering
   // pipeline working while M3+ migrates drawing into the new store.
@@ -189,25 +191,6 @@ function JellySpriteBody({ onSwitchToAnimator }) {
   const redrawRef = useRef(null);
   redrawRef.current = () => refs.redraw?.();
   const redraw = () => refs.redraw?.();
-
-  // ── useHistory ─────────────────────────────────────────────────────────────
-  const {
-    historyRef,
-    histIdxRef,
-    canUndo,
-    canRedo,
-    setCanUndo,
-    setCanRedo,
-    snapshotHistory,
-    pushHistoryEntry,
-    restoreHistory,
-    resetHistory,
-  } = useHistory({
-    layerDataRef,
-    layerMaskDataRef,
-    activeLayerIdRef,
-    pixelsRef,
-  });
 
   // ── Frame snapshot store (M6) ──────────────────────────────────────────────
   // refs.frameSnapshots: { [frameId]: { layers, activeLayerId, pixelBuffers, maskBuffers } }
@@ -321,7 +304,7 @@ function JellySpriteBody({ onSwitchToAnimator }) {
           activeLayerIdRef.current,
       },
     });
-    resetHistory();
+    wireHistoryEngine(refs, sd);
     refs.redraw?.();
   }
 
@@ -341,7 +324,7 @@ function JellySpriteBody({ onSwitchToAnimator }) {
     refs.maskBuffers = {};
     pixelsRef.current = pb[newLayer.id];
     sd({ type: A.ADD_FRAME, payload: { frame: newFrame, layer: newLayer } });
-    resetHistory();
+    wireHistoryEngine(refs, sd);
     refs.redraw?.();
   }
 
@@ -392,7 +375,7 @@ function JellySpriteBody({ onSwitchToAnimator }) {
         activeLayerId: newActiveLayerId,
       },
     });
-    resetHistory();
+    wireHistoryEngine(refs, sd);
     refs.redraw?.();
   }
 
@@ -417,7 +400,7 @@ function JellySpriteBody({ onSwitchToAnimator }) {
           activeLayerIdRef.current,
       },
     });
-    resetHistory();
+    wireHistoryEngine(refs, sd);
     refs.redraw?.();
   }
 
@@ -504,7 +487,7 @@ function JellySpriteBody({ onSwitchToAnimator }) {
     });
   }
   pushHistoryEntryStubRef.current = () => {
-    pushHistoryEntry();
+    refs.pushHistory?.();
     updateThumbnailForActiveFrame();
   };
   redrawStubRef.current = redraw;
@@ -669,33 +652,11 @@ function JellySpriteBody({ onSwitchToAnimator }) {
 
   // ── Undo / Redo ────────────────────────────────────────────────────────────
   function doUndo() {
-    // M3: prefer new history engine
-    if (refs.undoHistory) {
-      refs.undoHistory();
-      return;
-    }
-    if (histIdxRef.current <= 0) return;
-    histIdxRef.current--;
-    restoreHistory(historyRef.current[histIdxRef.current]);
-    setCanUndo(histIdxRef.current > 0);
-    setCanRedo(true);
-    redraw();
-    saveToProject();
+    refs.undoHistory?.();
   }
 
   function doRedo() {
-    // M3: prefer new history engine
-    if (refs.redoHistory) {
-      refs.redoHistory();
-      return;
-    }
-    if (histIdxRef.current >= historyRef.current.length - 1) return;
-    histIdxRef.current++;
-    restoreHistory(historyRef.current[histIdxRef.current]);
-    setCanUndo(true);
-    setCanRedo(histIdxRef.current < historyRef.current.length - 1);
-    redraw();
-    saveToProject();
+    refs.redoHistory?.();
   }
 
   function clearCanvas() {
@@ -783,7 +744,7 @@ function JellySpriteBody({ onSwitchToAnimator }) {
     offscreenRef.current.height = h;
 
     function finish() {
-      resetHistory();
+      wireHistoryEngine(refs, sd);
       redraw();
     }
 
@@ -954,7 +915,8 @@ function JellySpriteBody({ onSwitchToAnimator }) {
   function changeSize(nw, nh) {
     if (nw === canvasW && nh === canvasH) return;
     const hasContent =
-      historyRef.current.length > 1 || pixelsRef.current?.some((v) => v !== 0);
+      (refs.historyStack?.length ?? 0) > 1 ||
+      pixelsRef.current?.some((v) => v !== 0);
     if (
       hasContent &&
       !window.confirm(
