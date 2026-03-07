@@ -5,6 +5,7 @@ import { BUILTIN_PALETTES } from "../../ui/PaletteManager";
 import "./JellySprite.css";
 import { MAX_COLOUR_HISTORY } from "./jellySprite.constants";
 import { JellySpriteCtx } from "./JellySpriteContext";
+import { JellySpriteProvider } from "./store/JellySpriteProvider";
 import { LeftToolbar } from "./panels/LeftToolbar";
 import { CanvasArea } from "./panels/CanvasArea";
 import { RightPanel, ExportModal } from "./panels/RightPanel";
@@ -73,11 +74,27 @@ export function JellySprite({ onSwitchToAnimator }) {
 
   // ── useLayerManager ────────────────────────────────────────────────────────
   const {
-    layers, setLayers, activeLayerId, setActiveLayerId,
-    editingMaskId, setEditingMaskId,
-    layerDataRef, layerMaskDataRef, layersRef, activeLayerIdRef, editingMaskIdRef,
-    addLayer, deleteLayer, duplicateLayer, mergeLayerDown, flattenAll,
-    moveLayerUp, moveLayerDown, updateLayer, addLayerMask, removeLayerMask,
+    layers,
+    setLayers,
+    activeLayerId,
+    setActiveLayerId,
+    editingMaskId,
+    setEditingMaskId,
+    layerDataRef,
+    layerMaskDataRef,
+    layersRef,
+    activeLayerIdRef,
+    editingMaskIdRef,
+    addLayer,
+    deleteLayer,
+    duplicateLayer,
+    mergeLayerDown,
+    flattenAll,
+    moveLayerUp,
+    moveLayerDown,
+    updateLayer,
+    addLayerMask,
+    removeLayerMask,
   } = useLayerManager({
     canvasW,
     canvasH,
@@ -107,47 +124,115 @@ export function JellySprite({ onSwitchToAnimator }) {
 
   // ── useHistory ─────────────────────────────────────────────────────────────
   const {
-    historyRef, histIdxRef,
-    canUndo, canRedo, setCanUndo, setCanRedo,
-    snapshotHistory, pushHistoryEntry, restoreHistory, resetHistory,
-  } = useHistory({ layerDataRef, layerMaskDataRef, activeLayerIdRef, pixelsRef });
+    historyRef,
+    histIdxRef,
+    canUndo,
+    canRedo,
+    setCanUndo,
+    setCanRedo,
+    snapshotHistory,
+    pushHistoryEntry,
+    restoreHistory,
+    resetHistory,
+  } = useHistory({
+    layerDataRef,
+    layerMaskDataRef,
+    activeLayerIdRef,
+    pixelsRef,
+  });
 
   // ── useFramePlayback ───────────────────────────────────────────────────────
   const {
-    frames, setFrames, activeFrameIdx, setActiveFrameIdx,
-    isPlaying, fps, setFps, onionSkinning, setOnionSkinning,
+    frames,
+    setFrames,
+    activeFrameIdx,
+    setActiveFrameIdx,
+    isPlaying,
+    fps,
+    setFps,
+    onionSkinning,
+    setOnionSkinning,
     frameThumbnails,
-    framesRef, activeFrameIdxRef, isPlayingRef, playbackFrameIdxRef, frameDataRef,
-    saveCurrentFrameToRef, switchToFrame,
-    addFrame, duplicateFrame, deleteFrame, startPlayback, stopPlayback,
+    framesRef,
+    activeFrameIdxRef,
+    isPlayingRef,
+    playbackFrameIdxRef,
+    frameDataRef,
+    saveCurrentFrameToRef,
+    switchToFrame,
+    addFrame,
+    duplicateFrame,
+    deleteFrame,
+    startPlayback,
+    stopPlayback,
     updateThumbnailForActiveFrame,
   } = useFramePlayback({
-    canvasW, canvasH,
-    layerDataRef, layerMaskDataRef, layersRef, activeLayerIdRef,
-    pixelsRef, redrawRef,
-    setLayers, setActiveLayerId,
-    snapshotHistory, historyRef, histIdxRef, setCanUndo, setCanRedo,
+    canvasW,
+    canvasH,
+    layerDataRef,
+    layerMaskDataRef,
+    layersRef,
+    activeLayerIdRef,
+    pixelsRef,
+    redrawRef,
+    setLayers,
+    setActiveLayerId,
+    snapshotHistory,
+    historyRef,
+    histIdxRef,
+    setCanUndo,
+    setCanRedo,
   });
 
   // ── useDrawingTools ────────────────────────────────────────────────────────
   const {
-    selection, selectionRef, lassoPathRef, lassoMaskRef,
-    marchOffsetRef, marchingAntsRef, clipboardRef, isDrawing,
-    onMouseDown: _onMouseDown, onMouseMove: _onMouseMove,
-    onMouseUp, onMouseLeave,
-    copySelection, pasteSelection, deleteSelectionContents, cropToSelection,
-    flipH, flipV, rotateCW, rotateCCW,
+    selection,
+    selectionRef,
+    lassoPathRef,
+    lassoMaskRef,
+    marchOffsetRef,
+    marchingAntsRef,
+    clipboardRef,
+    isDrawing,
+    onMouseDown: _onMouseDown,
+    onMouseMove: _onMouseMove,
+    onMouseUp,
+    onMouseLeave,
+    copySelection,
+    pasteSelection,
+    deleteSelectionContents,
+    cropToSelection,
+    flipH,
+    flipV,
+    rotateCW,
+    rotateCCW,
     setSelection,
   } = useDrawingTools({
-    canvasW, canvasH, canvasRef, zoom,
-    pixelsRef, layerDataRef, layerMaskDataRef, editingMaskIdRef, activeLayerIdRef,
-    tool, brushType, brushSize, brushOpacity, fillShapes, symmetryH, symmetryV,
-    fgColor, fgAlpha,
-    pendingResizeDataRef, resizeAnchor,
+    canvasW,
+    canvasH,
+    canvasRef,
+    zoom,
+    pixelsRef,
+    layerDataRef,
+    layerMaskDataRef,
+    editingMaskIdRef,
+    activeLayerIdRef,
+    tool,
+    brushType,
+    brushSize,
+    brushOpacity,
+    fillShapes,
+    symmetryH,
+    symmetryV,
+    fgColor,
+    fgAlpha,
+    pendingResizeDataRef,
+    resizeAnchor,
     pushHistoryEntry: () => pushHistoryEntryStubRef.current(),
     redraw: () => redrawStubRef.current(),
     saveToProject: () => saveToProjectStubRef.current(),
-    setCanvasW, setCanvasH,
+    setCanvasW,
+    setCanvasH,
     setSelection: () => {},
   });
 
@@ -155,7 +240,10 @@ export function JellySprite({ onSwitchToAnimator }) {
   function saveToProject() {
     const c = canvasRef.current;
     if (!c) return;
-    dispatch({ type: "SET_SPRITE_FORGE_DATA", payload: c.toDataURL("image/png") });
+    dispatch({
+      type: "SET_SPRITE_FORGE_DATA",
+      payload: c.toDataURL("image/png"),
+    });
   }
   pushHistoryEntryStubRef.current = () => {
     pushHistoryEntry();
@@ -166,7 +254,8 @@ export function JellySprite({ onSwitchToAnimator }) {
 
   // Keep window.__jellyRefs__.onionSkinning current for useCanvas
   useEffect(() => {
-    if (window.__jellyRefs__) window.__jellyRefs__.onionSkinning = onionSkinning;
+    if (window.__jellyRefs__)
+      window.__jellyRefs__.onionSkinning = onionSkinning;
   }); // no deps — runs every render
 
   // ── Undo / Redo ────────────────────────────────────────────────────────────
@@ -217,11 +306,15 @@ export function JellySprite({ onSwitchToAnimator }) {
 
   // ── Initialise / resize ────────────────────────────────────────────────────
   useEffect(() => {
-    const w = canvasW, h = canvasH, size = w * h * 4;
+    const w = canvasW,
+      h = canvasH,
+      size = w * h * 4;
 
     const newLayerData = {};
     setLayers((prevLayers) => {
-      prevLayers.forEach((l) => { newLayerData[l.id] = new Uint8ClampedArray(size); });
+      prevLayers.forEach((l) => {
+        newLayerData[l.id] = new Uint8ClampedArray(size);
+      });
       return prevLayers;
     });
     layerDataRef.current = newLayerData;
@@ -275,21 +368,30 @@ export function JellySprite({ onSwitchToAnimator }) {
   // Sync pixelsRef when active layer changes
   useEffect(() => {
     if (!layerDataRef.current[activeLayerId]) {
-      layerDataRef.current[activeLayerId] = new Uint8ClampedArray(canvasW * canvasH * 4);
+      layerDataRef.current[activeLayerId] = new Uint8ClampedArray(
+        canvasW * canvasH * 4,
+      );
     }
     pixelsRef.current = layerDataRef.current[activeLayerId];
     redraw();
   }, [activeLayerId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => { redraw(); }, [zoom, gridVisible, frameGridVisible]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    redraw();
+  }, [zoom, gridVisible, frameGridVisible]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => { refOpacityRef.current = refOpacity; }, [refOpacity]);
-  useEffect(() => { refVisibleRef.current = refVisible; }, [refVisible]);
+  useEffect(() => {
+    refOpacityRef.current = refOpacity;
+  }, [refOpacity]);
+  useEffect(() => {
+    refVisibleRef.current = refVisible;
+  }, [refVisible]);
 
   // Marching ants animation
   useEffect(() => {
     if (!selection) {
-      if (marchingAntsRef.current) cancelAnimationFrame(marchingAntsRef.current);
+      if (marchingAntsRef.current)
+        cancelAnimationFrame(marchingAntsRef.current);
       return;
     }
     const animate = () => {
@@ -311,7 +413,10 @@ export function JellySprite({ onSwitchToAnimator }) {
     doUndo,
     doRedo,
     setTool,
-    swapColors: () => { setFgColor(bgColor); setBgColor(fgColor); },
+    swapColors: () => {
+      setFgColor(bgColor);
+      setBgColor(fgColor);
+    },
     deselectAll: () => {
       setSelection(null);
       selectionRef.current = null;
@@ -326,7 +431,9 @@ export function JellySprite({ onSwitchToAnimator }) {
     },
     nextFrame: () => {
       if (!isPlayingRef.current)
-        switchToFrame(Math.min(framesRef.current.length - 1, activeFrameIdxRef.current + 1));
+        switchToFrame(
+          Math.min(framesRef.current.length - 1, activeFrameIdxRef.current + 1),
+        );
     },
     togglePlay: () => {
       isPlayingRef.current ? stopPlayback() : startPlayback();
@@ -339,17 +446,29 @@ export function JellySprite({ onSwitchToAnimator }) {
       if (["INPUT", "TEXTAREA"].includes(tag)) return;
       const a = actionsRef.current;
       if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) {
-        e.preventDefault(); a.doUndo();
-      } else if ((e.ctrlKey || e.metaKey) && (e.key === "y" || (e.key === "z" && e.shiftKey))) {
-        e.preventDefault(); a.doRedo();
+        e.preventDefault();
+        a.doUndo();
+      } else if (
+        (e.ctrlKey || e.metaKey) &&
+        (e.key === "y" || (e.key === "z" && e.shiftKey))
+      ) {
+        e.preventDefault();
+        a.doRedo();
       } else if ((e.ctrlKey || e.metaKey) && e.key === "d") {
-        e.preventDefault(); a.deselectAll();
+        e.preventDefault();
+        a.deselectAll();
       } else if ((e.ctrlKey || e.metaKey) && e.key === "c") {
-        e.preventDefault(); a.copySelection();
+        e.preventDefault();
+        a.copySelection();
       } else if ((e.ctrlKey || e.metaKey) && e.key === "v") {
-        e.preventDefault(); a.pasteSelection();
-      } else if ((e.key === "Delete" || e.key === "Backspace") && selectionRef.current) {
-        e.preventDefault(); a.deleteSelection();
+        e.preventDefault();
+        a.pasteSelection();
+      } else if (
+        (e.key === "Delete" || e.key === "Backspace") &&
+        selectionRef.current
+      ) {
+        e.preventDefault();
+        a.deleteSelection();
       } else if (e.key === "p") a.setTool("pencil");
       else if (e.key === "e") a.setTool("eraser");
       else if (e.key === "f") a.setTool("fill");
@@ -363,8 +482,10 @@ export function JellySprite({ onSwitchToAnimator }) {
       else if (e.key === "a") a.setTool("spray");
       else if (e.key === "x") a.swapColors();
       else if (e.key === "Escape") a.deselectAll();
-      else if (e.key === " ") { e.preventDefault(); a.togglePlay(); }
-      else if (e.key === ",") a.prevFrame();
+      else if (e.key === " ") {
+        e.preventDefault();
+        a.togglePlay();
+      } else if (e.key === ",") a.prevFrame();
       else if (e.key === ".") a.nextFrame();
     }
     window.addEventListener("keydown", onKey);
@@ -400,12 +521,21 @@ export function JellySprite({ onSwitchToAnimator }) {
       historyRef.current.length > 1 || pixelsRef.current?.some((v) => v !== 0);
     if (
       hasContent &&
-      !window.confirm(`Resize to ${nw}x${nh}? Pixels outside the new canvas will be clipped.`)
-    ) return;
+      !window.confirm(
+        `Resize to ${nw}x${nh}? Pixels outside the new canvas will be clipped.`,
+      )
+    )
+      return;
     const anchorMap = {
-      tl: [0, 0],   tc: [0.5, 0],   tr: [1, 0],
-      ml: [0, 0.5], mc: [0.5, 0.5], mr: [1, 0.5],
-      bl: [0, 1],   bc: [0.5, 1],   br: [1, 1],
+      tl: [0, 0],
+      tc: [0.5, 0],
+      tr: [1, 0],
+      ml: [0, 0.5],
+      mc: [0.5, 0.5],
+      mr: [1, 0.5],
+      bl: [0, 1],
+      bc: [0.5, 1],
+      br: [1, 1],
     };
     const [ax, ay] = anchorMap[resizeAnchor] ?? [0.5, 0.5];
     const offX = Math.round((nw - canvasW) * ax);
@@ -415,11 +545,15 @@ export function JellySprite({ onSwitchToAnimator }) {
       const buf = new Uint8ClampedArray(nw * nh * 4);
       for (let y = 0; y < canvasH; y++) {
         for (let x = 0; x < canvasW; x++) {
-          const nx = x + offX, ny = y + offY;
+          const nx = x + offX,
+            ny = y + offY;
           if (nx < 0 || nx >= nw || ny < 0 || ny >= nh) continue;
-          const si = (y * canvasW + x) * 4, di = (ny * nw + nx) * 4;
-          buf[di] = data[si]; buf[di + 1] = data[si + 1];
-          buf[di + 2] = data[si + 2]; buf[di + 3] = data[si + 3];
+          const si = (y * canvasW + x) * 4,
+            di = (ny * nw + nx) * 4;
+          buf[di] = data[si];
+          buf[di + 1] = data[si + 1];
+          buf[di + 2] = data[si + 2];
+          buf[di + 3] = data[si + 3];
         }
       }
       resized[lid] = buf;
@@ -465,7 +599,9 @@ export function JellySprite({ onSwitchToAnimator }) {
         cvs.height = sh.height;
         cvs.getContext("2d").drawImage(img, 0, 0);
         src = cvs.toDataURL("image/png");
-      } catch { return; }
+      } catch {
+        return;
+      }
     }
     const loadImg = new Image();
     loadImg.onload = () => {
@@ -482,7 +618,8 @@ export function JellySprite({ onSwitchToAnimator }) {
 
   // ── Export helpers ─────────────────────────────────────────────────────────
   function compositeFrameToCanvas(frameId) {
-    const w = canvasW, h = canvasH;
+    const w = canvasW,
+      h = canvasH;
     const cvs = document.createElement("canvas");
     cvs.width = w;
     cvs.height = h;
@@ -535,7 +672,8 @@ export function JellySprite({ onSwitchToAnimator }) {
   ) {
     saveCurrentFrameToRef();
     const allFrames = framesRef.current;
-    const fw = canvasW, fh = canvasH;
+    const fw = canvasW,
+      fh = canvasH;
     const cols = Math.min(framesPerRow, allFrames.length);
     const rows = Math.ceil(allFrames.length / cols);
     const labelH = labels ? 12 : 0;
@@ -544,7 +682,8 @@ export function JellySprite({ onSwitchToAnimator }) {
     sheet.height = rows * (fh + padding + labelH) + padding;
     const ctx = sheet.getContext("2d");
     allFrames.forEach((frame, idx) => {
-      const col = idx % cols, row = Math.floor(idx / cols);
+      const col = idx % cols,
+        row = Math.floor(idx / cols);
       const x = padding + col * (fw + padding);
       const y = padding + row * (fh + padding + labelH);
       ctx.drawImage(compositeFrameToCanvas(frame.id), x, y);
@@ -583,7 +722,11 @@ export function JellySprite({ onSwitchToAnimator }) {
 
   function exportPaletteHex() {
     const blob = new Blob(
-      [(palettes[activePalette] ?? []).map((c) => c.replace("#", "")).join("\n")],
+      [
+        (palettes[activePalette] ?? [])
+          .map((c) => c.replace("#", ""))
+          .join("\n"),
+      ],
       { type: "text/plain" },
     );
     triggerDownload(
@@ -629,7 +772,8 @@ export function JellySprite({ onSwitchToAnimator }) {
 
   // ── Tile preview ───────────────────────────────────────────────────────────
   tileUpdateRef.current = () => {
-    const tc = tileCanvasRef.current, off2 = offscreenRef.current;
+    const tc = tileCanvasRef.current,
+      off2 = offscreenRef.current;
     if (!tc || !off2 || !tileVisible) return;
     const n = tileCount;
     tc.width = canvasW * n;
@@ -645,58 +789,165 @@ export function JellySprite({ onSwitchToAnimator }) {
   // ── Cursor style ───────────────────────────────────────────────────────────
   const selectTools = ["select-rect", "select-lasso", "select-wand"];
   const cursorStyle =
-    tool === "picker" ? "crosshair"
-    : tool === "move" ? (isDrawing.current ? "grabbing" : "grab")
-    : selectTools.includes(tool) ? "crosshair"
-    : ["line", "rect", "ellipse"].includes(tool) ? "crosshair"
-    : "cell";
+    tool === "picker"
+      ? "crosshair"
+      : tool === "move"
+        ? isDrawing.current
+          ? "grabbing"
+          : "grab"
+        : selectTools.includes(tool)
+          ? "crosshair"
+          : ["line", "rect", "ellipse"].includes(tool)
+            ? "crosshair"
+            : "cell";
 
   // ── Context object ─────────────────────────────────────────────────────────
   const ctx = {
-    canvasW, canvasH, zoom, setZoom, canvasRef,
-    onMouseDown, onMouseMove, onMouseUp, onMouseLeave, cursorStyle,
-    tool, setTool, fillShapes, setFillShapes,
-    symmetryH, setSymmetryH, symmetryV, setSymmetryV,
-    gridVisible, setGridVisible, frameGridVisible, setFrameGridVisible,
-    brushType, setBrushType, brushSize, setBrushSize, brushOpacity, setBrushOpacity,
-    flipH, flipV, rotateCW, rotateCCW,
-    doUndo, doRedo, canUndo, canRedo, clearCanvas,
-    fgColor, setFgColor, bgColor, setBgColor, fgAlpha, setFgAlpha,
-    colorHistory, pickColor,
-    selection, setSelection, selectionRef, lassoMaskRef, clipboardRef,
-    copySelection, pasteSelection, cropToSelection, deleteSelectionContents,
-    layers, activeLayerId, setActiveLayerId,
-    addLayer, deleteLayer, duplicateLayer, mergeLayerDown,
-    moveLayerUp, moveLayerDown, updateLayer, flattenAll, redraw,
-    editingMaskId, setEditingMaskId, addLayerMask, removeLayerMask,
-    frames, activeFrameIdx, frameThumbnails, playbackFrameIdxRef,
-    isPlaying, fps, setFps, onionSkinning, setOnionSkinning,
-    switchToFrame, duplicateFrame, deleteFrame, addFrame, startPlayback, stopPlayback,
-    resizeAnchor, setResizeAnchor, customW, setCustomW, customH, setCustomH, changeSize,
-    palettes, activePalette, setActivePalette,
-    paletteAddColor, paletteRemoveColor, paletteAddNew,
-    paletteDelete, paletteRename, paletteSetColors,
-    panelTab, setPanelTab,
-    refImage, clearRefImage, loadRefImage,
-    refVisible, setRefVisible, refVisibleRef,
-    refOpacity, setRefOpacity, refOpacityRef,
-    tileVisible, setTileVisible, tileCount, setTileCount, tileCanvasRef, redrawRef,
-    exportOpen, setExportOpen,
-    exportFramesPerRow, setExportFramesPerRow,
-    exportPadding, setExportPadding,
-    exportLabels, setExportLabels,
-    exportPNG, exportSpriteSheet, exportFramesZip, exportPaletteHex,
-    projectState: state, importFromAnimator, useInAnimator,
+    canvasW,
+    canvasH,
+    zoom,
+    setZoom,
+    canvasRef,
+    onMouseDown,
+    onMouseMove,
+    onMouseUp,
+    onMouseLeave,
+    cursorStyle,
+    tool,
+    setTool,
+    fillShapes,
+    setFillShapes,
+    symmetryH,
+    setSymmetryH,
+    symmetryV,
+    setSymmetryV,
+    gridVisible,
+    setGridVisible,
+    frameGridVisible,
+    setFrameGridVisible,
+    brushType,
+    setBrushType,
+    brushSize,
+    setBrushSize,
+    brushOpacity,
+    setBrushOpacity,
+    flipH,
+    flipV,
+    rotateCW,
+    rotateCCW,
+    doUndo,
+    doRedo,
+    canUndo,
+    canRedo,
+    clearCanvas,
+    fgColor,
+    setFgColor,
+    bgColor,
+    setBgColor,
+    fgAlpha,
+    setFgAlpha,
+    colorHistory,
+    pickColor,
+    selection,
+    setSelection,
+    selectionRef,
+    lassoMaskRef,
+    clipboardRef,
+    copySelection,
+    pasteSelection,
+    cropToSelection,
+    deleteSelectionContents,
+    layers,
+    activeLayerId,
+    setActiveLayerId,
+    addLayer,
+    deleteLayer,
+    duplicateLayer,
+    mergeLayerDown,
+    moveLayerUp,
+    moveLayerDown,
+    updateLayer,
+    flattenAll,
+    redraw,
+    editingMaskId,
+    setEditingMaskId,
+    addLayerMask,
+    removeLayerMask,
+    frames,
+    activeFrameIdx,
+    frameThumbnails,
+    playbackFrameIdxRef,
+    isPlaying,
+    fps,
+    setFps,
+    onionSkinning,
+    setOnionSkinning,
+    switchToFrame,
+    duplicateFrame,
+    deleteFrame,
+    addFrame,
+    startPlayback,
+    stopPlayback,
+    resizeAnchor,
+    setResizeAnchor,
+    customW,
+    setCustomW,
+    customH,
+    setCustomH,
+    changeSize,
+    palettes,
+    activePalette,
+    setActivePalette,
+    paletteAddColor,
+    paletteRemoveColor,
+    paletteAddNew,
+    paletteDelete,
+    paletteRename,
+    paletteSetColors,
+    panelTab,
+    setPanelTab,
+    refImage,
+    clearRefImage,
+    loadRefImage,
+    refVisible,
+    setRefVisible,
+    refVisibleRef,
+    refOpacity,
+    setRefOpacity,
+    refOpacityRef,
+    tileVisible,
+    setTileVisible,
+    tileCount,
+    setTileCount,
+    tileCanvasRef,
+    redrawRef,
+    exportOpen,
+    setExportOpen,
+    exportFramesPerRow,
+    setExportFramesPerRow,
+    exportPadding,
+    setExportPadding,
+    exportLabels,
+    setExportLabels,
+    exportPNG,
+    exportSpriteSheet,
+    exportFramesZip,
+    exportPaletteHex,
+    projectState: state,
+    importFromAnimator,
+    useInAnimator,
   };
 
   return (
-    <JellySpriteCtx.Provider value={ctx}>
-      <div className="jelly-sprite">
-        <LeftToolbar />
-        <CanvasArea />
-        <RightPanel />
-        <ExportModal />
-      </div>
-    </JellySpriteCtx.Provider>
+    <JellySpriteProvider>
+      <JellySpriteCtx.Provider value={ctx}>
+        <div className="jelly-sprite">
+          <LeftToolbar />
+          <CanvasArea />
+          <RightPanel />
+          <ExportModal />
+        </div>
+      </JellySpriteCtx.Provider>
+    </JellySpriteProvider>
   );
 }
