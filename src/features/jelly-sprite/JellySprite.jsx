@@ -76,7 +76,8 @@ function JellySpriteBody({ onSwitchToAnimator }) {
   } = ss;
 
   // Dispatch wrappers — keep the same setter names so all callers are unchanged
-  const setZoom = (v) => sd({ type: A.SET_ZOOM, payload: v });
+  const setZoom = (v) =>
+    sd({ type: A.SET_ZOOM, payload: typeof v === "function" ? v(zoom) : v });
   const setTool = (v) => sd({ type: A.SET_TOOL, payload: v });
   const setFillShapes = (v) => sd({ type: A.SET_FILL_SHAPES, payload: v });
   const setSymmetryH = (v) => sd({ type: A.SET_SYMMETRY_H, payload: v });
