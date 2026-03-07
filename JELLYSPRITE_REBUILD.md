@@ -29,11 +29,11 @@
 | M10       | Selection Tools + Transforms     | ✅ Done        | `b9c6fbe` |
 | QA        | Tool + Panel Audit               | 🔄 In Progress | —         |
 | M11       | Canvas Resize                    | ✅ Done        | `c1bba73` |
-| M12       | Export + Workspace Integration   | ✅ Done        | `c1bba73` |
-| M13       | Color System + Palette Manager   | ✅ Done        | `c1bba73` |
-| M14       | View Tools                       | ✅ Done        | `pending` |
-| M15       | Keyboard Shortcuts               | ✅ Done        | `c1bba73` |
-| M16       | UI Polish + CSS                  | ⬜ Pending     | —         |
+| M12       | Export + Workspace Integration   | ✅ Done        | `7cbddf0` |
+| M13       | Color System + Palette Manager   | ✅ Done        | `7cbddf0` |
+| M14       | View Tools                       | ✅ Done        | `7cbddf0` |
+| M15       | Keyboard Shortcuts               | ✅ Done        | `7cbddf0` |
+| M16       | UI Polish + CSS                  | ✅ Done        | `7cbddf0` |
 
 ---
 
@@ -950,4 +950,4 @@ actions.switchToFrame(newIdx)
 
 ---
 
-_Last updated: 2026-03-07 — M1–M10 complete and committed. QA audit in progress._
+_Last updated: 2026-03-07 — M1–M16 complete. QA audit in progress._
