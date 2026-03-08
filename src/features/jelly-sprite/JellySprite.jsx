@@ -876,9 +876,7 @@ function JellySpriteBody({ onSwitchToAnimator, onRegisterCollector }) {
     // Apply resized mask buffers if a resize just happened
     if (pendingResizeMasksRef.current) {
       for (const [lid, data] of Object.entries(pendingResizeMasksRef.current)) {
-        if (!refs.maskBuffers[lid])
-          refs.maskBuffers[lid] = new Uint8ClampedArray(size);
-        refs.maskBuffers[lid].set(data);
+        refs.maskBuffers[lid] = data; // data is already a correctly-sized Uint8Array
       }
       pendingResizeMasksRef.current = null;
     }
@@ -1184,21 +1182,16 @@ function JellySpriteBody({ onSwitchToAnimator, onRegisterCollector }) {
     }
     pendingResizeDataRef.current = resized;
 
-    // Resize mask buffers for the current frame
+    // Resize mask buffers for the current frame (single-channel Uint8Array, one byte per pixel)
     const resizedMasks = {};
-    for (const [lid, data] of Object.entries(layerMaskDataRef.current)) {
-      const buf = new Uint8ClampedArray(nw * nh * 4);
+    for (const [lid, data] of Object.entries(refs.maskBuffers)) {
+      const buf = new Uint8Array(nw * nh);
       for (let y = 0; y < canvasH; y++) {
         for (let x = 0; x < canvasW; x++) {
           const nx = x + offX,
             ny = y + offY;
           if (nx < 0 || nx >= nw || ny < 0 || ny >= nh) continue;
-          const si = (y * canvasW + x) * 4,
-            di = (ny * nw + nx) * 4;
-          buf[di] = data[si];
-          buf[di + 1] = data[si + 1];
-          buf[di + 2] = data[si + 2];
-          buf[di + 3] = data[si + 3];
+          buf[ny * nw + nx] = data[y * canvasW + x];
         }
       }
       resizedMasks[lid] = buf;
@@ -1224,13 +1217,25 @@ function JellySpriteBody({ onSwitchToAnimator, onRegisterCollector }) {
       }
       return buf;
     }
+    function resizeMaskBuffer(data) {
+      const buf = new Uint8Array(nw * nh);
+      for (let y = 0; y < canvasH; y++) {
+        for (let x = 0; x < canvasW; x++) {
+          const nx = x + offX,
+            ny = y + offY;
+          if (nx < 0 || nx >= nw || ny < 0 || ny >= nh) continue;
+          buf[ny * nw + nx] = data[y * canvasW + x];
+        }
+      }
+      return buf;
+    }
     for (const [fid, snap] of Object.entries(refs.frameSnapshots ?? {})) {
       const rpx = {};
       for (const [lid, data] of Object.entries(snap.pixelBuffers ?? {}))
         rpx[lid] = resizeBuffer(data);
       const rmsk = {};
       for (const [lid, data] of Object.entries(snap.maskBuffers ?? {}))
-        rmsk[lid] = resizeBuffer(data);
+        rmsk[lid] = resizeMaskBuffer(data);
       refs.frameSnapshots[fid] = {
         ...snap,
         pixelBuffers: rpx,
