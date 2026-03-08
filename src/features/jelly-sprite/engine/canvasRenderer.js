@@ -16,6 +16,90 @@ import { compositeLayersToCanvas } from "./compositeEngine.js";
 
 const ONION_OPACITY = 0.3;
 
+/**
+ * Build a Path2D of the mask boundary as connected runs (not disconnected
+ * 1-pixel segments). Consecutive boundary edge pixels in the same row/column
+ * are grouped into a single moveTo+lineTo so that lineDash flows smoothly
+ * along each run rather than restarting at every pixel.
+ *
+ * Path is in screen space (pixel coords × zoom) so it can be stroked directly
+ * without any ctx.scale transform.
+ */
+function buildMaskEdgePath(mask, sel, w, h, z) {
+  const { x: bx, y: by, w: bw, h: bh } = sel;
+  const path = new Path2D();
+
+  // ── Horizontal runs ────────────────────────────────────────────────────
+  for (let py = by; py < by + bh; py++) {
+    // top edges (py-1 not selected or out of bounds)
+    let runX = -1;
+    for (let px = bx; px <= bx + bw; px++) {
+      const edge =
+        px < bx + bw &&
+        mask[py * w + px] &&
+        (py === 0 || !mask[(py - 1) * w + px]);
+      if (edge && runX < 0) {
+        runX = px;
+      } else if (!edge && runX >= 0) {
+        path.moveTo(runX * z, py * z);
+        path.lineTo(px * z, py * z);
+        runX = -1;
+      }
+    }
+    // bottom edges
+    runX = -1;
+    for (let px = bx; px <= bx + bw; px++) {
+      const edge =
+        px < bx + bw &&
+        mask[py * w + px] &&
+        (py === h - 1 || !mask[(py + 1) * w + px]);
+      if (edge && runX < 0) {
+        runX = px;
+      } else if (!edge && runX >= 0) {
+        path.moveTo(runX * z, (py + 1) * z);
+        path.lineTo(px * z, (py + 1) * z);
+        runX = -1;
+      }
+    }
+  }
+
+  // ── Vertical runs ──────────────────────────────────────────────────────
+  for (let px = bx; px < bx + bw; px++) {
+    // left edges
+    let runY = -1;
+    for (let py = by; py <= by + bh; py++) {
+      const edge =
+        py < by + bh &&
+        mask[py * w + px] &&
+        (px === 0 || !mask[py * w + (px - 1)]);
+      if (edge && runY < 0) {
+        runY = py;
+      } else if (!edge && runY >= 0) {
+        path.moveTo(px * z, runY * z);
+        path.lineTo(px * z, py * z);
+        runY = -1;
+      }
+    }
+    // right edges
+    runY = -1;
+    for (let py = by; py <= by + bh; py++) {
+      const edge =
+        py < by + bh &&
+        mask[py * w + px] &&
+        (px === w - 1 || !mask[py * w + (px + 1)]);
+      if (edge && runY < 0) {
+        runY = py;
+      } else if (!edge && runY >= 0) {
+        path.moveTo((px + 1) * z, runY * z);
+        path.lineTo((px + 1) * z, py * z);
+        runY = -1;
+      }
+    }
+  }
+
+  return path;
+}
+
 export function createRenderer(refs) {
   /**
    * redraw — call this any time pixels or display parameters change.
@@ -211,45 +295,23 @@ export function createRenderer(refs) {
       ctx.setLineDash([4, 4]);
 
       if (refs.selectionMask && !selection.poly) {
-        // Build the edge Path2D once; cache it in refs.selectionMaskPath.
-        // Invalidated (set to null) whenever setSelection() is called so
-        // it is only rebuilt on an actual selection change, not every rAF tick.
-        if (!refs.selectionMaskPath) {
-          const mask = refs.selectionMask;
-          const { x: bx, y: by, w: bw, h: bh } = selection;
-          const path = new Path2D();
-          for (let py = by; py < by + bh; py++) {
-            for (let px = bx; px < bx + bw; px++) {
-              if (!mask[py * w + px]) continue;
-              if (py === 0 || !mask[(py - 1) * w + px]) {
-                path.moveTo(px, py); path.lineTo(px + 1, py);
-              }
-              if (py === h - 1 || !mask[(py + 1) * w + px]) {
-                path.moveTo(px, py + 1); path.lineTo(px + 1, py + 1);
-              }
-              if (px === 0 || !mask[py * w + (px - 1)]) {
-                path.moveTo(px, py); path.lineTo(px, py + 1);
-              }
-              if (px === w - 1 || !mask[py * w + (px + 1)]) {
-                path.moveTo(px + 1, py); path.lineTo(px + 1, py + 1);
-              }
-            }
-          }
-          refs.selectionMaskPath = path;
+        // Build once; rebuild only when selection or zoom changes.
+        if (!refs.selectionMaskPath || refs.selectionMaskPathZoom !== z) {
+          refs.selectionMaskPath = buildMaskEdgePath(
+            refs.selectionMask,
+            selection,
+            w,
+            h,
+            z,
+          );
+          refs.selectionMaskPathZoom = z;
         }
-        // Stroke the cached path; scale context to pixel coords so the path
-        // coords are zoom-independent and lineWidth stays 1 screen pixel.
-        ctx.save();
-        ctx.scale(z, z);
-        ctx.lineWidth = 1 / z;
-        ctx.setLineDash([4 / z, 4 / z]);
-        ctx.strokeStyle = "#ffffff";
-        ctx.lineDashOffset = -offset / z;
+        // Stroke in screen space — lineWidth/lineDash already set by outer ctx.save block.
+        ctx.lineDashOffset = -offset;
         ctx.stroke(refs.selectionMaskPath);
         ctx.strokeStyle = "#000000";
-        ctx.lineDashOffset = (-offset + 4) / z;
+        ctx.lineDashOffset = -offset + 4;
         ctx.stroke(refs.selectionMaskPath);
-        ctx.restore();
       } else if (selection.poly && selection.poly.length > 1) {
         const drawPoly = (dashOffset) => {
           ctx.lineDashOffset = dashOffset;
