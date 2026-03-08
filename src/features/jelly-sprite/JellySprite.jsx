@@ -894,8 +894,13 @@ function JellySpriteBody({ onSwitchToAnimator }) {
         cancelAnimationFrame(marchingAntsRef.current);
       return;
     }
-    const animate = () => {
-      refs.marchOffset = ((refs.marchOffset ?? 0) + 1) % 16;
+    const animate = (ts) => {
+      // Advance at ~8 screen-pixels per second regardless of frame rate.
+      // marchOffset is a float; the renderer uses it as lineDashOffset directly.
+      const prev = refs._marchTs ?? ts;
+      refs._marchTs = ts;
+      refs.marchOffset =
+        ((refs.marchOffset ?? 0) + (ts - prev) * 0.008) % 12;
       redraw();
       marchingAntsRef.current = requestAnimationFrame(animate);
     };

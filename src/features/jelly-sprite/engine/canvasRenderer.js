@@ -292,7 +292,7 @@ export function createRenderer(refs) {
       ctx.save();
       ctx.strokeStyle = "#ffffff";
       ctx.lineWidth = 1;
-      ctx.setLineDash([4, 4]);
+      ctx.setLineDash([6, 6]);
 
       if (refs.selectionMask && !selection.poly) {
         // Build once; rebuild only when selection or zoom changes.
@@ -310,7 +310,7 @@ export function createRenderer(refs) {
         ctx.lineDashOffset = -offset;
         ctx.stroke(refs.selectionMaskPath);
         ctx.strokeStyle = "#000000";
-        ctx.lineDashOffset = -offset + 4;
+        ctx.lineDashOffset = -offset + 6;
         ctx.stroke(refs.selectionMaskPath);
       } else if (selection.poly && selection.poly.length > 1) {
         const drawPoly = (dashOffset) => {
@@ -331,13 +331,13 @@ export function createRenderer(refs) {
         };
         drawPoly(-offset);
         ctx.strokeStyle = "#000000";
-        drawPoly(-offset + 4);
+        drawPoly(-offset + 6);
       } else {
         const { x, y, w: sw, h: sh } = selection;
         ctx.lineDashOffset = -offset;
         ctx.strokeRect(x * z + 0.5, y * z + 0.5, sw * z, sh * z);
         ctx.strokeStyle = "#000000";
-        ctx.lineDashOffset = -offset + 4;
+        ctx.lineDashOffset = -offset + 6;
         ctx.strokeRect(x * z + 0.5, y * z + 0.5, sw * z, sh * z);
       }
       ctx.restore();
