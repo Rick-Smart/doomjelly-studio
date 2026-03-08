@@ -1,4 +1,4 @@
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useLayoutEffect } from "react";
 import JSZip from "jszip";
 import { useProject } from "../../contexts/ProjectContext";
 import "./JellySprite.css";
@@ -828,6 +828,13 @@ function JellySpriteBody({ onSwitchToAnimator }) {
   useEffect(() => {
     redraw();
   }, [zoom, gridVisible, frameGridVisible]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Redraw after layer metadata changes (visible/opacity/blendMode) so the
+  // canvas reflects the *new* state rather than the stale refs.stateRef that
+  // existed at the time of the dispatch.
+  useLayoutEffect(() => {
+    refs.redraw?.();
+  }, [ss.layers]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     refOpacityRef.current = refOpacity;
