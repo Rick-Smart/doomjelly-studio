@@ -25,19 +25,32 @@ const ONION_OPACITY = 0.3;
  * Path is in screen space (pixel coords × zoom) so it can be stroked directly
  * without any ctx.scale transform.
  */
-function buildMaskEdgePath(mask, sel, w, h, z) {
+function buildMaskEdgePath(mask, sel, maskOrigin, w, h, z) {
   const { x: bx, y: by, w: bw, h: bh } = sel;
+  // How far the selection has been moved from where the mask was originally
+  // created. When maskOrigin matches sel, offset is (0,0) (no move).
+  const ox = bx - (maskOrigin ? maskOrigin.x : bx);
+  const oy = by - (maskOrigin ? maskOrigin.y : by);
+
+  // Look up a mask bit at display position (px, py) by translating back to
+  // the original mask coordinates.
+  const bit = (px, py) => {
+    const mx = px - ox, my = py - oy;
+    if (mx < 0 || mx >= w || my < 0 || my >= h) return 0;
+    return mask[my * w + mx];
+  };
+
   const path = new Path2D();
 
   // ── Horizontal runs ────────────────────────────────────────────────────
   for (let py = by; py < by + bh; py++) {
-    // top edges (py-1 not selected or out of bounds)
+    // top edges
     let runX = -1;
     for (let px = bx; px <= bx + bw; px++) {
       const edge =
         px < bx + bw &&
-        mask[py * w + px] &&
-        (py === 0 || !mask[(py - 1) * w + px]);
+        bit(px, py) &&
+        !bit(px, py - 1);
       if (edge && runX < 0) {
         runX = px;
       } else if (!edge && runX >= 0) {
@@ -51,8 +64,8 @@ function buildMaskEdgePath(mask, sel, w, h, z) {
     for (let px = bx; px <= bx + bw; px++) {
       const edge =
         px < bx + bw &&
-        mask[py * w + px] &&
-        (py === h - 1 || !mask[(py + 1) * w + px]);
+        bit(px, py) &&
+        !bit(px, py + 1);
       if (edge && runX < 0) {
         runX = px;
       } else if (!edge && runX >= 0) {
@@ -70,8 +83,8 @@ function buildMaskEdgePath(mask, sel, w, h, z) {
     for (let py = by; py <= by + bh; py++) {
       const edge =
         py < by + bh &&
-        mask[py * w + px] &&
-        (px === 0 || !mask[py * w + (px - 1)]);
+        bit(px, py) &&
+        !bit(px - 1, py);
       if (edge && runY < 0) {
         runY = py;
       } else if (!edge && runY >= 0) {
@@ -85,8 +98,8 @@ function buildMaskEdgePath(mask, sel, w, h, z) {
     for (let py = by; py <= by + bh; py++) {
       const edge =
         py < by + bh &&
-        mask[py * w + px] &&
-        (px === w - 1 || !mask[py * w + (px + 1)]);
+        bit(px, py) &&
+        !bit(px + 1, py);
       if (edge && runY < 0) {
         runY = py;
       } else if (!edge && runY >= 0) {
@@ -295,16 +308,25 @@ export function createRenderer(refs) {
       ctx.setLineDash([6, 6]);
 
       if (refs.selectionMask && !selection.poly) {
-        // Build once; rebuild only when selection or zoom changes.
-        if (!refs.selectionMaskPath || refs.selectionMaskPathZoom !== z) {
+        // Rebuild when selection position, zoom, or mask origin changes.
+        const mo = refs.selectionMaskOrigin;
+        if (
+          !refs.selectionMaskPath ||
+          refs.selectionMaskPathZoom !== z ||
+          refs.selectionMaskPathX !== selection.x ||
+          refs.selectionMaskPathY !== selection.y
+        ) {
           refs.selectionMaskPath = buildMaskEdgePath(
             refs.selectionMask,
             selection,
+            mo,
             w,
             h,
             z,
           );
           refs.selectionMaskPathZoom = z;
+          refs.selectionMaskPathX = selection.x;
+          refs.selectionMaskPathY = selection.y;
         }
         // Stroke in screen space — lineWidth/lineDash already set by outer ctx.save block.
         ctx.lineDashOffset = -offset;

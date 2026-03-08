@@ -151,10 +151,10 @@ export function createDrawingEngine(refs) {
     refs.selection = val;
     refs.selectionMaskPath = null; // invalidate Path2D edge cache
     if (!fromMove) {
-      // A selection tool started a new/modified selection, or the selection was
-      // cleared. The previously lifted pixels are already composited into the
-      // canvas buffer so just drop the lift buffer.
       movePixels = null;
+      // Record where the mask lives so buildMaskEdgePath can offset correctly
+      // when the move tool translates the selection away from its origin.
+      refs.selectionMaskOrigin = val ? { x: val.x, y: val.y } : null;
     }
     for (const fn of selListeners) fn(val);
   }

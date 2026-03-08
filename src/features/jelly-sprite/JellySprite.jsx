@@ -947,6 +947,7 @@ function JellySpriteBody({ onSwitchToAnimator }) {
       const mask = new Uint8Array(w * h).fill(1);
       refs.selectionMask = mask;
       refs.selectionMaskPath = null;
+      refs.selectionMaskOrigin = { x: 0, y: 0 };
       refs.selection = { x: 0, y: 0, w, h };
       sd({ type: A.SET_SELECTION, payload: { x: 0, y: 0, w, h } });
       refs.redraw?.();
