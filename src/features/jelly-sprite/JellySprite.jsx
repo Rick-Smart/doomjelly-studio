@@ -12,6 +12,10 @@ import { CanvasArea } from "./panels/CanvasArea";
 import { RightPanel, ExportModal } from "./panels/RightPanel";
 import { useCanvas } from "./hooks/useCanvas";
 import { wireHistoryEngine, seedHistory } from "./engine/historyEngine";
+import {
+  serializeJellySprite,
+  deserializeJellySprite,
+} from "./engine/jellySpritePersistence";
 
 // ── Custom cursor ─────────────────────────────────────────────────────────────
 // Thin precision crosshair: white outline + dark inner line, 4px center gap.
@@ -20,16 +24,21 @@ const _cursorSvg = `<svg xmlns='http://www.w3.org/2000/svg' width='24' height='2
 const CURSOR_PRECISION = `url("data:image/svg+xml,${_cursorSvg}") 12 12, crosshair`;
 
 // ── Outer component — just provides the store context ─────────────────────────
-export function JellySprite({ onSwitchToAnimator }) {
+// onRegisterCollector: optional callback — receives a () => serializedState
+// function so the workspace can pull the full state before saving.
+export function JellySprite({ onSwitchToAnimator, onRegisterCollector }) {
   return (
     <JellySpriteProvider>
-      <JellySpriteBody onSwitchToAnimator={onSwitchToAnimator} />
+      <JellySpriteBody
+        onSwitchToAnimator={onSwitchToAnimator}
+        onRegisterCollector={onRegisterCollector}
+      />
     </JellySpriteProvider>
   );
 }
 
 // ── Inner component — all logic runs inside JellySpriteProvider ───────────────
-function JellySpriteBody({ onSwitchToAnimator }) {
+function JellySpriteBody({ onSwitchToAnimator, onRegisterCollector }) {
   const { state, dispatch } = useProject();
   const { refs, state: ss, dispatch: sd } = useJellySpriteStore();
 
@@ -184,6 +193,15 @@ function JellySpriteBody({ onSwitchToAnimator }) {
   const pushHistoryEntryStubRef = useRef(() => {});
   const redrawStubRef = useRef(() => {});
   const saveToProjectStubRef = useRef(() => {});
+
+  // ── Restore refs — used by the two-phase full-state restore ───────────────
+  // pendingRestoreRef: decoded restore payload from jellySpritePersistence,
+  //   set in the mount effect and consumed by the [canvasW, canvasH] effect.
+  const pendingRestoreRef = useRef(null);
+  // justRestoredRef: true after the first [canvasW, canvasH] effect handles
+  //   a restore, telling the next (dimension-change-triggered) run to skip
+  //   the zero-fill and just resize appropriately.
+  const justRestoredRef = useRef(false);
 
   // ── useCanvas (M2 store-based) ─────────────────────────────────────────────
   const { canvasRef } = useCanvas();
@@ -485,6 +503,27 @@ function JellySpriteBody({ onSwitchToAnimator }) {
   redrawStubRef.current = redraw;
   saveToProjectStubRef.current = saveToProject;
 
+  // ── Persistence: save-data collector ──────────────────────────────────────
+  // collectSaveData() snapshots current pixel state, serialises everything,
+  // and generates a thumbnail of the active frame.
+  // JellySpriteWorkspace calls this right before writing to storage.
+  function collectSaveData() {
+    saveCurrentFrameToSnapshot();
+    const data = serializeJellySprite(refs, ss, framesRef.current);
+    const thumbFrameId = framesRef.current[activeFrameIdxRef.current]?.id;
+    const thumbnail = thumbFrameId
+      ? generateFrameThumbnail(thumbFrameId)
+      : null;
+    return { data, thumbnail };
+  }
+
+  // Register the collector with the workspace on mount (and clean up on
+  // unmount in case of future hot-reload scenarios).
+  useEffect(() => {
+    onRegisterCollector?.(() => collectSaveData());
+    return () => onRegisterCollector?.(null);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Stop playback if FPS changes while playing
   useEffect(() => {
     if (!isPlayingRef.current) return;
@@ -695,12 +734,122 @@ function JellySpriteBody({ onSwitchToAnimator }) {
     sd({ type: A.PICK_COLOR, payload: hex });
   }
 
+  // ── Phase-1 restore: decode saved state before the init effect runs ───────
+  // Runs once on mount. If the project has a full jellySprite save payload,
+  // decode the base64 pixel/mask data into refs and stash the decoded
+  // result so the init/resize effect can consume it synchronously.
+  // NOTE: This effect must appear in code BEFORE the [canvasW, canvasH]
+  // effect so React fires it first on initial mount.
+  useEffect(() => {
+    const saved = state.jellySpriteState;
+    if (!saved) return;
+    const restored = deserializeJellySprite(saved, refs);
+    if (restored) pendingRestoreRef.current = restored;
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Initialise / resize ────────────────────────────────────────────────────
   useEffect(() => {
     const w = canvasW,
       h = canvasH,
       size = w * h * 4;
 
+    // ── Phase-2 restore: consume the decoded state from the mount effect ────
+    const restore = pendingRestoreRef.current;
+    if (restore) {
+      pendingRestoreRef.current = null;
+      justRestoredRef.current = true;
+
+      // refs.pixelBuffers / maskBuffers / frameSnapshots already populated by
+      // deserializeJellySprite in the [] mount effect.  Just wire up the
+      // active frame pointers and size the offscreen canvas.
+      const rW = restore.storeState.canvasW;
+      const rH = restore.storeState.canvasH;
+      pixelsRef.current = restore.pixelBuffers[restore.activeLayerId] ?? null;
+
+      if (refs.offscreenEl) {
+        refs.offscreenEl.width = rW;
+        refs.offscreenEl.height = rH;
+      }
+
+      // Dispatch the full JellySprite state atomically (frames + layers + scalars)
+      sd({ type: A.LOAD_JELLY_STATE, payload: restore });
+
+      // Seed history then redraw with the restored dimensions
+      wireHistoryEngine(refs, sd);
+      seedHistory(refs, restore.layers, restore.activeLayerId);
+      redraw();
+
+      // Auto-zoom to fit the restored canvas
+      const wrap = refs.canvasEl?.parentElement;
+      if (wrap) {
+        const availW = wrap.clientWidth - 40;
+        const availH = wrap.clientHeight - 40;
+        const fillZoom = Math.max(
+          1,
+          Math.min(MAX_ZOOM, Math.floor(Math.min(availW / rW, availH / rH))),
+        );
+        setZoom(fillZoom);
+      }
+
+      // Generate thumbnails for all restored frames using the restored
+      // dimensions (canvasW/canvasH in the closure are still the old values
+      // at this point; rW/rH come from the restore payload).
+      for (const frame of restore.frames) {
+        const snap = refs.frameSnapshots[frame.id];
+        if (!snap) continue;
+        const tmp = document.createElement("canvas");
+        tmp.width = rW;
+        tmp.height = rH;
+        const tCtx = tmp.getContext("2d");
+        for (const layer of snap.layers) {
+          if (!layer.visible) continue;
+          const data = snap.pixelBuffers[layer.id];
+          if (!data) continue;
+          const imgData = new ImageData(new Uint8ClampedArray(data), rW, rH);
+          const lt = document.createElement("canvas");
+          lt.width = rW;
+          lt.height = rH;
+          lt.getContext("2d").putImageData(imgData, 0, 0);
+          tCtx.globalAlpha = layer.opacity;
+          tCtx.drawImage(lt, 0, 0);
+          tCtx.globalAlpha = 1;
+        }
+        const dataUrl = tmp.toDataURL("image/png");
+        if (dataUrl)
+          sd({
+            type: A.UPDATE_THUMBNAIL,
+            payload: { frameId: frame.id, dataUrl },
+          });
+      }
+
+      return; // skip normal zero-fill path
+    }
+
+    // ── Dimension-change after a restore: skip zero-fill ───────────────────
+    // When LOAD_JELLY_STATE changes canvasW/canvasH this effect re-fires.
+    // The refs are already correct — just resize the offscreen canvas and redraw.
+    if (justRestoredRef.current) {
+      justRestoredRef.current = false;
+      if (refs.offscreenEl) {
+        refs.offscreenEl.width = w;
+        refs.offscreenEl.height = h;
+      }
+      wireHistoryEngine(refs, sd);
+      redraw();
+      const wrap = refs.canvasEl?.parentElement;
+      if (wrap) {
+        const availW = wrap.clientWidth - 40;
+        const availH = wrap.clientHeight - 40;
+        const fillZoom = Math.max(
+          1,
+          Math.min(MAX_ZOOM, Math.floor(Math.min(availW / w, availH / h))),
+        );
+        setZoom(fillZoom);
+      }
+      return;
+    }
+
+    // ── Normal init / user-triggered resize ───────────────────────────────
     // Re-allocate pixel buffers for all current layers (M5: goes into refs directly)
     const freshBuffers = {};
     for (const l of ss.layers) {
@@ -765,7 +914,7 @@ function JellySpriteBody({ onSwitchToAnimator }) {
       }
     }
 
-    const src = state.JellySpriteDataUrl;
+    const src = state.jellySpriteDataUrl;
     if (src) {
       const img = new Image();
       img.onload = () => {

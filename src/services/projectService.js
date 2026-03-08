@@ -7,20 +7,15 @@
  *  - Loading a project from a user-selected file
  *  - localStorage index (list, save-entry, delete-entry)
  *
- * Schema v1:
- * {
- *   version: 1,
- *   id: string,
- *   name: string,
- *   savedAt: ISO string,
- *   frameConfig: { frameW, frameH, scale, offsetX, offsetY, gutterX, gutterY },
- *   animations: [{ id, name, frames: [{ col, row, ticks, dx, dy }] }]
- * }
+ * Schema v1 (legacy):
+ *   { version:1, frameConfig, animations, jellySpriteDataUrl }
  *
- * Sprite sheet is intentionally excluded — binary data; user re-imports it.
+ * Schema v2 (current):
+ *   Adds jellySpriteState — the full editor save from jellySpritePersistence.
+ *   v1 files load cleanly (jellySpriteState will be absent/null).
  */
 
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 const INDEX_KEY = "dj-projects-index";
 
 // ── localStorage helpers ──────────────────────────────────────────────────────
@@ -40,15 +35,22 @@ function writeIndex(list) {
 // ── Serialisation ─────────────────────────────────────────────────────────────
 
 /**
- * Converts ProjectContext state into the portable .doomjelly.json shape.
- * Strips sprite sheet (binary) — only metadata remains.
+ * Converts ProjectContext state + optional JellySprite editor state into the
+ * portable .doomjelly.json shape.
+ *
+ * @param {object} state            - ProjectContext state
+ * @param {object|null} [jellySpriteState] - Serialized editor state from
+ *   serializeJellySprite() — pass null/undefined to omit
+ * @param {string} [type="animator"] - "animator" | "jelly-sprite"
+ *   Used by the Projects page to navigate to the right editor on open.
  */
-export function serialiseProject(state) {
+export function serialiseProject(state, jellySpriteState, type = "animator") {
   return {
     version: SCHEMA_VERSION,
     id: state.id ?? crypto.randomUUID(),
     name: state.name,
     savedAt: new Date().toISOString(),
+    type,
     frameConfig: { ...state.frameConfig },
     animations: state.animations.map((a) => ({
       id: a.id,
@@ -62,6 +64,8 @@ export function serialiseProject(state) {
       })),
     })),
     jellySpriteDataUrl: state.jellySpriteDataUrl ?? null,
+    // Full editor state (null when called from contexts that don't have JellySprite)
+    jellySpriteState: jellySpriteState ?? null,
   };
 }
 
@@ -105,7 +109,8 @@ export function pickAndLoadProject() {
       reader.onload = (e) => {
         try {
           const data = JSON.parse(e.target.result);
-          if (!data.version || !data.animations) {
+          // Accept v1 (has animations array) and v2 (has jellySpriteState)
+          if (!data.version || (!data.animations && !data.jellySpriteState)) {
             throw new Error("Not a valid .doomjelly.json file");
           }
           resolve(data);

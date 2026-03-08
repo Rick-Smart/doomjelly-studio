@@ -81,6 +81,9 @@ export const SET_REF_VISIBLE = "SET_REF_VISIBLE"; // boolean
 export const SET_TILE_VISIBLE = "SET_TILE_VISIBLE"; // boolean
 export const SET_TILE_COUNT = "SET_TILE_COUNT"; // number
 
+// ── Persistence ──────────────────────────────────────────────────────────────
+export const LOAD_JELLY_STATE = "LOAD_JELLY_STATE"; // full serialized state (from jellySpritePersistence)
+
 // ── UI ────────────────────────────────────────────────────────────────────────
 export const SET_PANEL_TAB = "SET_PANEL_TAB"; // tab id string
 export const SET_EXPORT_OPEN = "SET_EXPORT_OPEN"; // boolean

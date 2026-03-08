@@ -62,12 +62,20 @@ export function JellySpriteWorkspace() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
+  // Collector registered by JellySprite on mount — returns the full serialized
+  // JellySprite state when called.  We call it right before saving so the
+  // snapshot is always current.
+  const jellySpriteCollectorRef = useRef(null);
+
   async function handleSave() {
     setSaving(true);
     try {
-      const data = serialiseProject(state);
+      const collected = jellySpriteCollectorRef.current?.() ?? null;
+      const jellySpriteState = collected?.data ?? null;
+      const thumbnail = collected?.thumbnail ?? undefined;
+      const data = serialiseProject(state, jellySpriteState, "jelly-sprite");
       if (!state.id) dispatch({ type: "SET_PROJECT_ID", payload: data.id });
-      await saveProjectToStorage(data);
+      await saveProjectToStorage(data, thumbnail);
       setSaved(true);
       showToast("Project saved.", "success", 2500);
       setTimeout(() => setSaved(false), 2000);
@@ -102,7 +110,12 @@ export function JellySpriteWorkspace() {
       scrollable={false}
       padding={false}
     >
-      <JellySprite onSwitchToAnimator={() => navigate("/editor")} />
+      <JellySprite
+        onSwitchToAnimator={() => navigate("/editor")}
+        onRegisterCollector={(fn) => {
+          jellySpriteCollectorRef.current = fn;
+        }}
+      />
     </Page>
   );
 }

@@ -43,7 +43,7 @@ export function ProjectsPage() {
   async function handleOpen(id) {
     const data = await loadProjectFromStorage(id);
     dispatch({ type: "LOAD_PROJECT", payload: data });
-    navigate("/editor");
+    navigate(data.type === "jelly-sprite" ? "/jelly-sprite" : "/editor");
   }
 
   async function handleDelete(id) {
@@ -57,7 +57,7 @@ export function ProjectsPage() {
       const data = await pickAndLoadProject();
       await saveProjectToStorage(data);
       dispatch({ type: "LOAD_PROJECT", payload: data });
-      navigate("/editor");
+      navigate(data.type === "jelly-sprite" ? "/jelly-sprite" : "/editor");
     } catch (err) {
       if (err.message !== "No file selected") console.error(err);
       if (err.message !== "No file selected")
@@ -95,7 +95,7 @@ export function ProjectsPage() {
       const data = JSON.parse(text);
       await saveProjectToStorage(data);
       dispatch({ type: "LOAD_PROJECT", payload: data });
-      navigate("/editor");
+      navigate(data.type === "jelly-sprite" ? "/jelly-sprite" : "/editor");
     } catch (err) {
       console.error(err);
       showToast("Failed to import project file.", "error");

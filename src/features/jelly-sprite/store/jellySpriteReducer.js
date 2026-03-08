@@ -316,6 +316,54 @@ export function jellySpriteReducer(state, action) {
     case A.SET_CUSTOM_H:
       return { ...state, customH: payload };
 
+    // ── Persistence ────────────────────────────────────────────────────────
+    // Atomic batch restore of all store fields from a saved project.
+    // Pixel buffer / refs restoration is handled imperatively in JellySprite.jsx.
+    // payload: { storeState, frames, activeFrameIdx, layers, activeLayerId }
+    case A.LOAD_JELLY_STATE: {
+      const { storeState: s, frames, activeFrameIdx, layers, activeLayerId } = payload;
+      return {
+        ...state,
+        canvasW: s.canvasW ?? state.canvasW,
+        canvasH: s.canvasH ?? state.canvasH,
+        zoom: s.zoom ?? state.zoom,
+        tool: s.tool ?? state.tool,
+        brushType: s.brushType ?? state.brushType,
+        brushSize: s.brushSize ?? state.brushSize,
+        brushOpacity: s.brushOpacity ?? state.brushOpacity,
+        fillShapes: s.fillShapes ?? state.fillShapes,
+        symmetryH: s.symmetryH ?? state.symmetryH,
+        symmetryV: s.symmetryV ?? state.symmetryV,
+        fgColor: s.fgColor ?? state.fgColor,
+        bgColor: s.bgColor ?? state.bgColor,
+        fgAlpha: s.fgAlpha ?? state.fgAlpha,
+        colorHistory: s.colorHistory ?? state.colorHistory,
+        palettes: s.palettes ?? state.palettes,
+        activePalette: s.activePalette ?? state.activePalette,
+        fps: s.fps ?? state.fps,
+        onionSkinning: s.onionSkinning ?? state.onionSkinning,
+        gridVisible: s.gridVisible ?? state.gridVisible,
+        frameGridVisible: s.frameGridVisible ?? state.frameGridVisible,
+        frameConfig: s.frameConfig ?? state.frameConfig,
+        refImage: s.refImage ?? null,
+        refOpacity: s.refOpacity ?? state.refOpacity,
+        refVisible: s.refVisible ?? state.refVisible,
+        tileVisible: s.tileVisible ?? state.tileVisible,
+        tileCount: s.tileCount ?? state.tileCount,
+        // Restore frame + layer structure
+        frames: frames ?? state.frames,
+        activeFrameIdx: activeFrameIdx ?? 0,
+        layers: layers ?? state.layers,
+        activeLayerId: activeLayerId ?? state.activeLayerId,
+        // Reset transient / session-only state
+        selection: null,
+        canUndo: false,
+        canRedo: false,
+        isPlaying: false,
+        frameThumbnails: {},
+      };
+    }
+
     default:
       return state;
   }
