@@ -61,11 +61,14 @@ export function useCanvas() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Resize offscreen when canvas dimensions change ─────────────────────
+  // NOTE: do NOT call redraw() here. This effect fires before JellySprite's
+  // own [canvasW, canvasH] effect, which rebuilds the pixel buffers at the
+  // new size and then calls redraw(). Calling redraw() here would composite
+  // old-size pixel buffers onto the newly-sized offscreenEl → DOMException.
   useEffect(() => {
     if (!refs.offscreenEl) return;
     refs.offscreenEl.width = state.canvasW;
     refs.offscreenEl.height = state.canvasH;
-    refs.redraw?.();
   }, [state.canvasW, state.canvasH]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Redraw on visual-only metadata changes ─────────────────────────────
