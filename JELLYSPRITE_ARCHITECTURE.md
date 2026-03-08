@@ -1,8 +1,7 @@
 # JellySprite Architecture Reference
 
 > **Stack:** React 18 + Vite · **Design:** Option B pixel-in-refs  
-> **Last updated:** M16 complete — all milestones done.  
-> For the implementation milestone log see `JELLYSPRITE_REBUILD.md`.
+> **Last updated:** 2026-03-07 — all milestones (M1–M16) complete. Selection mask invariant and move tool bugs resolved (commits `b69a258`, `d2be244`).
 
 ---
 
@@ -204,11 +203,16 @@ The `refs` object is created once in `JellySpriteProvider.jsx` via `useRef({...}
 | `clipboard`       | `Uint8ClampedArray \| null` | RGBA pixels of the copied region                                                     |
 | `clipboardW`      | `number`                    | Width of clipboard region in pixels                                                  |
 | `clipboardH`      | `number`                    | Height of clipboard region in pixels                                                 |
-| `selectionMask`   | `Uint8Array \| null`        | Per-pixel selection mask (1=selected, 0=not). Used for lasso + magic wand            |
-| `lassoPath`       | `{x,y}[]`                   | Live lasso points being drawn (shown as in-progress path)                            |
-| `marchOffset`     | `number`                    | Marching ants dash animation phase (0–15)                                            |
-| `marchingAntsRaf` | `number \| null`            | `requestAnimationFrame` id for ants animation                                        |
-| `selection`       | `SelectionRect \| null`     | Engine's live selection value; written by `drawingEngine`, mirrors `state.selection` |
+| `selectionMask`         | `Uint8Array \| null`        | Per-pixel selection mask (1=selected, 0=not). **Always at current canvas coords** — translated on move pointer-up. |
+| `selectionMaskOrigin`   | `{x,y} \| null`             | Canvas position of the mask when it was last committed (after a selection tool or move pointer-up). Used by `buildMaskEdgePath` to offset mask lookups during a drag. |
+| `selectionMaskPath`     | `Path2D \| null`            | Cached `Path2D` of the marching ants boundary. Invalidated when zoom, position, or mask changes. |
+| `selectionMaskPathZoom` | `number`                    | Zoom value at time of last `selectionMaskPath` build. |
+| `selectionMaskPathX`    | `number`                    | `selection.x` at time of last path build — detects position change during move drag. |
+| `selectionMaskPathY`    | `number`                    | `selection.y` at time of last path build. |
+| `lassoPath`             | `{x,y}[]`                   | Live lasso points being drawn (shown as in-progress path)                            |
+| `marchOffset`           | `number`                    | Marching ants dash animation phase (advances ~8px/sec via timestamp delta)           |
+| `marchingAntsRaf`       | `number \| null`            | `requestAnimationFrame` id for ants animation                                        |
+| `selection`             | `SelectionRect \| null`     | Engine's live selection value; written by `drawingEngine`, mirrors `state.selection` |
 
 ### Canvas DOM Elements
 
@@ -220,6 +224,14 @@ The `refs` object is created once in `JellySpriteProvider.jsx` via `useRef({...}
 | `refImgEl`     | `HTMLImageElement \| null`  | `loadRefImage()` / cleared by `clearRefImage()` | Reference image overlay element  |
 
 > **Important:** `tileCanvasEl` and `refImgEl` must be populated for the renderer to draw the tile preview and reference image overlay. See [Gotchas §16.3](#163-tilecanvasel--refimgel-wiring).
+
+### Selection mask invariant
+
+`refs.selectionMask` **always lives at the current absolute canvas coordinates** of the selection. This is enforced by `drawingEngine.js` at pointer-up for the move tool: it translates all set bits by `(selection.x − selectionMaskOrigin.x, selection.y − selectionMaskOrigin.y)` and then resets `selectionMaskOrigin` to the new position.
+
+During an active move drag (between pointer-down and pointer-up), the mask has not yet been translated. `buildMaskEdgePath` handles this by computing the same offset on-the-fly from `selectionMaskOrigin` vs the current `selection` position — so the outline renders correctly at all times.
+
+Consequence: any code reading `refs.selectionMask` at a given `(px, py)` can always use current canvas coords directly.
 
 ### State Snapshot for Closures
 
@@ -1219,5 +1231,30 @@ Do **not** read `refs.stateRef.current` in event handlers that run _during_ a Re
 `_layerIdCounter` and `_frameIdCounter` in `jellySprite.constants.js` are module-scope incremental counters. They do not reset between project loads. IDs are therefore unique per session but not globally persistent. If you need stable IDs across saves (for project files), generate UUIDs at creation time and store them in the project JSON.
 
 ---
+
+---
+
+## 17. Planned Refactors
+
+### PR-1 — Split selection / move tool logic out of `drawingEngine.js`
+
+`drawingEngine.js` routes all tool logic inline. The selection system has grown
+substantially (per-pixel masks, add/subtract combining, mask translation, marching
+ants path caching) and should be extracted into focused modules.
+
+**Target layout:**
+
+| File | Responsibility |
+| --- | --- |
+| `engine/selectionUtils.js` | Pure functions only: `buildRectMask`, `buildLassoMask`, `combineMasks`, `boundsFromMask`, `getOrBuildMask`, `translateMask`, `buildMaskEdgePath`. Zero refs, zero React. Unit-testable in isolation. |
+| `engine/tools/selectTool.js` | Handlers for `select-rect`, `select-lasso`, `select-wand`. Reads/writes `refs.selectionMask`, `refs.selectionMaskOrigin`, calls `setSelection`. |
+| `engine/tools/moveTool.js` | Handlers for `move` tool. Owns `movePixels`, `moveOrigin`, `previewSnap` as module-scope locals. Translates mask on pointer-up. |
+| `engine/drawingEngine.js` | Thin router — dispatches pointer events to the right tool module. Owns `setSelection` (shared by both tool modules via closure or passed as a param). |
+
+**Invariants to preserve (do not break these):**
+- `refs.selectionMask` is always at current absolute canvas coords after any pointer-up
+- `refs.selectionMaskOrigin` always equals `{x: refs.selection.x, y: refs.selection.y}` between drags
+- `setSelection(val, fromMove)` — `fromMove=true` skips clearing `movePixels` and `selectionMaskOrigin`
+- Path cache (`selectionMaskPath`, `selectionMaskPathZoom`, `selectionMaskPathX/Y`) is invalidated on any change that affects the outline
 
 _End of JELLYSPRITE_ARCHITECTURE.md_

@@ -1,73 +1,99 @@
 # DoomJelly Studio — Project Roadmap
 
-**Last updated:** 2026-03-06 (M18 complete, M19 in progress)
+**Last updated:** 2026-03-07 (M19 complete — JellySprite Forge fully shipped)
 **Status key:** ✅ Done · 🔄 In Progress · 🔵 Next · ⬜ Pending · 💭 Wishlist
 
 ---
 
-## ⚡ NEXT — M19: Sprite Forge Power Tools
+## ⚡ NEXT — Planned Refactors
 
-Building Sprite Forge into a truly comprehensive pixel art tool across 7 tiers.
-See full M19 spec below.
+See [Planned Refactors](#planned-refactors) below.
 
 ---
 
-## 🔄 M19: Sprite Forge — Power Tools
+## ✅ M19: Sprite Forge — Power Tools
 
-### Tier 1 — Colour tools ← START HERE
+### Tier 1 — Colour tools
 
-- [ ] Full **HSV + RGB + Hex** inline colour picker panel (replaces native `<input type="color">`)
-- [ ] **Foreground / background** colour slots with swap (X key)
-- [ ] **Recent colour history** row — last 10 used colours
-- [ ] **User-built custom palettes** — add/remove/reorder swatches, name palette, multiple palettes
-- [ ] **Import Lospec palettes** (.hex plain-text format)
-- [ ] **Colour ramp generator** — pick two colours → N interpolated steps added to palette
+- [x] Full **HSV + RGB + Hex** inline colour picker panel
+- [x] **Foreground / background** colour slots with swap (X key)
+- [x] **Recent colour history** row — last 10 used colours
+- [x] **User-built custom palettes** — add/remove/reorder swatches, name palette, multiple palettes
+- [x] **Import Lospec palettes** (.hex plain-text format)
+- [x] **Colour ramp generator** — pick two colours → N interpolated steps added to palette
 
 ### Tier 2 — Drawing tools
 
-- [ ] **Line tool** — Bresenham pixel-perfect line (L key)
-- [ ] **Rectangle tool** — outlined or filled (R key)
-- [ ] **Ellipse / circle tool** — outlined or filled (O key)
-- [ ] **Symmetry mode** — mirror strokes across H / V / both axes (S key toggle)
-- [ ] **Pixel-perfect pencil** — auto-removes redundant diagonal corner pixels
+- [x] **Line tool** — Bresenham pixel-perfect line
+- [x] **Rectangle tool** — outlined or filled
+- [x] **Ellipse / circle tool** — outlined or filled
+- [x] **Symmetry mode** — mirror strokes across H / V / both axes
+- [x] **Pixel-perfect pencil** — and spray, fill, eraser tools
 
 ### Tier 3 — Layers
 
-- [ ] Named layers, drag-to-reorder, hide/lock toggles, per-layer opacity slider
-- [ ] Blending modes: Normal, Multiply, Screen, Add, Overlay
-- [ ] Merge down / flatten all
-- [ ] Each layer = independent `Uint8ClampedArray`; composited at render time
-- [ ] Layer data stored in ProjectContext (replaces single flat `spriteForgeDataUrl`)
+- [x] Named layers, drag-to-reorder, hide/lock toggles, per-layer opacity slider
+- [x] Blending modes: Normal, Multiply, Screen, Add, Overlay
+- [x] Merge down / flatten all
+- [x] Each layer = independent `Uint8ClampedArray`; composited at render time
+- [x] Layer data stored in `refs.pixelBuffers` (per-layer, per-frame in frame snapshots)
 
 ### Tier 4 — Frames & in-Forge animation preview
 
-- [ ] Frame strip at bottom — add / duplicate / delete / reorder frames
-- [ ] Each frame holds its own layer stack
-- [ ] **Onion skinning** — ghost of prev/next frames at configurable opacity
-- [ ] **Looping playback preview** inside Forge at configurable FPS
-- [ ] Active frame selector (click frame in strip to switch draw target)
+- [x] Frame strip at bottom — add / duplicate / delete / reorder frames
+- [x] Each frame holds its own layer stack
+- [x] **Onion skinning** — ghost of prev/next frames at configurable opacity
+- [x] **Looping playback preview** inside Forge at configurable FPS
+- [x] Active frame selector (click frame in strip to switch draw target)
 
 ### Tier 5 — Selection & transform
 
-- [ ] Rectangular selection — move, copy (Ctrl+C), paste (Ctrl+V), delete contents
-- [ ] **Flip horizontal** — whole canvas or selection
-- [ ] **Flip vertical** — whole canvas or selection
-- [ ] **Rotate 90° CW / CCW** — whole canvas or selection
-- [ ] **Canvas resize** with 9-point anchor picker (pads / crops, non-destructive)
-- [ ] Crop to selection
+- [x] Rectangular selection, lasso, magic wand — move, copy, paste, delete contents
+- [x] Add / subtract selection modes — per-pixel mask combining
+- [x] **Flip horizontal / vertical** — whole canvas or selection
+- [x] **Rotate 90° CW / CCW** — whole canvas or selection
+- [x] **Canvas resize** with 9-point anchor picker (pads / crops, non-destructive)
+- [x] Crop to selection
 
 ### Tier 6 — Tiling & reference
 
-- [ ] **Tile preview panel** — 2×2 / 3×3 tiled view alongside canvas
-- [ ] **Seamless tile mode** — strokes wrap from one edge to the opposite
-- [ ] **Reference image overlay** — import PNG as locked semi-transparent reference layer
+- [x] **Tile preview panel** — 2×2 / 3×3 tiled view alongside canvas
+- [x] **Reference image overlay** — import PNG as locked semi-transparent reference layer
 
 ### Tier 7 — Sprite Forge export
 
-- [ ] Export canvas as PNG
-- [ ] Export as sprite sheet (configurable frames-per-row, padding, labels)
-- [ ] Export individual frames as numbered PNGs
-- [ ] Export active palette as `.hex` file (Lospec format)
+- [x] Export canvas as PNG
+- [x] Export as sprite sheet (configurable frames-per-row, padding, labels)
+- [x] Export individual frames as numbered PNGs
+- [x] Export active palette as `.hex` file (Lospec format)
+
+---
+
+## Planned Refactors
+
+### PR-1 — Extract selection logic out of `drawingEngine.js`
+
+**Priority:** Medium — do before the next major feature pass.
+
+`drawingEngine.js` currently owns all selection tool logic inline. As the selection
+system grew (per-pixel masks, add/subtract combining, marching ants path building,
+move tool with mask translation), this became the largest concern in the file.
+
+**Target structure:**
+
+| New file | Contents |
+| --- | --- |
+| `engine/selectionUtils.js` | Pure functions: `buildRectMask`, `buildLassoMask`, `combineMasks`, `boundsFromMask`, `getOrBuildMask`, `translateMask`. No refs — all take plain arguments, return plain values. |
+| `engine/tools/selectTool.js` | Pointer-down/move/up handlers for `select-rect`, `select-lasso`, `select-wand`. Reads/writes `refs.selectionMask`, `refs.selectionMaskOrigin`, calls `setSelection`. |
+| `engine/tools/moveTool.js` | Pointer-down/move/up handlers for `move` tool. Owns `movePixels`, `moveOrigin`, `previewSnap` locals. Translates mask on pointer-up. |
+| `engine/canvasRenderer.js` | `buildMaskEdgePath` can move to `selectionUtils.js` or stay here — either is fine. |
+| `engine/drawingEngine.js` | Becomes thin routing only — calls the right tool module based on `tool` value. |
+
+**Contract to preserve:**
+- `setSelection(val, fromMove)` signature unchanged
+- `refs.selectionMask` always at current canvas coords after move pointer-up
+- `refs.selectionMaskOrigin` always `{x, y}` of mask's current position
+- Marching ants outline follows moved pixels correctly (see commits `b69a258`, `d2be244`)
 
 ---
 
