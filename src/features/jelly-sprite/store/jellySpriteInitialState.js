@@ -11,9 +11,9 @@ const _initFrame = makeFrame("Frame 1");
 // All fields are grouped by concern so it's easy to find the right thing.
 export const jellySpriteInitialState = {
   // ── Canvas geometry ──────────────────────────────────────────────────────
-  canvasW: 128,
-  canvasH: 128,
-  zoom: 4,
+  canvasW: 32,
+  canvasH: 32,
+  zoom: 4, // overridden on mount by fill-zoom calculation
 
   // ── Layers ───────────────────────────────────────────────────────────────
   // The active frame's layer metadata array. Changes when switching frames.

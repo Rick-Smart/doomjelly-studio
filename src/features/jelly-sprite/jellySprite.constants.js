@@ -2,11 +2,19 @@
 
 export const MAX_HISTORY = 50;
 export const MAX_COLOUR_HISTORY = 10;
+export const MAX_ZOOM = 64;
 
+// Common pixel-art sprite sizes, roughly ordered smallest → largest.
+// 16×16 and 32×32 are the most popular for modern indie games.
 export const CANVAS_SIZES = [
-  { label: "64×64", w: 64, h: 64 },
+  { label: "8×8",    w: 8,   h: 8   },
+  { label: "16×16",  w: 16,  h: 16  },
+  { label: "16×32",  w: 16,  h: 32  },
+  { label: "32×32",  w: 32,  h: 32  },
+  { label: "32×64",  w: 32,  h: 64  },
+  { label: "48×48",  w: 48,  h: 48  },
+  { label: "64×64",  w: 64,  h: 64  },
   { label: "128×128", w: 128, h: 128 },
-  { label: "256×128", w: 256, h: 128 },
   { label: "256×256", w: 256, h: 256 },
 ];
 

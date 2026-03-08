@@ -3,14 +3,13 @@ import JSZip from "jszip";
 import { useProject } from "../../contexts/ProjectContext";
 import "./JellySprite.css";
 import * as A from "./store/jellySpriteActions";
-import { makeLayer } from "./jellySprite.constants";
+import { makeLayer, makeFrame, MAX_ZOOM } from "./jellySprite.constants";
 import { JellySpriteCtx } from "./JellySpriteContext";
 import { JellySpriteProvider } from "./store/JellySpriteProvider";
 import { useJellySpriteStore } from "./store/useJellySpriteStore";
 import { LeftToolbar } from "./panels/LeftToolbar";
 import { CanvasArea } from "./panels/CanvasArea";
 import { RightPanel, ExportModal } from "./panels/RightPanel";
-import { makeFrame } from "./jellySprite.constants";
 import { useCanvas } from "./hooks/useCanvas";
 import { wireHistoryEngine, seedHistory } from "./engine/historyEngine";
 
@@ -830,6 +829,18 @@ function JellySpriteBody({ onSwitchToAnimator }) {
     function finish() {
       wireHistoryEngine(refs, sd);
       redraw();
+      // Auto-zoom to fill the canvas work area whenever the canvas size changes
+      // (including the initial mount). refs.canvasEl is set by useCanvas which
+      // runs its effect before this one.
+      const wrap = refs.canvasEl?.parentElement;
+      if (wrap) {
+        const availW = wrap.clientWidth - 40;
+        const availH = wrap.clientHeight - 40;
+        const fillZoom = Math.max(1, Math.min(MAX_ZOOM,
+          Math.floor(Math.min(availW / w, availH / h))
+        ));
+        setZoom(fillZoom);
+      }
     }
 
     const src = state.JellySpriteDataUrl;

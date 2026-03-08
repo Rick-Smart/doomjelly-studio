@@ -1,4 +1,4 @@
-import { MAX_COLOUR_HISTORY } from "../jellySprite.constants";
+import { MAX_COLOUR_HISTORY, MAX_ZOOM } from "../jellySprite.constants";
 import * as A from "./jellySpriteActions";
 
 // ── Reducer ───────────────────────────────────────────────────────────────────
@@ -18,7 +18,7 @@ export function jellySpriteReducer(state, action) {
         customH: payload.h,
       };
     case A.SET_ZOOM:
-      return { ...state, zoom: Math.max(1, Math.min(16, payload)) };
+      return { ...state, zoom: Math.max(1, Math.min(MAX_ZOOM, payload)) };
 
     // ── Tools ─────────────────────────────────────────────────────────────
     case A.SET_TOOL:
