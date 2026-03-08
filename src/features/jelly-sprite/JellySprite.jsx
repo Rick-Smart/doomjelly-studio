@@ -400,6 +400,9 @@ function JellySpriteBody({ onSwitchToAnimator }) {
         activeLayerId: newActiveLayerId,
       },
     });
+    const dupThumb = generateFrameThumbnail(newFrame.id);
+    if (dupThumb)
+      sd({ type: A.UPDATE_THUMBNAIL, payload: { frameId: newFrame.id, dataUrl: dupThumb } });
     wireHistoryEngine(refs, sd);
     refs.redraw?.();
   }
@@ -705,6 +708,7 @@ function JellySpriteBody({ onSwitchToAnimator }) {
       buf.fill(0);
       refs.pushHistory?.();
       refs.redraw?.();
+      updateThumbnailForActiveFrame();
       return;
     }
     // legacy fallback
@@ -712,6 +716,7 @@ function JellySpriteBody({ onSwitchToAnimator }) {
     pushHistoryEntryStubRef.current();
     redraw();
     saveToProject();
+    updateThumbnailForActiveFrame();
   }
 
   // ── Mouse handlers ─────────────────────────────────────────────────────────
