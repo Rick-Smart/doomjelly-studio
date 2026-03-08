@@ -146,6 +146,7 @@ export function createDrawingEngine(refs) {
   const selListeners = [];
   function setSelection(val) {
     refs.selection = val;
+    refs.selectionMaskPath = null; // invalidate Path2D edge cache
     for (const fn of selListeners) fn(val);
   }
 

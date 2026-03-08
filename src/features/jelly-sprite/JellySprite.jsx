@@ -412,7 +412,10 @@ function JellySpriteBody({ onSwitchToAnimator }) {
     });
     const dupThumb = generateFrameThumbnail(newFrame.id);
     if (dupThumb)
-      sd({ type: A.UPDATE_THUMBNAIL, payload: { frameId: newFrame.id, dataUrl: dupThumb } });
+      sd({
+        type: A.UPDATE_THUMBNAIL,
+        payload: { frameId: newFrame.id, dataUrl: dupThumb },
+      });
     seedHistory(refs, newLayers, newActiveLayerId);
     refs.redraw?.();
   }
@@ -452,7 +455,10 @@ function JellySpriteBody({ onSwitchToAnimator }) {
       playbackFrameIdxRef.current =
         (playbackFrameIdxRef.current + 1) % framesRef.current.length;
       refs.playbackFrameIdx = playbackFrameIdxRef.current;
-      sd({ type: A.SET_PLAYBACK_FRAME_IDX, payload: playbackFrameIdxRef.current });
+      sd({
+        type: A.SET_PLAYBACK_FRAME_IDX,
+        payload: playbackFrameIdxRef.current,
+      });
       refs.redraw?.();
     }, 1000 / ss.fps);
     sd({ type: A.SET_IS_PLAYING, payload: true });
@@ -539,7 +545,10 @@ function JellySpriteBody({ onSwitchToAnimator }) {
     updateThumbnailForActiveFrame();
     // Update canUndo/canRedo in reducer so buttons reflect current stack state
     sd({ type: A.SET_CAN_UNDO, payload: refs.historyIndex > 0 });
-    sd({ type: A.SET_CAN_REDO, payload: refs.historyIndex < refs.historyStack.length - 1 });
+    sd({
+      type: A.SET_CAN_REDO,
+      payload: refs.historyIndex < refs.historyStack.length - 1,
+    });
   };
   // Wire onStrokeComplete so the drawing engine triggers history + thumbnail +
   // canUndo/canRedo dispatch (enables undo/redo buttons).
@@ -919,9 +928,7 @@ function JellySpriteBody({ onSwitchToAnimator }) {
       lassoMaskRef.current = null;
     },
     copySelection: () =>
-      refs.drawingEngine
-        ? refs.drawingEngine.copySelection()
-        : copySelection(),
+      refs.drawingEngine ? refs.drawingEngine.copySelection() : copySelection(),
     pasteSelection: () =>
       refs.drawingEngine
         ? refs.drawingEngine.pasteSelection()
@@ -934,6 +941,7 @@ function JellySpriteBody({ onSwitchToAnimator }) {
       const { canvasW: w, canvasH: h } = refs.stateRef.current;
       const mask = new Uint8Array(w * h).fill(1);
       refs.selectionMask = mask;
+      refs.selectionMaskPath = null;
       refs.selection = { x: 0, y: 0, w, h };
       sd({ type: A.SET_SELECTION, payload: { x: 0, y: 0, w, h } });
       refs.redraw?.();
@@ -1169,7 +1177,11 @@ function JellySpriteBody({ onSwitchToAnimator }) {
       const rmsk = {};
       for (const [lid, data] of Object.entries(snap.maskBuffers ?? {}))
         rmsk[lid] = data ? cropBuf(data) : data;
-      refs.frameSnapshots[fid] = { ...snap, pixelBuffers: rpx, maskBuffers: rmsk };
+      refs.frameSnapshots[fid] = {
+        ...snap,
+        pixelBuffers: rpx,
+        maskBuffers: rmsk,
+      };
     }
 
     // Clear selection and resize
@@ -1458,7 +1470,9 @@ function JellySpriteBody({ onSwitchToAnimator }) {
     copySelection: () =>
       refs.drawingEngine ? refs.drawingEngine.copySelection() : copySelection(),
     pasteSelection: () =>
-      refs.drawingEngine ? refs.drawingEngine.pasteSelection() : pasteSelection(),
+      refs.drawingEngine
+        ? refs.drawingEngine.pasteSelection()
+        : pasteSelection(),
     cropToSelection: cropToSelectionImpl,
     deleteSelectionContents: () =>
       refs.drawingEngine
