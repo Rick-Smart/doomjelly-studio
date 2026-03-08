@@ -33,7 +33,7 @@ import {
   drawLine,
   drawRect,
   drawEllipse,
-  magicWandBounds,
+  magicWandMask,
   copyRegion,
   pasteRegion,
 } from "./pixelOps.js";
@@ -274,15 +274,15 @@ export function createDrawingEngine(refs) {
     if (tool === "select-wand") {
       const buf = refs.pixelBuffers[st.activeLayerId];
       if (buf) {
-        const bounds = magicWandBounds(buf, x, y, w, h);
-        if (bounds) {
+        const wandMask = magicWandMask(buf, x, y, w, h);
+        if (wandMask) {
           if (selMode === "replace") {
-            refs.selectionMask = null;
-            setSelection(bounds);
+            refs.selectionMask = wandMask;
+            const bounds = boundsFromMask(wandMask, w, h);
+            if (bounds) setSelection(bounds);
           } else {
-            const newMask = buildRectMask(bounds, w, h);
             const existing = getOrBuildMask(refs, w, h);
-            const combined = combineMasks(existing, newMask, selMode, w, h);
+            const combined = combineMasks(existing, wandMask, selMode, w, h);
             refs.selectionMask = combined;
             const newBounds = boundsFromMask(combined, w, h);
             if (newBounds) {
@@ -455,7 +455,7 @@ export function createDrawingEngine(refs) {
         h: Math.abs(y - startPx.y) + 1,
       };
       if (selMode === "replace") {
-        refs.selectionMask = null;
+        refs.selectionMask = buildRectMask(newSel, w, h);
         setSelection(newSel);
       } else {
         const newMask = buildRectMask(newSel, w, h);

@@ -178,33 +178,27 @@ export function drawEllipse(ctx, x0, y0, x1, y1, filled, rgba) {
 // ── Magic wand ────────────────────────────────────────────────────────────────
 
 /**
- * Returns { x, y, w, h } bounding box of all connected pixels matching
- * the colour at (sx,sy) in buf.
- * Returns null if empty.
+ * BFS flood-fill from (sx,sy), matching the colour at that pixel.
+ * Returns a Uint8Array(w*h) where 1 = selected pixel, or null if nothing matched.
  */
-export function magicWandBounds(buf, sx, sy, w, h) {
+export function magicWandMask(buf, sx, sy, w, h) {
   const target = getPixel(buf, sx, sy, w);
-  const visited = new Set();
+  const mask = new Uint8Array(w * h);
+  const visited = new Uint8Array(w * h);
   const queue = [[sx, sy]];
-  let minX = sx,
-    maxX = sx,
-    minY = sy,
-    maxY = sy;
+  let found = false;
   while (queue.length) {
     const [x, y] = queue.pop();
-    const key = y * w + x;
-    if (visited.has(key)) continue;
     if (x < 0 || x >= w || y < 0 || y >= h) continue;
+    const i = y * w + x;
+    if (visited[i]) continue;
+    visited[i] = 1;
     if (!colorsMatch(getPixel(buf, x, y, w), target)) continue;
-    visited.add(key);
-    if (x < minX) minX = x;
-    if (x > maxX) maxX = x;
-    if (y < minY) minY = y;
-    if (y > maxY) maxY = y;
+    mask[i] = 1;
+    found = true;
     queue.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
   }
-  if (visited.size === 0) return null;
-  return { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 };
+  return found ? mask : null;
 }
 
 // ── Clipboard helpers ─────────────────────────────────────────────────────────

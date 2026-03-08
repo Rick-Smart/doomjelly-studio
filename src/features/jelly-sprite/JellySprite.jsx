@@ -918,9 +918,26 @@ function JellySpriteBody({ onSwitchToAnimator }) {
       selectionRef.current = null;
       lassoMaskRef.current = null;
     },
-    copySelection: () => copySelection(),
-    pasteSelection: () => pasteSelection(),
-    deleteSelection: () => deleteSelectionContents(),
+    copySelection: () =>
+      refs.drawingEngine
+        ? refs.drawingEngine.copySelection()
+        : copySelection(),
+    pasteSelection: () =>
+      refs.drawingEngine
+        ? refs.drawingEngine.pasteSelection()
+        : pasteSelection(),
+    deleteSelection: () =>
+      refs.drawingEngine
+        ? refs.drawingEngine.deleteSelectionContents()
+        : deleteSelectionContents(),
+    selectAll: () => {
+      const { canvasW: w, canvasH: h } = refs.stateRef.current;
+      const mask = new Uint8Array(w * h).fill(1);
+      refs.selectionMask = mask;
+      refs.selection = { x: 0, y: 0, w, h };
+      sd({ type: A.SET_SELECTION, payload: { x: 0, y: 0, w, h } });
+      refs.redraw?.();
+    },
     prevFrame: () => {
       if (!isPlayingRef.current)
         switchToFrame(Math.max(0, activeFrameIdxRef.current - 1));
@@ -959,9 +976,12 @@ function JellySpriteBody({ onSwitchToAnimator }) {
       } else if ((e.ctrlKey || e.metaKey) && e.key === "v") {
         e.preventDefault();
         a.pasteSelection();
+      } else if ((e.ctrlKey || e.metaKey) && e.key === "a") {
+        e.preventDefault();
+        a.selectAll();
       } else if (
         (e.key === "Delete" || e.key === "Backspace") &&
-        selectionRef.current
+        (refs.selection || selectionRef.current)
       ) {
         e.preventDefault();
         a.deleteSelection();
@@ -1114,6 +1134,49 @@ function JellySpriteBody({ onSwitchToAnimator }) {
     }
 
     sd({ type: A.SET_CANVAS_SIZE, payload: { w: nw, h: nh } });
+  }
+
+  // ── Crop to selection ──────────────────────────────────────────────────────
+  function cropToSelectionImpl() {
+    // Prefer drawing engine selection (refs.selection), fall back to legacy path
+    const sel = refs.selection ?? selectionRef.current;
+    if (!sel) return;
+    const { canvasW: w, canvasH: h } = refs.stateRef.current;
+    const { x: sx, y: sy, w: sw, h: sh } = sel;
+
+    function cropBuf(data) {
+      const out = new Uint8ClampedArray(sw * sh * 4);
+      for (let dy = 0; dy < sh; dy++)
+        for (let dx = 0; dx < sw; dx++) {
+          const si = ((sy + dy) * w + (sx + dx)) * 4;
+          const di = (dy * sw + dx) * 4;
+          for (let c = 0; c < 4; c++) out[di + c] = data[si + c];
+        }
+      return out;
+    }
+
+    // Crop active frame pixel + mask buffers
+    for (const lid of Object.keys(refs.pixelBuffers))
+      refs.pixelBuffers[lid] = cropBuf(refs.pixelBuffers[lid]);
+    for (const [lid, buf] of Object.entries(refs.maskBuffers ?? {}))
+      if (buf) refs.maskBuffers[lid] = cropBuf(buf);
+
+    // Crop all stored frame snapshots so frame-switching stays consistent
+    for (const [fid, snap] of Object.entries(refs.frameSnapshots ?? {})) {
+      const rpx = {};
+      for (const [lid, data] of Object.entries(snap.pixelBuffers ?? {}))
+        rpx[lid] = cropBuf(data);
+      const rmsk = {};
+      for (const [lid, data] of Object.entries(snap.maskBuffers ?? {}))
+        rmsk[lid] = data ? cropBuf(data) : data;
+      refs.frameSnapshots[fid] = { ...snap, pixelBuffers: rpx, maskBuffers: rmsk };
+    }
+
+    // Clear selection and resize
+    refs.selection = null;
+    refs.selectionMask = null;
+    sd({ type: A.SET_SELECTION, payload: null });
+    sd({ type: A.SET_CANVAS_SIZE, payload: { w: sw, h: sh } });
   }
 
   // ── Animator integration ───────────────────────────────────────────────────
@@ -1392,10 +1455,15 @@ function JellySpriteBody({ onSwitchToAnimator }) {
     selectionRef,
     lassoMaskRef,
     clipboardRef,
-    copySelection,
-    pasteSelection,
-    cropToSelection,
-    deleteSelectionContents,
+    copySelection: () =>
+      refs.drawingEngine ? refs.drawingEngine.copySelection() : copySelection(),
+    pasteSelection: () =>
+      refs.drawingEngine ? refs.drawingEngine.pasteSelection() : pasteSelection(),
+    cropToSelection: cropToSelectionImpl,
+    deleteSelectionContents: () =>
+      refs.drawingEngine
+        ? refs.drawingEngine.deleteSelectionContents()
+        : deleteSelectionContents(),
     layers,
     activeLayerId,
     setActiveLayerId,
