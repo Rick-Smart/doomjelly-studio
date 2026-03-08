@@ -96,6 +96,38 @@
   color: #fff;
 }
 
+/* Pushes the clear button to the bottom of the toolbar */
+.jelly-sprite__toolbar-spacer {
+  flex: 1;
+  min-height: 12px;
+}
+
+/* Standalone destructive clear button — lives at the very bottom of the toolbar */
+.jelly-sprite__clear-btn {
+  width: 100%;
+  padding: 7px 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--danger) 45%, transparent);
+  border-radius: 5px;
+  color: var(--danger);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  flex-shrink: 0;
+}
+
+.jelly-sprite__clear-btn:hover {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+}
+
 .jelly-sprite__tool-btn:disabled {
   opacity: 0.35;
   cursor: not-allowed;

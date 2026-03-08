@@ -1,7 +1,10 @@
+import { useState } from "react";
 import { useJellySprite } from "../JellySpriteContext";
 import { TOOL_GROUPS } from "../jellySprite.constants";
+import { ConfirmDialog } from "../../../ui/ConfirmDialog";
 
 export function LeftToolbar() {
+  const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
   const {
     tool,
     setTool,
@@ -214,16 +217,31 @@ export function LeftToolbar() {
           >
             ↪
           </button>
-          <button
-            className="jelly-sprite__tool-btn jelly-sprite__tool-btn--danger"
-            onClick={clearCanvas}
-            title="Clear layer"
-            style={{ gridColumn: "span 2" }}
-          >
-            ✕ Clear
-          </button>
         </div>
       </div>
+
+      <div className="jelly-sprite__toolbar-spacer" />
+
+      <div className="jelly-sprite__tool-section">
+        <button
+          className="jelly-sprite__clear-btn"
+          onClick={() => setClearConfirmOpen(true)}
+          title="Clear active layer — cannot be undone"
+        >
+          🗑 Clear Layer
+        </button>
+      </div>
+
+      <ConfirmDialog
+        isOpen={clearConfirmOpen}
+        onClose={() => setClearConfirmOpen(false)}
+        onConfirm={clearCanvas}
+        title="Clear layer?"
+        message="This will erase all pixels on the active layer. This action cannot be undone."
+        confirmLabel="Clear"
+        cancelLabel="Keep"
+        variant="danger"
+      />
     </div>
   );
 }
