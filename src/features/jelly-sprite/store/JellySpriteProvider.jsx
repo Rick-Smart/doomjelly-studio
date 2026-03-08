@@ -24,7 +24,10 @@ export const JellySpriteStoreCtx = createContext(null);
 // refs.clipboardW       number                             clipboard region width
 // refs.clipboardH       number                             clipboard region height
 // refs.selectionMask    Uint8Array | null                  per-pixel lasso mask
-// refs.lassoPath        { x, y }[]                         in-progress lasso points
+// refs.lassoPath2D      Path2D | null                      incremental live-drag path (renderer strokes this)
+// refs.lassoXY          Int16Array                         interleaved [x0,y0,...] canvas coords, typed buffer
+// refs.lassoXYLen       number                             logical point count in lassoXY
+// refs.lassoStartPx     { x, y } | null                    first lasso point (snap-to-start indicator)
 // refs.marchOffset      number                             marching ants animation offset
 // refs.marchingAntsRaf  number | null                      rAF id for ants animation
 // refs.canvasEl         HTMLCanvasElement | null           the visible canvas

@@ -923,7 +923,9 @@ function JellySpriteBody({ onSwitchToAnimator }) {
       // Clear in the drawing engine (refs path used by drawingEngine)
       refs.selection = null;
       refs.selectionMask = null;
-      refs.lassoPath = [];
+      refs.lassoPath2D = null;
+      refs.lassoStartPx = null;
+      refs.lassoXYLen = 0;
       // Dispatch to store so renderer (refs.stateRef.current.selection) and
       // marching ants useEffect both see null
       sd({ type: A.SET_SELECTION, payload: null });

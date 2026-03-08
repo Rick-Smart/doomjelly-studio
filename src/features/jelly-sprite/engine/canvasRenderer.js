@@ -281,21 +281,37 @@ export function createRenderer(refs) {
     }
 
     // ── Live lasso path ───────────────────────────────────────────────────
-    const lassoPath = refs.lassoPath ?? [];
-    if (lassoPath.length > 1) {
+    // lassoPath2D is built incrementally in drawingEngine — O(1) to stroke.
+    if (refs.lassoPath2D && refs.lassoXYLen > 1) {
       ctx.save();
-      ctx.strokeStyle = "rgba(255,255,255,0.85)";
       ctx.lineWidth = 1;
       ctx.setLineDash([]);
-      ctx.beginPath();
-      ctx.moveTo((lassoPath[0].x + 0.5) * z, (lassoPath[0].y + 0.5) * z);
-      for (let i = 1; i < lassoPath.length; i++) {
-        ctx.lineTo((lassoPath[i].x + 0.5) * z, (lassoPath[i].y + 0.5) * z);
-      }
-      ctx.stroke();
+      ctx.strokeStyle = "rgba(255,255,255,0.85)";
+      ctx.stroke(refs.lassoPath2D);
       ctx.strokeStyle = "rgba(0,0,0,0.6)";
       ctx.setLineDash([4, 4]);
-      ctx.stroke();
+      ctx.stroke(refs.lassoPath2D);
+      ctx.setLineDash([]);
+
+      // Snap-to-start indicator: circle when cursor is within snap radius
+      const sp = refs.lassoStartPx;
+      const xy = refs.lassoXY;
+      const n = refs.lassoXYLen;
+      if (sp && xy && n > 0) {
+        const curX = xy[(n - 1) * 2];
+        const curY = xy[(n - 1) * 2 + 1];
+        const snapDist = Math.max(2, 8 / z);
+        const dx = curX - sp.x, dy = curY - sp.y;
+        if (Math.sqrt(dx * dx + dy * dy) <= snapDist) {
+          ctx.fillStyle = "rgba(255,255,255,0.9)";
+          ctx.beginPath();
+          ctx.arc((sp.x + 0.5) * z, (sp.y + 0.5) * z, 4, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = "rgba(0,0,0,0.7)";
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        }
+      }
       ctx.restore();
     }
 

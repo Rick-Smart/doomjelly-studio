@@ -37,7 +37,7 @@ import {
   copyRegion,
   pasteRegion,
 } from "./pixelOps.js";
-import { buildLassoMask } from "../jellySprite.utils.js";
+import { buildLassoMask, bresenhamLine } from "../jellySprite.utils.js";
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
@@ -140,7 +140,18 @@ export function createDrawingEngine(refs) {
   let previewSnap = null; // Uint8ClampedArray copy taken before shape preview
   let moveOrigin = null; // { x, y, selX, selY } — for selection move
   let movePixels = null; // Uint8ClampedArray
-  let selMode = "replace"; // "replace" | "add" | "subtract" — set on pointer-down — lifted selection pixels
+  let selMode = "replace"; // "replace" | "add" | "subtract" — set on pointer-down
+
+  // ── Lasso drag state (typed-buffer, zero hot-path allocation) ─────────────
+  // Preallocated once; resized only when canvas is larger than previous alloc.
+  // Stored as interleaved Int16 [x0,y0, x1,y1, ...] in canvas pixels.
+  let lassoXY = new Int16Array(0);
+  let lassoXYLen = 0; // logical point count (not byte count)
+  let lassoLastPx = null; // last canvas-coord pixel for Bresenham bridging
+  let lassoStartPx = null; // first point, held for snap-to-start indicator
+  // The live Path2D is built incrementally — the renderer just calls stroke()
+  // on it rather than iterating the full point array every frame.
+  let lassoPath2D = null;
 
   // Notify listeners when selection changes (used to sync React state)
   const selListeners = [];
@@ -252,7 +263,10 @@ export function createDrawingEngine(refs) {
             for (let dx = 0; dx < sel.w; dx++) {
               const si = ((sel.y + dy) * w + (sel.x + dx)) * 4;
               const di = (dy * sel.w + dx) * 4;
-              if (refs.selectionMask && !refs.selectionMask[(sel.y + dy) * w + (sel.x + dx)]) {
+              if (
+                refs.selectionMask &&
+                !refs.selectionMask[(sel.y + dy) * w + (sel.x + dx)]
+              ) {
                 // Pixel outside mask — leave on canvas, store transparent
                 for (let c = 0; c < 4; c++) movePixels[di + c] = 0;
               } else {
@@ -271,11 +285,17 @@ export function createDrawingEngine(refs) {
           const sel = refs.selection;
           for (let dy = 0; dy < sel.h; dy++) {
             for (let dx = 0; dx < sel.w; dx++) {
-              const px = sel.x + dx, py = sel.y + dy;
+              const px = sel.x + dx,
+                py = sel.y + dy;
               if (px < 0 || px >= w || py < 0 || py >= h) continue;
-              if (refs.selectionMask && !refs.selectionMask[py * w + px]) continue;
+              if (refs.selectionMask && !refs.selectionMask[py * w + px])
+                continue;
               const i = (py * w + px) * 4;
-              previewSnap[i] = previewSnap[i + 1] = previewSnap[i + 2] = previewSnap[i + 3] = 0;
+              previewSnap[i] =
+                previewSnap[i + 1] =
+                previewSnap[i + 2] =
+                previewSnap[i + 3] =
+                  0;
             }
           }
         }
@@ -298,7 +318,22 @@ export function createDrawingEngine(refs) {
         refs.selectionMask = null;
         refs.selection = null;
       }
-      refs.lassoPath = [{ x, y }];
+      // Ensure typed buffer is large enough for worst-case perimeter.
+      // A 256×256 canvas has at most 65536 canvas pixels ≈ worst lasso length.
+      const maxPts = w * h;
+      if (lassoXY.length < maxPts * 2) lassoXY = new Int16Array(maxPts * 2);
+      lassoXY[0] = x;
+      lassoXY[1] = y;
+      lassoXYLen = 1;
+      lassoLastPx = { x, y };
+      lassoStartPx = { x, y };
+      lassoPath2D = new Path2D();
+      lassoPath2D.moveTo((x + 0.5) * zoom, (y + 0.5) * zoom);
+      // Expose to renderer
+      refs.lassoPath2D = lassoPath2D;
+      refs.lassoStartPx = lassoStartPx;
+      refs.lassoXY = lassoXY;
+      refs.lassoXYLen = 0; // renderer uses lassoXYLen > 0 to skip vs draw
       return null;
     }
 
@@ -359,7 +394,16 @@ export function createDrawingEngine(refs) {
       const buf = refs.pixelBuffers[st.activeLayerId];
       if (buf && previewSnap) {
         buf.set(previewSnap);
-        pasteRegion(buf, movePixels, newSel.x, newSel.y, newSel.w, newSel.h, w, h);
+        pasteRegion(
+          buf,
+          movePixels,
+          newSel.x,
+          newSel.y,
+          newSel.w,
+          newSel.h,
+          w,
+          h,
+        );
       }
       setSelection({ ...newSel }, true); // fromMove=true: keep movePixels alive
       refs.redraw?.();
@@ -367,8 +411,24 @@ export function createDrawingEngine(refs) {
     }
 
     // ── Lasso ───────────────────────────────────────────────────────────────
-    if (tool === "select-lasso") {
-      refs.lassoPath = [...refs.lassoPath, { x, y }];
+    if (tool === "select-lasso" && lassoLastPx) {
+      const { canvasW: lw, canvasH: lh, zoom: lz } = st;
+      // Bresenham-connect last stored pixel to current to fill skipped pixels
+      // (fast drags at low zoom skip integer coords between events).
+      bresenhamLine(lassoLastPx.x, lassoLastPx.y, x, y, (bx, by) => {
+        // Dedup: skip if identical to the last stored point
+        const li = (lassoXYLen - 1) * 2;
+        if (lassoXYLen > 0 && lassoXY[li] === bx && lassoXY[li + 1] === by)
+          return;
+        if (lassoXYLen * 2 >= lassoXY.length) return; // guard (shouldn't happen)
+        lassoXY[lassoXYLen * 2] = bx;
+        lassoXY[lassoXYLen * 2 + 1] = by;
+        lassoXYLen++;
+        lassoPath2D.lineTo((bx + 0.5) * lz, (by + 0.5) * lz);
+      });
+      lassoLastPx = { x, y };
+      // Expose current length so renderer can draw the snap indicator correctly
+      refs.lassoXYLen = lassoXYLen;
       refs.redraw?.();
       return null;
     }
@@ -419,7 +479,8 @@ export function createDrawingEngine(refs) {
           for (let py = 0; py < h; py++) {
             for (let px = 0; px < w; px++) {
               if (refs.selectionMask[py * w + px]) {
-                const npx = px + dx, npy = py + dy;
+                const npx = px + dx,
+                  npy = py + dy;
                 if (npx >= 0 && npx < w && npy >= 0 && npy < h)
                   newMask[npy * w + npx] = 1;
               }
@@ -445,40 +506,35 @@ export function createDrawingEngine(refs) {
 
     // ── Lasso finalise ────────────────────────────────────────────────────────
     if (tool === "select-lasso") {
-      const pts = refs.lassoPath;
-      refs.lassoPath = [];
-      if (pts.length >= 3) {
+      // Clear live-drag renderer state
+      refs.lassoPath2D = null;
+      refs.lassoStartPx = null;
+      refs.lassoXYLen = 0;
+
+      if (lassoXYLen >= 3) {
+        // Build polygon array from the typed buffer (no copy — just a view walk)
+        const pts = [];
+        for (let i = 0; i < lassoXYLen; i++)
+          pts.push({ x: lassoXY[i * 2], y: lassoXY[i * 2 + 1] });
+
         const newMask = buildLassoMask(pts, w, h);
-        if (selMode === "replace") {
-          refs.selectionMask = newMask;
-          let minX = w,
-            maxX = 0,
-            minY = h,
-            maxY = 0;
-          for (const p of pts) {
-            if (p.x < minX) minX = p.x;
-            if (p.x > maxX) maxX = p.x;
-            if (p.y < minY) minY = p.y;
-            if (p.y > maxY) maxY = p.y;
-          }
-          setSelection({
-            x: minX,
-            y: minY,
-            w: maxX - minX + 1,
-            h: maxY - minY + 1,
-            poly: pts,
-          });
+        // Unified: always derive bounds from the committed mask, both modes.
+        // (Old replace path used pts-loop which could disagree with scanline edges.)
+        const existing =
+          selMode === "replace" ? null : getOrBuildMask(refs, w, h);
+        const combined = existing
+          ? combineMasks(existing, newMask, selMode, w, h)
+          : newMask;
+        refs.selectionMask = combined;
+        const bounds = boundsFromMask(combined, w, h);
+        if (bounds) {
+          // No poly key — marching ants always use the mask-edge Path2D walker.
+          // This eliminates the open-outline seam and the replace vs combined
+          // rendering inconsistency.
+          setSelection({ ...bounds });
         } else {
-          const existing = getOrBuildMask(refs, w, h);
-          const combined = combineMasks(existing, newMask, selMode, w, h);
-          refs.selectionMask = combined;
-          const bounds = boundsFromMask(combined, w, h);
-          if (bounds) {
-            setSelection({ ...bounds });
-          } else {
-            refs.selectionMask = null;
-            setSelection(null);
-          }
+          refs.selectionMask = null;
+          setSelection(null);
         }
       } else {
         if (selMode === "replace") {
@@ -486,6 +542,11 @@ export function createDrawingEngine(refs) {
           refs.selectionMask = null;
         }
       }
+
+      lassoXYLen = 0;
+      lassoLastPx = null;
+      lassoStartPx = null;
+      lassoPath2D = null;
       lastPx = null;
       startPx = null;
       return;
