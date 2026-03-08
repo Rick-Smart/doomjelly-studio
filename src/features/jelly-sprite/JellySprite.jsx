@@ -537,9 +537,12 @@ function JellySpriteBody({ onSwitchToAnimator }) {
   pushHistoryEntryStubRef.current = () => {
     refs.pushHistory?.();
     updateThumbnailForActiveFrame();
+    // Update canUndo/canRedo in reducer so buttons reflect current stack state
+    sd({ type: A.SET_CAN_UNDO, payload: refs.historyIndex > 0 });
+    sd({ type: A.SET_CAN_REDO, payload: refs.historyIndex < refs.historyStack.length - 1 });
   };
   // Wire onStrokeComplete so the drawing engine triggers history + thumbnail +
-  // STROKE_COMPLETE dispatch (enables canUndo, updates frame thumbnail).
+  // canUndo/canRedo dispatch (enables undo/redo buttons).
   refs.onStrokeComplete = pushHistoryEntryStubRef.current;
   redrawStubRef.current = redraw;
   saveToProjectStubRef.current = saveToProject;
@@ -718,6 +721,8 @@ function JellySpriteBody({ onSwitchToAnimator }) {
       refs.pushHistory?.();
       refs.redraw?.();
       updateThumbnailForActiveFrame();
+      sd({ type: A.SET_CAN_UNDO, payload: refs.historyIndex > 0 });
+      sd({ type: A.SET_CAN_REDO, payload: false });
       return;
     }
     // legacy fallback
