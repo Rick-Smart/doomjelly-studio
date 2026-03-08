@@ -1081,6 +1081,7 @@ export function ExportModal() {
     exportOpen,
     setExportOpen,
     frames,
+    fps,
     activePalette,
     exportFramesPerRow,
     setExportFramesPerRow,
@@ -1091,6 +1092,7 @@ export function ExportModal() {
     exportPNG,
     exportSpriteSheet,
     exportFramesZip,
+    exportGif,
     exportPaletteHex,
   } = useJellySprite();
 
@@ -1195,6 +1197,22 @@ export function ExportModal() {
             disabled={frames.length <= 1}
           >
             ZIP — all frames as PNGs
+          </button>
+        </div>
+
+        <div className="jelly-sprite__export-section">
+          <div className="jelly-sprite__export-section-label">
+            Animated GIF ({frames.length} frames @ {fps} fps)
+          </div>
+          <button
+            className="jelly-sprite__export-action-btn"
+            onClick={() => {
+              exportGif();
+              setExportOpen(false);
+            }}
+            disabled={frames.length <= 1}
+          >
+            GIF — animated sprite
           </button>
         </div>
 

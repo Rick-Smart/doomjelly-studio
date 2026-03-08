@@ -1,5 +1,6 @@
 import { useRef, useEffect, useLayoutEffect } from "react";
 import JSZip from "jszip";
+import { GIFEncoder, quantize, applyPalette } from "gifenc";
 import { useProject } from "../../contexts/ProjectContext";
 import "./JellySprite.css";
 import * as A from "./store/jellySpriteActions";
@@ -1452,6 +1453,25 @@ function JellySpriteBody({ onSwitchToAnimator, onRegisterCollector }) {
     );
   }
 
+  async function exportGif() {
+    saveCurrentFrameToRef();
+    const w = canvasW;
+    const h = canvasH;
+    const delay = Math.round(1000 / Math.max(1, fps));
+    const encoder = GIFEncoder();
+    for (const frame of framesRef.current) {
+      const cvs = compositeFrameToCanvas(frame.id);
+      const ctx = cvs.getContext("2d");
+      const imageData = ctx.getImageData(0, 0, w, h).data;
+      const palette = quantize(imageData, 256, { format: "rgb444" });
+      const index = applyPalette(imageData, palette);
+      encoder.writeFrame(index, w, h, { palette, delay });
+    }
+    encoder.finish();
+    const blob = new Blob([encoder.bytes()], { type: "image/gif" });
+    triggerDownload(URL.createObjectURL(blob), `${state.name || "sprite"}.gif`);
+  }
+
   function exportPaletteHex() {
     const blob = new Blob(
       [
@@ -1660,6 +1680,7 @@ function JellySpriteBody({ onSwitchToAnimator, onRegisterCollector }) {
     exportPNG,
     exportSpriteSheet,
     exportFramesZip,
+    exportGif,
     exportPaletteHex,
     projectState: state,
     importFromAnimator,
