@@ -1,12 +1,6 @@
 import { useRef, useState, useEffect } from "react";
-import {
-  hexToRgba,
-  rgbaToHex,
-  buildLassoMask,
-  bresenhamLine,
-  rasterRect,
-  rasterEllipse,
-} from "../jellySprite.utils";
+import { hexToRgba, rgbaToHex, rasterRect, rasterEllipse } from "../jellySprite.utils";
+import { buildLassoMask, bresenhamLine } from "../engine/selectionUtils.js";
 
 /**
  * All mouse-event handlers, pixel helpers, brush stamping, flood fill,
