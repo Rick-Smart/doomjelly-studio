@@ -210,7 +210,41 @@ export function createRenderer(refs) {
       ctx.lineWidth = 1;
       ctx.setLineDash([4, 4]);
 
-      if (selection.poly && selection.poly.length > 1) {
+      if (refs.selectionMask && !selection.poly) {
+        // Per-pixel mask boundary — draw an edge segment for every transition
+        // at the mask border. Iterated within the selection bounding box only.
+        const mask = refs.selectionMask;
+        const { x: bx, y: by, w: bw, h: bh } = selection;
+        const drawMaskEdges = (style, dashOff) => {
+          ctx.strokeStyle = style;
+          ctx.lineDashOffset = dashOff;
+          ctx.beginPath();
+          for (let py = by; py < by + bh; py++) {
+            for (let px = bx; px < bx + bw; px++) {
+              if (!mask[py * w + px]) continue;
+              if (py === 0 || !mask[(py - 1) * w + px]) {
+                ctx.moveTo(px * z, py * z);
+                ctx.lineTo((px + 1) * z, py * z);
+              }
+              if (py === h - 1 || !mask[(py + 1) * w + px]) {
+                ctx.moveTo(px * z, (py + 1) * z);
+                ctx.lineTo((px + 1) * z, (py + 1) * z);
+              }
+              if (px === 0 || !mask[py * w + (px - 1)]) {
+                ctx.moveTo(px * z, py * z);
+                ctx.lineTo(px * z, (py + 1) * z);
+              }
+              if (px === w - 1 || !mask[py * w + (px + 1)]) {
+                ctx.moveTo((px + 1) * z, py * z);
+                ctx.lineTo((px + 1) * z, (py + 1) * z);
+              }
+            }
+          }
+          ctx.stroke();
+        };
+        drawMaskEdges("#ffffff", -offset);
+        drawMaskEdges("#000000", -offset + 4);
+      } else if (selection.poly && selection.poly.length > 1) {
         const drawPoly = (dashOffset) => {
           ctx.lineDashOffset = dashOffset;
           ctx.beginPath();
