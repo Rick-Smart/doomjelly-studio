@@ -147,6 +147,12 @@ export function createDrawingEngine(refs) {
   function setSelection(val) {
     refs.selection = val;
     refs.selectionMaskPath = null; // invalidate Path2D edge cache
+    // If selection is being cleared or replaced, commit any in-flight move
+    // by dropping the lifted pixel buffer (they were already composited into
+    // buf during the last pointer-move).
+    if (!val || val !== refs.selection) {
+      movePixels = null;
+    }
     for (const fn of selListeners) fn(val);
   }
 
@@ -236,17 +242,39 @@ export function createDrawingEngine(refs) {
       if (sel) {
         moveOrigin = { x, y, selX: sel.x, selY: sel.y };
         const buf = refs.pixelBuffers[st.activeLayerId];
-        if (buf) {
+        if (buf && !movePixels) {
+          // First drag: lift pixels out of the canvas buffer.
           movePixels = new Uint8ClampedArray(sel.w * sel.h * 4);
           for (let dy = 0; dy < sel.h; dy++) {
             for (let dx = 0; dx < sel.w; dx++) {
               const si = ((sel.y + dy) * w + (sel.x + dx)) * 4;
               const di = (dy * sel.w + dx) * 4;
-              for (let c = 0; c < 4; c++) movePixels[di + c] = buf[si + c];
-              for (let c = 0; c < 4; c++) buf[si + c] = 0;
+              if (refs.selectionMask && !refs.selectionMask[(sel.y + dy) * w + (sel.x + dx)]) {
+                // Pixel outside mask — leave on canvas, store transparent
+                for (let c = 0; c < 4; c++) movePixels[di + c] = 0;
+              } else {
+                for (let c = 0; c < 4; c++) movePixels[di + c] = buf[si + c];
+                for (let c = 0; c < 4; c++) buf[si + c] = 0;
+              }
             }
           }
           previewSnap = new Uint8ClampedArray(buf);
+        } else if (buf && movePixels) {
+          // Subsequent drag: the lifted pixels were blitted to buf at the end
+          // of the last drag (by the final pasteRegion call in onPointerMove).
+          // We need previewSnap to be the canvas WITHOUT those pixels so that
+          // during this drag we can buf.set(previewSnap) + pasteRegion cleanly.
+          previewSnap = new Uint8ClampedArray(buf);
+          const sel = refs.selection;
+          for (let dy = 0; dy < sel.h; dy++) {
+            for (let dx = 0; dx < sel.w; dx++) {
+              const px = sel.x + dx, py = sel.y + dy;
+              if (px < 0 || px >= w || py < 0 || py >= h) continue;
+              if (refs.selectionMask && !refs.selectionMask[py * w + px]) continue;
+              const i = (py * w + px) * 4;
+              previewSnap[i] = previewSnap[i + 1] = previewSnap[i + 2] = previewSnap[i + 3] = 0;
+            }
+          }
         }
         refs.redraw?.();
       }
@@ -328,21 +356,7 @@ export function createDrawingEngine(refs) {
       const buf = refs.pixelBuffers[st.activeLayerId];
       if (buf && previewSnap) {
         buf.set(previewSnap);
-        const src = movePixels;
-        for (let dy = 0; dy < newSel.h; dy++) {
-          for (let dx = 0; dx < newSel.w; dx++) {
-            const tx = newSel.x + dx,
-              ty = newSel.y + dy;
-            if (tx < 0 || tx >= w || ty < 0 || ty >= h) continue;
-            const si = (dy * newSel.w + dx) * 4;
-            const di = (ty * w + tx) * 4;
-            for (let c = 0; c < 4; c++)
-              buf[di + c] = src[di + c - (di - si)] ?? src[si + c];
-          }
-        }
-        // Simpler blit
-        buf.set(previewSnap);
-        pasteRegion(buf, src, newSel.x, newSel.y, newSel.w, newSel.h, w, h);
+        pasteRegion(buf, movePixels, newSel.x, newSel.y, newSel.w, newSel.h, w, h);
       }
       setSelection({ ...newSel });
       refs.redraw?.();
@@ -390,8 +404,11 @@ export function createDrawingEngine(refs) {
 
     // ── Move finalise ────────────────────────────────────────────────────────
     if (tool === "move" && moveOrigin) {
+      // Keep movePixels + previewSnap alive so the next pointer-down can
+      // continue moving the same lifted pixels without re-sampling the canvas.
+      // They are cleared when the selection is deselected or a new selection
+      // is started (see setSelection / onPointerDown for selection tools).
       moveOrigin = null;
-      movePixels = null;
       previewSnap = null;
       (refs.onStrokeComplete ?? refs.pushHistory)?.();
       return;
