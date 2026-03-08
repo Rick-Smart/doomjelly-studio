@@ -407,10 +407,36 @@ export function createDrawingEngine(refs) {
 
     // ── Move finalise ────────────────────────────────────────────────────────
     if (tool === "move" && moveOrigin) {
-      // Keep movePixels + previewSnap alive so the next pointer-down can
-      // continue moving the same lifted pixels without re-sampling the canvas.
-      // They are cleared when the selection is deselected or a new selection
-      // is started (see setSelection / onPointerDown for selection tools).
+      // Translate the selection mask to its new absolute canvas position.
+      // This keeps refs.selectionMask in sync with where the pixels actually
+      // are now, so that subsequent operations (second-drag erase, add/subtract
+      // on a moved selection, etc.) all use correct canvas-current coordinates.
+      if (refs.selectionMask && refs.selectionMaskOrigin && refs.selection) {
+        const dx = refs.selection.x - refs.selectionMaskOrigin.x;
+        const dy = refs.selection.y - refs.selectionMaskOrigin.y;
+        if (dx !== 0 || dy !== 0) {
+          const newMask = new Uint8Array(w * h);
+          for (let py = 0; py < h; py++) {
+            for (let px = 0; px < w; px++) {
+              if (refs.selectionMask[py * w + px]) {
+                const npx = px + dx, npy = py + dy;
+                if (npx >= 0 && npx < w && npy >= 0 && npy < h)
+                  newMask[npy * w + npx] = 1;
+              }
+            }
+          }
+          refs.selectionMask = newMask;
+        }
+      }
+      // Sync origin to current position so future offset calculations start
+      // from where the mask actually is.
+      refs.selectionMaskOrigin = refs.selection
+        ? { x: refs.selection.x, y: refs.selection.y }
+        : null;
+      refs.selectionMaskPath = null; // force path rebuild with translated mask
+
+      // Keep movePixels alive so the next pointer-down can continue moving
+      // without re-lifting. Cleared when selection changes shape or deselects.
       moveOrigin = null;
       previewSnap = null;
       (refs.onStrokeComplete ?? refs.pushHistory)?.();
