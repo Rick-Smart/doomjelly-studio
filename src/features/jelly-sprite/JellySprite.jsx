@@ -820,6 +820,13 @@ function JellySpriteBody({ onSwitchToAnimator }) {
     offscreenRef.current.width = w;
     offscreenRef.current.height = h;
 
+    // Keep refs.offscreenEl in sync before redraw so compositeLayersToCanvas
+    // doesn't see a size mismatch (new pixel buffer size vs old canvas dims).
+    if (refs.offscreenEl) {
+      refs.offscreenEl.width = w;
+      refs.offscreenEl.height = h;
+    }
+
     function finish() {
       wireHistoryEngine(refs, sd);
       redraw();
@@ -855,7 +862,7 @@ function JellySpriteBody({ onSwitchToAnimator }) {
 
   useEffect(() => {
     redraw();
-  }, [zoom, gridVisible, frameGridVisible]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [zoom, gridVisible, frameGridVisible, frameConfig]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Redraw after layer metadata changes (visible/opacity/blendMode) so the
   // canvas reflects the *new* state rather than the stale refs.stateRef that
@@ -994,11 +1001,7 @@ function JellySpriteBody({ onSwitchToAnimator }) {
       } else if ((e.ctrlKey || e.metaKey) && e.key === "a") {
         e.preventDefault();
         a.selectAll();
-      } else if (
-        (e.ctrlKey || e.metaKey) &&
-        e.shiftKey &&
-        e.key === "I"
-      ) {
+      } else if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "I") {
         e.preventDefault();
         refs.drawingEngine?.invertSelection?.();
       } else if (
