@@ -144,13 +144,16 @@ export function createDrawingEngine(refs) {
 
   // Notify listeners when selection changes (used to sync React state)
   const selListeners = [];
-  function setSelection(val) {
+  // fromMove=true means the move tool itself is updating the selection mid-drag;
+  // skip clearing movePixels in that case. Any other caller (selection tools,
+  // deselect) sets fromMove=false (default), which commits the lift.
+  function setSelection(val, fromMove = false) {
     refs.selection = val;
     refs.selectionMaskPath = null; // invalidate Path2D edge cache
-    // If selection is being cleared or replaced, commit any in-flight move
-    // by dropping the lifted pixel buffer (they were already composited into
-    // buf during the last pointer-move).
-    if (!val || val !== refs.selection) {
+    if (!fromMove) {
+      // A selection tool started a new/modified selection, or the selection was
+      // cleared. The previously lifted pixels are already composited into the
+      // canvas buffer so just drop the lift buffer.
       movePixels = null;
     }
     for (const fn of selListeners) fn(val);
@@ -358,7 +361,7 @@ export function createDrawingEngine(refs) {
         buf.set(previewSnap);
         pasteRegion(buf, movePixels, newSel.x, newSel.y, newSel.w, newSel.h, w, h);
       }
-      setSelection({ ...newSel });
+      setSelection({ ...newSel }, true); // fromMove=true: keep movePixels alive
       refs.redraw?.();
       return null;
     }
