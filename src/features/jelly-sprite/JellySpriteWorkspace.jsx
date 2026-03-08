@@ -8,6 +8,7 @@ import {
   saveProjectToStorage,
 } from "../../services/projectService";
 import { JellySprite } from "./JellySprite";
+import { ErrorBoundary } from "../../ui/ErrorBoundary/ErrorBoundary";
 
 function EditableTitle({ value, onChange }) {
   const [editing, setEditing] = useState(false);
@@ -110,12 +111,14 @@ export function JellySpriteWorkspace() {
       scrollable={false}
       padding={false}
     >
-      <JellySprite
-        onSwitchToAnimator={() => navigate("/editor")}
-        onRegisterCollector={(fn) => {
-          jellySpriteCollectorRef.current = fn;
-        }}
-      />
+      <ErrorBoundary>
+        <JellySprite
+          onSwitchToAnimator={() => navigate("/editor")}
+          onRegisterCollector={(fn) => {
+            jellySpriteCollectorRef.current = fn;
+          }}
+        />
+      </ErrorBoundary>
     </Page>
   );
 }

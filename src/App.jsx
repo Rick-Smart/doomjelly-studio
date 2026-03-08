@@ -4,20 +4,23 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { ProjectProvider } from "./contexts/ProjectContext";
 import { NotificationProvider } from "./contexts/NotificationContext";
 import { AppRoutes } from "./router/routes";
+import { ErrorBoundary } from "./ui/ErrorBoundary/ErrorBoundary";
 import "./App.css";
 
 export default function App() {
   return (
-    <BrowserRouter basename="/doomjelly-studio">
-      <ThemeProvider>
-        <NotificationProvider>
-          <AuthProvider>
-            <ProjectProvider>
-              <AppRoutes />
-            </ProjectProvider>
-          </AuthProvider>
-        </NotificationProvider>
-      </ThemeProvider>
-    </BrowserRouter>
+    <ErrorBoundary>
+      <BrowserRouter basename="/doomjelly-studio">
+        <ThemeProvider>
+          <NotificationProvider>
+            <AuthProvider>
+              <ProjectProvider>
+                <AppRoutes />
+              </ProjectProvider>
+            </AuthProvider>
+          </NotificationProvider>
+        </ThemeProvider>
+      </BrowserRouter>
+    </ErrorBoundary>
   );
 }
