@@ -140,3 +140,28 @@ export function wireHistoryEngine(refs, dispatch) {
   refs.historyIndex = -1;
   pushHistory(refs);
 }
+
+/**
+ * seedHistory — reset the history stack and push a single initial snapshot
+ * using explicit layers/activeLayerId rather than refs.stateRef.current.
+ *
+ * Use this whenever refs.stateRef.current may be stale (e.g. right after a
+ * frame switch, before React has re-rendered and updated stateRef).
+ */
+export function seedHistory(refs, layers, activeLayerId) {
+  const { pixelBuffers, maskBuffers } = refs;
+  const snapshot = {
+    layers,
+    activeLayerId,
+    pixelBuffers: {},
+    maskBuffers: {},
+  };
+  for (const [id, buf] of Object.entries(pixelBuffers)) {
+    snapshot.pixelBuffers[id] = buf ? new Uint8ClampedArray(buf) : null;
+  }
+  for (const [id, buf] of Object.entries(maskBuffers)) {
+    snapshot.maskBuffers[id] = buf ? new Uint8Array(buf) : null;
+  }
+  refs.historyStack = [snapshot];
+  refs.historyIndex = 0;
+}

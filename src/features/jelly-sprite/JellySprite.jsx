@@ -12,7 +12,7 @@ import { CanvasArea } from "./panels/CanvasArea";
 import { RightPanel, ExportModal } from "./panels/RightPanel";
 import { makeFrame } from "./jellySprite.constants";
 import { useCanvas } from "./hooks/useCanvas";
-import { wireHistoryEngine } from "./engine/historyEngine";
+import { wireHistoryEngine, seedHistory } from "./engine/historyEngine";
 
 // ── Custom cursor ─────────────────────────────────────────────────────────────
 // Thin precision crosshair: white outline + dark inner line, 4px center gap.
@@ -242,6 +242,9 @@ function JellySpriteBody({ onSwitchToAnimator }) {
       maskBuffers: { ...refs.maskBuffers },
       // legacy alias so export compositeFrameToCanvas still works
       pixelData: refs.pixelBuffers,
+      // per-frame undo/redo stack (shallow copy — entries are immutable)
+      historyStack: refs.historyStack,
+      historyIndex: refs.historyIndex,
     };
   }
   // Alias used by legacy export code
@@ -267,6 +270,7 @@ function JellySpriteBody({ onSwitchToAnimator }) {
       pixelsRef.current = pb[newLayer.id];
       sd({ type: A.SET_LAYERS, payload: [newLayer] });
       sd({ type: A.SET_ACTIVE_LAYER, payload: newLayer.id });
+      seedHistory(refs, [newLayer], newLayer.id);
       return;
     }
     refs.pixelBuffers = snap.pixelBuffers;
@@ -274,6 +278,13 @@ function JellySpriteBody({ onSwitchToAnimator }) {
     pixelsRef.current = refs.pixelBuffers[snap.activeLayerId] ?? null;
     sd({ type: A.SET_LAYERS, payload: [...snap.layers] });
     sd({ type: A.SET_ACTIVE_LAYER, payload: snap.activeLayerId });
+    // Restore per-frame history; seed fresh (with correct layers) if none saved
+    if (snap.historyStack?.length) {
+      refs.historyStack = snap.historyStack;
+      refs.historyIndex = snap.historyIndex;
+    } else {
+      seedHistory(refs, snap.layers, snap.activeLayerId);
+    }
   }
 
   function generateFrameThumbnail(frameId) {
@@ -329,7 +340,6 @@ function JellySpriteBody({ onSwitchToAnimator }) {
           activeLayerIdRef.current,
       },
     });
-    wireHistoryEngine(refs, sd);
     refs.redraw?.();
   }
 
@@ -349,7 +359,7 @@ function JellySpriteBody({ onSwitchToAnimator }) {
     refs.maskBuffers = {};
     pixelsRef.current = pb[newLayer.id];
     sd({ type: A.ADD_FRAME, payload: { frame: newFrame, layer: newLayer } });
-    wireHistoryEngine(refs, sd);
+    seedHistory(refs, [newLayer], newLayer.id);
     refs.redraw?.();
   }
 
@@ -403,7 +413,7 @@ function JellySpriteBody({ onSwitchToAnimator }) {
     const dupThumb = generateFrameThumbnail(newFrame.id);
     if (dupThumb)
       sd({ type: A.UPDATE_THUMBNAIL, payload: { frameId: newFrame.id, dataUrl: dupThumb } });
-    wireHistoryEngine(refs, sd);
+    seedHistory(refs, newLayers, newActiveLayerId);
     refs.redraw?.();
   }
 
@@ -428,7 +438,6 @@ function JellySpriteBody({ onSwitchToAnimator }) {
           activeLayerIdRef.current,
       },
     });
-    wireHistoryEngine(refs, sd);
     refs.redraw?.();
   }
 
