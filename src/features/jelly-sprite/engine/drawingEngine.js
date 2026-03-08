@@ -163,6 +163,7 @@ export function createDrawingEngine(refs) {
     refs.selectionMaskPath = null; // invalidate Path2D edge cache
     if (!fromMove) {
       movePixels = null;
+      previewSnap = null; // also discard the floating background snapshot
       // Record where the mask lives so buildMaskEdgePath can offset correctly
       // when the move tool translates the selection away from its origin.
       refs.selectionMaskOrigin = val ? { x: val.x, y: val.y } : null;
@@ -277,25 +278,30 @@ export function createDrawingEngine(refs) {
           }
           previewSnap = new Uint8ClampedArray(buf);
         } else if (buf && movePixels) {
-          // Subsequent drag: the lifted pixels were blitted to buf at the end
-          // of the last drag (by the final pasteRegion call in onPointerMove).
-          // We need previewSnap to be the canvas WITHOUT those pixels so that
-          // during this drag we can buf.set(previewSnap) + pasteRegion cleanly.
-          previewSnap = new Uint8ClampedArray(buf);
-          const sel = refs.selection;
-          for (let dy = 0; dy < sel.h; dy++) {
-            for (let dx = 0; dx < sel.w; dx++) {
-              const px = sel.x + dx,
-                py = sel.y + dy;
-              if (px < 0 || px >= w || py < 0 || py >= h) continue;
-              if (refs.selectionMask && !refs.selectionMask[py * w + px])
-                continue;
-              const i = (py * w + px) * 4;
-              previewSnap[i] =
-                previewSnap[i + 1] =
-                previewSnap[i + 2] =
-                previewSnap[i + 3] =
-                  0;
+          // Subsequent drag: reuse the previewSnap from the first lift.
+          // That snapshot already has the selected pixels erased, so it IS the
+          // correct "canvas without floating pixels" background.  Rebuilding
+          // from buf would erase blended background pixels at the drop position
+          // (the "kneaded eraser" accumulation bug).
+          if (!previewSnap) {
+            // Safety fallback: only reached if previewSnap was cleared between
+            // drags (e.g. undo/redo). Rebuild by zeroing the selection region.
+            previewSnap = new Uint8ClampedArray(buf);
+            const sel = refs.selection;
+            for (let dy = 0; dy < sel.h; dy++) {
+              for (let dx = 0; dx < sel.w; dx++) {
+                const px = sel.x + dx,
+                  py = sel.y + dy;
+                if (px < 0 || px >= w || py < 0 || py >= h) continue;
+                if (refs.selectionMask && !refs.selectionMask[py * w + px])
+                  continue;
+                const i = (py * w + px) * 4;
+                previewSnap[i] =
+                  previewSnap[i + 1] =
+                  previewSnap[i + 2] =
+                  previewSnap[i + 3] =
+                    0;
+              }
             }
           }
         }
@@ -496,10 +502,13 @@ export function createDrawingEngine(refs) {
         : null;
       refs.selectionMaskPath = null; // force path rebuild with translated mask
 
-      // Keep movePixels alive so the next pointer-down can continue moving
-      // without re-lifting. Cleared when selection changes shape or deselects.
+      // Keep both movePixels and previewSnap alive for the next drag.
+      // previewSnap holds the canvas-without-floating-pixels background and
+      // must NOT be nulled here — doing so forces a buggy rebuild that erases
+      // blended background pixels at the drop position (kneaded eraser bug).
+      // Both are cleared together by setSelection(val, false) when the
+      // floating selection is committed or cancelled.
       moveOrigin = null;
-      previewSnap = null;
       (refs.onStrokeComplete ?? refs.pushHistory)?.();
       return;
     }
