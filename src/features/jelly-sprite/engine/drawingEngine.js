@@ -880,6 +880,11 @@ export function createDrawingEngine(refs) {
     movePixelsOriginal = new Uint8ClampedArray(newPixels);
     moveOriginalW = sel.h;
     moveOriginalH = sel.w;
+    // Re-anchor free-rotate center to the actual post-rotation position so
+    // subsequent slider scrubs don't drift from the rendered center.
+    const ns = refs.selection;
+    moveOriginalCx = ns.x + ns.w / 2;
+    moveOriginalCy = ns.y + ns.h / 2;
   }
 
   /** Rotate the floating selection (or canvas region) 90° counter-clockwise. */
@@ -891,6 +896,10 @@ export function createDrawingEngine(refs) {
     movePixelsOriginal = new Uint8ClampedArray(newPixels);
     moveOriginalW = sel.h;
     moveOriginalH = sel.w;
+    // Re-anchor free-rotate center to the actual post-rotation position.
+    const ns = refs.selection;
+    moveOriginalCx = ns.x + ns.w / 2;
+    moveOriginalCy = ns.y + ns.h / 2;
   }
 
   /**

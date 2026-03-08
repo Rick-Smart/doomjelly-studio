@@ -8,16 +8,12 @@ import {
   BLEND_MODES,
   CANVAS_SIZES,
 } from "../jellySprite.constants";
-import { hexToRgba } from "../jellySprite.utils";
 import { BrushThumb } from "../BrushThumb";
 
 // ── Right panel container ─────────────────────────────────────────────────────
 export function RightPanel() {
   const {
     fgColor,
-    setFgColor,
-    bgColor,
-    setBgColor,
     fgAlpha,
     setFgAlpha,
     colorHistory,
@@ -39,47 +35,6 @@ export function RightPanel() {
   return (
     <div className="jelly-sprite__panel">
       <div className="jelly-sprite__panel-top">
-        <div className="jelly-sprite__section">
-          <div className="jelly-sprite__section-label">
-            Color <span className="jelly-sprite__key-hint">X=swap</span>
-          </div>
-          <div className="jelly-sprite__fg-bg">
-            <div
-              className="jelly-sprite__fg-bg-bg"
-              style={{ background: bgColor }}
-              title="Background colour (click to edit)"
-              onClick={() => {
-                const tmp = fgColor;
-                setFgColor(bgColor);
-                setBgColor(tmp);
-              }}
-            />
-            <div
-              className="jelly-sprite__fg-bg-fg"
-              style={{
-                background: `rgba(${hexToRgba(
-                  fgColor,
-                  Math.round(fgAlpha * 255),
-                )
-                  .slice(0, 3)
-                  .join(",")},${fgAlpha})`,
-              }}
-              title="Foreground colour (active)"
-            />
-            <button
-              className="jelly-sprite__swap-btn"
-              title="Swap colours (X)"
-              onClick={() => {
-                const tmp = fgColor;
-                setFgColor(bgColor);
-                setBgColor(tmp);
-              }}
-            >
-              ⇄
-            </button>
-          </div>
-        </div>
-
         <div className="jelly-sprite__section">
           <ColorPicker
             hex={fgColor}
