@@ -381,6 +381,23 @@ export function createRenderer(refs) {
       ctx.restore();
     }
 
+    // ── Add/subtract rect-select preview ─────────────────────────────────
+    // Drawn while the user is dragging a new rect in add/subtract mode so
+    // they can see the in-progress shape without disturbing the existing ants.
+    if (refs.selectionPreviewRect) {
+      const { x: rx, y: ry, w: rw, h: rh } = refs.selectionPreviewRect;
+      ctx.save();
+      ctx.strokeStyle = "rgba(255,255,255,0.85)";
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 4]);
+      ctx.lineDashOffset = 0;
+      ctx.strokeRect(rx * z + 0.5, ry * z + 0.5, rw * z, rh * z);
+      ctx.strokeStyle = "rgba(0,0,0,0.5)";
+      ctx.lineDashOffset = 4;
+      ctx.strokeRect(rx * z + 0.5, ry * z + 0.5, rw * z, rh * z);
+      ctx.restore();
+    }
+
     // ── Tile preview ──────────────────────────────────────────────────────
     if (tileVisible && refs.tileCanvasEl) {
       const tc = refs.tileCanvasEl;

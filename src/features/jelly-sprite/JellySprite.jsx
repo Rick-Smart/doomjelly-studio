@@ -899,8 +899,7 @@ function JellySpriteBody({ onSwitchToAnimator }) {
       // marchOffset is a float; the renderer uses it as lineDashOffset directly.
       const prev = refs._marchTs ?? ts;
       refs._marchTs = ts;
-      refs.marchOffset =
-        ((refs.marchOffset ?? 0) + (ts - prev) * 0.008) % 12;
+      refs.marchOffset = ((refs.marchOffset ?? 0) + (ts - prev) * 0.008) % 12;
       redraw();
       marchingAntsRef.current = requestAnimationFrame(animate);
     };
@@ -995,6 +994,13 @@ function JellySpriteBody({ onSwitchToAnimator }) {
       } else if ((e.ctrlKey || e.metaKey) && e.key === "a") {
         e.preventDefault();
         a.selectAll();
+      } else if (
+        (e.ctrlKey || e.metaKey) &&
+        e.shiftKey &&
+        e.key === "I"
+      ) {
+        e.preventDefault();
+        refs.drawingEngine?.invertSelection?.();
       } else if (
         (e.key === "Delete" || e.key === "Backspace") &&
         (refs.selection || selectionRef.current)
@@ -1486,6 +1492,12 @@ function JellySpriteBody({ onSwitchToAnimator }) {
       refs.drawingEngine
         ? refs.drawingEngine.deleteSelectionContents()
         : deleteSelectionContents(),
+    invertSelection: () => refs.drawingEngine?.invertSelection?.(),
+    flipSelH: () => refs.drawingEngine?.flipSelH?.(),
+    flipSelV: () => refs.drawingEngine?.flipSelV?.(),
+    rotateSel90CW: () => refs.drawingEngine?.rotateSel90CW?.(),
+    rotateSel90CCW: () => refs.drawingEngine?.rotateSel90CCW?.(),
+    rotateSelArbitrary: (deg) => refs.drawingEngine?.rotateSelArbitrary?.(deg),
     layers,
     activeLayerId,
     setActiveLayerId,

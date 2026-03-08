@@ -303,3 +303,43 @@ export function rotateCCW90(buf, w, h) {
   }
   return out;
 }
+
+/**
+ * Rotate a pixel buffer by an arbitrary angle using nearest-neighbour sampling.
+ * Always pass the ORIGINAL lifted pixels, never an already-rotated intermediate,
+ * to avoid compounding resampling loss on each slider tick.
+ *
+ * Returns { newBuf, newW, newH } — the tight bounding box of the rotated content.
+ */
+export function rotateArbitraryNearestNeighbor(src, sw, sh, deg) {
+  const rad = (deg * Math.PI) / 180;
+  const cos = Math.cos(rad);
+  const sin = Math.sin(rad);
+  // Tight bounding box of the rotated rectangle
+  const newW = Math.ceil(Math.abs(sw * cos) + Math.abs(sh * sin));
+  const newH = Math.ceil(Math.abs(sh * cos) + Math.abs(sw * sin));
+  const newBuf = new Uint8ClampedArray(newW * newH * 4);
+  // Centres of source and destination in continuous coords
+  const ocx = (sw - 1) / 2;
+  const ocy = (sh - 1) / 2;
+  const ncx = (newW - 1) / 2;
+  const ncy = (newH - 1) / 2;
+  for (let ny = 0; ny < newH; ny++) {
+    for (let nx = 0; nx < newW; nx++) {
+      // Translate destination pixel to centred coord
+      const dx = nx - ncx;
+      const dy = ny - ncy;
+      // Inverse rotation (by -deg) to find source coord
+      const ox = Math.round(dx * cos + dy * sin + ocx);
+      const oy = Math.round(-dx * sin + dy * cos + ocy);
+      if (ox < 0 || ox >= sw || oy < 0 || oy >= sh) continue;
+      const si = (oy * sw + ox) * 4;
+      const di = (ny * newW + nx) * 4;
+      newBuf[di] = src[si];
+      newBuf[di + 1] = src[si + 1];
+      newBuf[di + 2] = src[si + 2];
+      newBuf[di + 3] = src[si + 3];
+    }
+  }
+  return { newBuf, newW, newH };
+}

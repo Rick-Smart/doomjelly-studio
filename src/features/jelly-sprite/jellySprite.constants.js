@@ -87,6 +87,7 @@ export const BLEND_MODES = [
 export const PANEL_TABS = [
   { id: "palette", icon: "🎨", label: "Palette" },
   { id: "brush", icon: "🖌", label: "Brush" },
+  { id: "selection", icon: "⬚", label: "Select" },
   { id: "layers", icon: "⧉", label: "Layers" },
   { id: "canvas", icon: "📐", label: "Canvas" },
   { id: "view", icon: "🖼", label: "View" },

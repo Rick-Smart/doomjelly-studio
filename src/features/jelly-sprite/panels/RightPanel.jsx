@@ -142,12 +142,148 @@ export function RightPanel() {
           </div>
         )}
         {panelTab === "brush" && <BrushTabBody />}
+        {panelTab === "selection" && <SelectionTabBody />}
         {panelTab === "layers" && <LayersTabBody />}
         {panelTab === "canvas" && <CanvasTabBody />}
         {panelTab === "view" && <ViewTabBody />}
         {panelTab === "more" && <MoreTabBody />}
       </div>
     </div>
+  );
+}
+
+// ── Selection tab ─────────────────────────────────────────────────────────────
+function SelectionTabBody() {
+  const {
+    selection,
+    setSelection,
+    invertSelection,
+    flipSelH,
+    flipSelV,
+    rotateSel90CW,
+    rotateSel90CCW,
+    rotateSelArbitrary,
+  } = useJellySprite();
+
+  const [rotateDeg, setRotateDeg] = useState(0);
+
+  if (!selection) {
+    return (
+      <div className="jelly-sprite__section">
+        <div className="jelly-sprite__section-label">Selection</div>
+        <div style={{ color: "var(--color-text-muted, #888)", fontSize: "12px", padding: "8px 0" }}>
+          No active selection.
+          <br />
+          Use a selection tool to create one.
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div className="jelly-sprite__section">
+        <div className="jelly-sprite__section-label">
+          Selection
+          <button
+            className="jelly-sprite__deselect-btn"
+            onClick={() => setSelection(null)}
+            title="Deselect (Esc / Ctrl+D)"
+          >
+            ✕
+          </button>
+        </div>
+        <div className="jelly-sprite__selection-info">
+          {selection.x},{selection.y} — {selection.w}×{selection.h}px
+        </div>
+        <div className="jelly-sprite__selection-actions">
+          <button
+            className="jelly-sprite__size-btn"
+            title="Invert selection (Ctrl+Shift+I)"
+            onClick={invertSelection}
+          >
+            Invert
+          </button>
+        </div>
+      </div>
+
+      <div className="jelly-sprite__section">
+        <div className="jelly-sprite__section-label">Flip</div>
+        <div className="jelly-sprite__selection-actions">
+          <button
+            className="jelly-sprite__size-btn"
+            title="Flip horizontal"
+            onClick={flipSelH}
+          >
+            ⟺ H
+          </button>
+          <button
+            className="jelly-sprite__size-btn"
+            title="Flip vertical"
+            onClick={flipSelV}
+          >
+            ⇳ V
+          </button>
+        </div>
+      </div>
+
+      <div className="jelly-sprite__section">
+        <div className="jelly-sprite__section-label">Rotate</div>
+        <div className="jelly-sprite__selection-actions">
+          <button
+            className="jelly-sprite__size-btn"
+            title="Rotate 90° counter-clockwise"
+            onClick={() => {
+              setRotateDeg(0);
+              rotateSel90CCW();
+            }}
+          >
+            ↺ 90°
+          </button>
+          <button
+            className="jelly-sprite__size-btn"
+            title="Rotate 90° clockwise"
+            onClick={() => {
+              setRotateDeg(0);
+              rotateSel90CW();
+            }}
+          >
+            ↻ 90°
+          </button>
+        </div>
+
+        <div className="jelly-sprite__section-label" style={{ marginTop: "10px" }}>
+          Free Rotate
+        </div>
+        <div className="jelly-sprite__brush-prop-row">
+          <input
+            type="range"
+            min={-180}
+            max={180}
+            step={1}
+            value={rotateDeg}
+            onChange={(e) => {
+              const deg = Number(e.target.value);
+              setRotateDeg(deg);
+              rotateSelArbitrary(deg);
+            }}
+            className="jelly-sprite__brush-slider"
+          />
+          <span className="jelly-sprite__brush-prop-val">{rotateDeg}°</span>
+        </div>
+        <button
+          className="jelly-sprite__size-btn"
+          style={{ width: "100%", marginTop: "4px" }}
+          title="Reset rotation to 0°"
+          onClick={() => {
+            setRotateDeg(0);
+            rotateSelArbitrary(0);
+          }}
+        >
+          Reset Rotation
+        </button>
+      </div>
+    </>
   );
 }
 
