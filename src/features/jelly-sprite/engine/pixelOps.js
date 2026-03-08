@@ -9,13 +9,8 @@
  * Import what you need — no side effects, no globals.
  */
 
-import {
-  hexToRgba,
-  rgbaToHex,
-  bresenhamLine,
-  rasterRect,
-  rasterEllipse,
-} from "../jellySprite.utils.js";
+import { hexToRgba, rgbaToHex, rasterRect, rasterEllipse } from "../jellySprite.utils.js";
+import { bresenhamLine } from "./selectionUtils.js";
 
 export { hexToRgba, rgbaToHex };
 

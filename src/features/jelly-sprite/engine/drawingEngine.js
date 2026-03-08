@@ -42,7 +42,14 @@ import {
   rotateCCW90,
   rotateArbitraryNearestNeighbor,
 } from "./pixelOps.js";
-import { buildLassoMask, bresenhamLine } from "../jellySprite.utils.js";
+import {
+  buildLassoMask,
+  bresenhamLine,
+  buildRectMask,
+  getOrBuildMask,
+  combineMasks,
+  boundsFromMask,
+} from "./selectionUtils.js";
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
@@ -54,56 +61,8 @@ function canvasCoords(e, canvasEl, zoom, w, h) {
   };
 }
 
-// ── Selection mask helpers ────────────────────────────────────────────────────
-
-function buildRectMask(sel, w, h) {
-  const mask = new Uint8Array(w * h);
-  const x1 = Math.max(0, sel.x),
-    y1 = Math.max(0, sel.y);
-  const x2 = Math.min(w - 1, sel.x + sel.w - 1);
-  const y2 = Math.min(h - 1, sel.y + sel.h - 1);
-  for (let py = y1; py <= y2; py++)
-    for (let px = x1; px <= x2; px++) mask[py * w + px] = 1;
-  return mask;
-}
-
-function getOrBuildMask(refs, w, h) {
-  if (refs.selectionMask) return new Uint8Array(refs.selectionMask);
-  if (refs.selection) return buildRectMask(refs.selection, w, h);
-  return null;
-}
-
-function combineMasks(existing, incoming, mode, w, h) {
-  const result = new Uint8Array(w * h);
-  for (let i = 0; i < w * h; i++) {
-    const a = existing ? existing[i] : 0;
-    const b = incoming[i];
-    if (mode === "add") result[i] = a || b ? 1 : 0;
-    else if (mode === "subtract") result[i] = a && !b ? 1 : 0;
-    else result[i] = b;
-  }
-  return result;
-}
-
-function boundsFromMask(mask, w, h) {
-  let minX = w,
-    maxX = -1,
-    minY = h,
-    maxY = -1;
-  for (let py = 0; py < h; py++)
-    for (let px = 0; px < w; px++)
-      if (mask[py * w + px]) {
-        if (px < minX) minX = px;
-        if (px > maxX) maxX = px;
-        if (py < minY) minY = py;
-        if (py > maxY) maxY = py;
-      }
-  if (maxX < 0) return null;
-  return { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 };
-}
-
+// ── Brush context ─────────────────────────────────────────────────────────────
 /**
- * Derive a brush-dab context object from current refs state.
  * Passed to stampBrush / paintWithSymmetry / sprayBrush.
  */
 function makeBrushCtx(refs) {

@@ -18,39 +18,7 @@ export function rgbaToHex(r, g, b) {
   );
 }
 
-/** Scanline polygon fill → Uint8Array (per-pixel 0/1) in full canvas space. */
-export function buildLassoMask(poly, w, h) {
-  const mask = new Uint8Array(w * h);
-  if (poly.length < 3) return mask;
-  const n = poly.length;
-  let minY = h,
-    maxY = 0;
-  for (const p of poly) {
-    if (p.y < minY) minY = p.y;
-    if (p.y > maxY) maxY = p.y;
-  }
-  minY = Math.max(0, Math.floor(minY));
-  maxY = Math.min(h - 1, Math.ceil(maxY));
-  for (let y = minY; y <= maxY; y++) {
-    const hits = [];
-    for (let i = 0; i < n; i++) {
-      const a = poly[i],
-        b = poly[(i + 1) % n];
-      if ((a.y <= y && b.y > y) || (b.y <= y && a.y > y)) {
-        hits.push(a.x + ((y - a.y) / (b.y - a.y)) * (b.x - a.x));
-      }
-    }
-    hits.sort((a, b) => a - b);
-    for (let i = 0; i < hits.length - 1; i += 2) {
-      const x0 = Math.max(0, Math.ceil(hits[i]));
-      const x1 = Math.min(w - 1, Math.floor(hits[i + 1]));
-      for (let x = x0; x <= x1; x++) mask[y * w + x] = 1;
-    }
-  }
-  return mask;
-}
-
-export function bresenhamLine(x0, y0, x1, y1, cb) {
+function bresenhamLine(x0, y0, x1, y1, cb) {
   let dx = Math.abs(x1 - x0),
     sx = x0 < x1 ? 1 : -1;
   let dy = -Math.abs(y1 - y0),
