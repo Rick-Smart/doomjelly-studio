@@ -1385,17 +1385,21 @@ function JellySpriteBody({ onSwitchToAnimator, onRegisterCollector }) {
     const a = document.createElement("a");
     a.href = url;
     a.download = filename;
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
   }
 
   function exportPNG() {
     saveCurrentFrameToRef();
     const id = framesRef.current[activeFrameIdxRef.current]?.id;
     if (!id) return;
-    triggerDownload(
-      compositeFrameToCanvas(id).toDataURL("image/png"),
-      `${state.name || "sprite"}.png`,
-    );
+    compositeFrameToCanvas(id).toBlob((blob) => {
+      triggerDownload(
+        URL.createObjectURL(blob),
+        `${state.name || "sprite"}.png`,
+      );
+    });
   }
 
   function exportSpriteSheet(
@@ -1426,10 +1430,12 @@ function JellySpriteBody({ onSwitchToAnimator, onRegisterCollector }) {
         ctx.fillText(frame.name || `F${idx + 1}`, x + 2, y + fh + 9);
       }
     });
-    triggerDownload(
-      sheet.toDataURL("image/png"),
-      `${state.name || "sprite"}_sheet.png`,
-    );
+    sheet.toBlob((blob) => {
+      triggerDownload(
+        URL.createObjectURL(blob),
+        `${state.name || "sprite"}_sheet.png`,
+      );
+    });
   }
 
   async function exportFramesZip() {
