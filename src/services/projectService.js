@@ -17,8 +17,54 @@
 
 const SCHEMA_VERSION = 2;
 const INDEX_KEY = "dj-projects-index";
+const IDB_NAME = "doomjelly-studio";
+const IDB_STORE = "projects";
+const IDB_VERSION = 1;
 
-// ── localStorage helpers ──────────────────────────────────────────────────────
+// ── IndexedDB helpers ─────────────────────────────────────────────────────────
+
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(IDB_NAME, IDB_VERSION);
+    req.onupgradeneeded = (e) => {
+      e.target.result.createObjectStore(IDB_STORE, { keyPath: "id" });
+    };
+    req.onsuccess = (e) => resolve(e.target.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function idbPut(record) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(IDB_STORE, "readwrite");
+    tx.objectStore(IDB_STORE).put(record);
+    tx.oncomplete = resolve;
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function idbGet(id) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(IDB_STORE, "readonly");
+    const req = tx.objectStore(IDB_STORE).get(id);
+    req.onsuccess = () => resolve(req.result ?? null);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function idbDelete(id) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(IDB_STORE, "readwrite");
+    tx.objectStore(IDB_STORE).delete(id);
+    tx.oncomplete = resolve;
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+// ── localStorage index helpers (small metadata only) ─────────────────────────
 
 function readIndex() {
   try {
@@ -170,21 +216,21 @@ export async function saveProjectToStorage(data, thumbnail = undefined) {
     index.push(entry);
   }
   writeIndex(index);
-  localStorage.setItem(`dj-project-${data.id}`, JSON.stringify(data));
+  await idbPut(data);
   return entry;
 }
 
-/** Loads a full project from localStorage by id. */
+/** Loads a full project from IndexedDB by id. */
 export async function loadProjectFromStorage(id) {
-  const raw = localStorage.getItem(`dj-project-${id}`);
-  if (!raw) throw new Error(`Project "${id}" not found in storage`);
-  return JSON.parse(raw);
+  const data = await idbGet(id);
+  if (!data) throw new Error(`Project "${id}" not found in storage`);
+  return data;
 }
 
-/** Deletes a project from localStorage and the index. */
+/** Deletes a project from IndexedDB and the index. */
 export async function deleteProjectFromStorage(id) {
   writeIndex(readIndex().filter((p) => p.id !== id));
-  localStorage.removeItem(`dj-project-${id}`);
+  await idbDelete(id);
 }
 
 /** Renames a saved project in localStorage and updates the index. */
