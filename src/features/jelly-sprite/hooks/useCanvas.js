@@ -1,7 +1,6 @@
 import { useRef, useEffect } from "react";
 import { useJellySpriteStore } from "../store/useJellySpriteStore.js";
 import { createRenderer } from "../engine/canvasRenderer.js";
-import { wireHistoryEngine } from "../engine/historyEngine.js";
 import { createDrawingEngine } from "../engine/drawingEngine.js";
 
 /**
@@ -44,10 +43,10 @@ export function useCanvas() {
     const { redraw } = createRenderer(refs);
     refs.redraw = redraw;
 
-    // 2. History engine (seeds initial snapshot)
-    wireHistoryEngine(refs, dispatch);
-
-    // 3. Drawing engine
+    // 2. Drawing engine
+    // NOTE: history is wired by JellySprite's own [canvasW, canvasH] effect
+    // (which runs after this mount effect). Wiring it here too would double-
+    // seed and reset the history stack on every canvas resize.
     refs.drawingEngine = createDrawingEngine(refs);
 
     // Sync selection from the engine into React state so the renderer

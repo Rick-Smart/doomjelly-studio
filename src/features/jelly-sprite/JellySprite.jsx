@@ -204,10 +204,9 @@ function JellySpriteBody({ onSwitchToAnimator }) {
 
   // Backward-compat refs: useDrawingTools still
   // read these. They are populated by the init useEffect below, exactly as
-  // before. The old offscreen canvas and pixel buffers keep the old rendering
-  // pipeline working while M3+ migrates drawing into the new store.
+  // before. The old pixel buffers keep the old rendering pipeline working
+  // while M3+ migrates drawing into the new store.
   const pixelsRef = useRef(null);
-  const offscreenRef = useRef(null);
 
   // redrawRef + redraw: delegate to refs.redraw (the new store renderer).
   // Old hooks / playback that call redrawRef.current?.() will trigger the
@@ -815,10 +814,6 @@ function JellySpriteBody({ onSwitchToAnimator }) {
       };
     }
 
-    offscreenRef.current = document.createElement("canvas");
-    offscreenRef.current.width = w;
-    offscreenRef.current.height = h;
-
     // Keep refs.offscreenEl in sync before redraw so compositeLayersToCanvas
     // doesn't see a size mismatch (new pixel buffer size vs old canvas dims).
     if (refs.offscreenEl) {
@@ -847,7 +842,7 @@ function JellySpriteBody({ onSwitchToAnimator }) {
     if (src) {
       const img = new Image();
       img.onload = () => {
-        const ctx2 = offscreenRef.current.getContext("2d");
+        const ctx2 = refs.offscreenEl.getContext("2d");
         ctx2.clearRect(0, 0, w, h);
         ctx2.drawImage(img, 0, 0, w, h);
         pixelsRef.current.set(ctx2.getImageData(0, 0, w, h).data);
@@ -1261,8 +1256,10 @@ function JellySpriteBody({ onSwitchToAnimator }) {
     }
     const loadImg = new Image();
     loadImg.onload = () => {
-      const ctx = offscreenRef.current.getContext("2d");
-      ctx.clearRect(0, 0, canvasW, canvasH);
+      const tmpCvs = document.createElement("canvas");
+      tmpCvs.width = canvasW;
+      tmpCvs.height = canvasH;
+      const ctx = tmpCvs.getContext("2d");
       ctx.drawImage(loadImg, 0, 0, canvasW, canvasH);
       pixelsRef.current.set(ctx.getImageData(0, 0, canvasW, canvasH).data);
       pushHistoryEntryStubRef.current();
@@ -1418,7 +1415,7 @@ function JellySpriteBody({ onSwitchToAnimator }) {
   // ── Tile preview ───────────────────────────────────────────────────────────
   tileUpdateRef.current = () => {
     const tc = tileCanvasRef.current,
-      off2 = offscreenRef.current;
+      off2 = refs.offscreenEl;
     if (!tc || !off2 || !tileVisible) return;
     const n = tileCount;
     tc.width = canvasW * n;
@@ -1491,7 +1488,6 @@ function JellySpriteBody({ onSwitchToAnimator }) {
     // selection from store (ss.selection) is the source of truth — the
     // useDrawingTools local copy lags the new refs.drawingEngine path.
     selection: ss.selection,
-    setSelection: () => actionsRef.current.deselectAll(),
     selectionRef,
     lassoMaskRef,
     clipboardRef,

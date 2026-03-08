@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { ColorPicker } from "../../../ui/ColorPicker";
 import { PaletteManager } from "../../../ui/PaletteManager";
 import { useJellySprite } from "../JellySpriteContext";
@@ -111,7 +111,7 @@ export function RightPanel() {
 function SelectionTabBody() {
   const {
     selection,
-    setSelection,
+    deselectAll,
     invertSelection,
     flipSelH,
     flipSelV,
@@ -121,6 +121,7 @@ function SelectionTabBody() {
   } = useJellySprite();
 
   const [rotateDeg, setRotateDeg] = useState(0);
+  const rotateRafRef = useRef(null);
 
   if (!selection) {
     return (
@@ -142,7 +143,7 @@ function SelectionTabBody() {
           Selection
           <button
             className="jelly-sprite__deselect-btn"
-            onClick={() => setSelection(null)}
+            onClick={deselectAll}
             title="Deselect (Esc / Ctrl+D)"
           >
             ✕
@@ -220,7 +221,11 @@ function SelectionTabBody() {
             onChange={(e) => {
               const deg = Number(e.target.value);
               setRotateDeg(deg);
-              rotateSelArbitrary(deg);
+              if (rotateRafRef.current) cancelAnimationFrame(rotateRafRef.current);
+              rotateRafRef.current = requestAnimationFrame(() => {
+                rotateSelArbitrary(deg);
+                rotateRafRef.current = null;
+              });
             }}
             className="jelly-sprite__brush-slider"
           />
@@ -255,7 +260,7 @@ function BrushTabBody() {
     setFillShapes,
     tool,
     selection,
-    setSelection,
+    deselectAll,
     selectionRef,
     lassoMaskRef,
     clipboardRef,
@@ -348,7 +353,7 @@ function BrushTabBody() {
             Selection
             <button
               className="jelly-sprite__deselect-btn"
-              onClick={() => setSelection(null)}
+              onClick={deselectAll}
               title="Deselect (Esc / Ctrl+D)"
             >
               ✕
