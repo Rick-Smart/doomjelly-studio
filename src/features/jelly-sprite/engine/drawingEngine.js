@@ -28,6 +28,7 @@ import {
   rgbaToHex,
   getPixel,
   stampBrush,
+  stampErase,
   sprayBrush,
   floodFill,
   drawLine,
@@ -74,6 +75,7 @@ function makeBrushCtx(refs) {
     editingMaskId,
     brushType: st.brushType,
     brushSize: st.brushSize,
+    brushHardness: st.brushHardness ?? 100,
     symmetryH: st.symmetryH,
     symmetryV: st.symmetryV,
     w: st.canvasW,
@@ -150,7 +152,9 @@ export function createDrawingEngine(refs) {
     if (tool === "pencil") {
       stampBrush(makeBrushCtx(refs), x, y, getActiveRgba(refs));
     } else if (tool === "eraser") {
-      stampBrush(makeBrushCtx(refs), x, y, [0, 0, 0, 0]);
+      // Use stampErase so opacity and hardness both apply to erase strength
+      const eraseStrength = getActiveRgba(refs)[3];
+      stampErase(makeBrushCtx(refs), x, y, eraseStrength);
     } else if (tool === "spray") {
       sprayBrush(makeBrushCtx(refs), x, y, getActiveRgba(refs));
     } else if (tool === "fill") {

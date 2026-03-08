@@ -59,6 +59,7 @@ function JellySpriteBody({ onSwitchToAnimator, onRegisterCollector }) {
     brushType,
     brushSize,
     brushOpacity,
+    brushHardness,
     resizeAnchor,
     customW,
     customH,
@@ -124,6 +125,8 @@ function JellySpriteBody({ onSwitchToAnimator, onRegisterCollector }) {
   const setBrushType = (v) => sd({ type: A.SET_BRUSH_TYPE, payload: v });
   const setBrushSize = (v) => sd({ type: A.SET_BRUSH_SIZE, payload: v });
   const setBrushOpacity = (v) => sd({ type: A.SET_BRUSH_OPACITY, payload: v });
+  const setBrushHardness = (v) =>
+    sd({ type: A.SET_BRUSH_HARDNESS, payload: v });
   const setFgColor = (v) => sd({ type: A.SET_FG_COLOR, payload: v });
   const setBgColor = (v) => sd({ type: A.SET_BG_COLOR, payload: v });
   const setFgAlpha = (v) => sd({ type: A.SET_FG_ALPHA, payload: v });
@@ -1543,6 +1546,8 @@ function JellySpriteBody({ onSwitchToAnimator, onRegisterCollector }) {
     setBrushSize,
     brushOpacity,
     setBrushOpacity,
+    brushHardness,
+    setBrushHardness,
     flipH: () => refs.drawingEngine?.flipSelH?.(),
     flipV: () => refs.drawingEngine?.flipSelV?.(),
     rotateCW: () => refs.drawingEngine?.rotateSel90CW?.(),

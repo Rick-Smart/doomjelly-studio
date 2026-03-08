@@ -49,37 +49,39 @@ function base64ToUint8(b64) {
  * @returns {object} Serialized state for inclusion in the project file.
  */
 export function serializeJellySprite(refs, ss, frames) {
-  const serializedFrames = (frames ?? ss.frames ?? []).map((frame) => {
-    const snap = refs.frameSnapshots?.[frame.id];
-    if (!snap) return null;
+  const serializedFrames = (frames ?? ss.frames ?? [])
+    .map((frame) => {
+      const snap = refs.frameSnapshots?.[frame.id];
+      if (!snap) return null;
 
-    const pixelBuffers = {};
-    for (const [layerId, buf] of Object.entries(snap.pixelBuffers ?? {})) {
-      pixelBuffers[layerId] = uint8ToBase64(buf);
-    }
+      const pixelBuffers = {};
+      for (const [layerId, buf] of Object.entries(snap.pixelBuffers ?? {})) {
+        pixelBuffers[layerId] = uint8ToBase64(buf);
+      }
 
-    const maskBuffers = {};
-    for (const [layerId, buf] of Object.entries(snap.maskBuffers ?? {})) {
-      if (buf) maskBuffers[layerId] = uint8ToBase64(buf);
-    }
+      const maskBuffers = {};
+      for (const [layerId, buf] of Object.entries(snap.maskBuffers ?? {})) {
+        if (buf) maskBuffers[layerId] = uint8ToBase64(buf);
+      }
 
-    return {
-      id: frame.id,
-      name: frame.name,
-      layers: (snap.layers ?? []).map((l) => ({
-        id: l.id,
-        name: l.name,
-        visible: l.visible,
-        opacity: l.opacity,
-        blendMode: l.blendMode ?? "normal",
-        locked: l.locked ?? false,
-        hasMask: l.hasMask ?? false,
-      })),
-      activeLayerId: snap.activeLayerId,
-      pixelBuffers,
-      maskBuffers,
-    };
-  }).filter(Boolean);
+      return {
+        id: frame.id,
+        name: frame.name,
+        layers: (snap.layers ?? []).map((l) => ({
+          id: l.id,
+          name: l.name,
+          visible: l.visible,
+          opacity: l.opacity,
+          blendMode: l.blendMode ?? "normal",
+          locked: l.locked ?? false,
+          hasMask: l.hasMask ?? false,
+        })),
+        activeLayerId: snap.activeLayerId,
+        pixelBuffers,
+        maskBuffers,
+      };
+    })
+    .filter(Boolean);
 
   return {
     canvasW: ss.canvasW,
@@ -89,6 +91,7 @@ export function serializeJellySprite(refs, ss, frames) {
     brushType: ss.brushType,
     brushSize: ss.brushSize,
     brushOpacity: ss.brushOpacity,
+    brushHardness: ss.brushHardness ?? 100,
     fillShapes: ss.fillShapes,
     symmetryH: ss.symmetryH,
     symmetryV: ss.symmetryV,
@@ -174,7 +177,10 @@ export function deserializeJellySprite(data, refs) {
   // Commit to refs
   refs.frameSnapshots = newSnapshots;
 
-  const activeFrameIdx = Math.min(data.activeFrameIdx ?? 0, frameList.length - 1);
+  const activeFrameIdx = Math.min(
+    data.activeFrameIdx ?? 0,
+    frameList.length - 1,
+  );
   const activeFrameId = frameList[activeFrameIdx]?.id;
   const activeSnap = newSnapshots[activeFrameId];
 

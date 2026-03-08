@@ -26,6 +26,21 @@ export function BrushThumb({ brushId, active }) {
         if (brushId === "cross" && dx !== 0 && dy !== 0) continue;
         if (brushId === "dither" && (cx + cy + dx + dy) % 2 !== 0) continue;
         if (brushId === "dither2" && (cx + cy + dx + dy) % 2 === 0) continue;
+        // new shapes
+        if (
+          brushId === "star" &&
+          dx !== 0 &&
+          dy !== 0 &&
+          Math.abs(dx) !== Math.abs(dy)
+        )
+          continue;
+        if (brushId === "ring") {
+          const d2 = dx * dx + dy * dy;
+          const inner = Math.max(0, r - 2);
+          if (d2 < inner * inner || d2 > r * r) continue;
+        }
+        if (brushId === "slash" && dy !== -dx) continue;
+        if (brushId === "bslash" && dy !== dx) continue;
         ctx.fillRect(px, py, 1, 1);
       }
     }

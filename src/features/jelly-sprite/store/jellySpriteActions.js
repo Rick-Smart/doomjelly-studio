@@ -18,6 +18,7 @@ export const SET_WAND_CONTIGUOUS = "SET_WAND_CONTIGUOUS"; // boolean
 export const SET_BRUSH_TYPE = "SET_BRUSH_TYPE"; // string (brush id)
 export const SET_BRUSH_SIZE = "SET_BRUSH_SIZE"; // number 1–32
 export const SET_BRUSH_OPACITY = "SET_BRUSH_OPACITY"; // number 1–100
+export const SET_BRUSH_HARDNESS = "SET_BRUSH_HARDNESS"; // number 0–100
 
 // ── Color ─────────────────────────────────────────────────────────────────────
 export const SET_FG_COLOR = "SET_FG_COLOR"; // hex string

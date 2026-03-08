@@ -310,6 +310,8 @@ function BrushTabBody() {
     setBrushSize,
     brushOpacity,
     setBrushOpacity,
+    brushHardness,
+    setBrushHardness,
     fillShapes,
     setFillShapes,
     tool,
@@ -376,6 +378,23 @@ function BrushTabBody() {
             className="jelly-sprite__brush-slider"
           />
           <span className="jelly-sprite__brush-prop-val">{brushOpacity}%</span>
+        </div>
+        <div className="jelly-sprite__brush-prop-row">
+          <span className="jelly-sprite__brush-prop-key">Hardness</span>
+          <input
+            type="range"
+            min={0}
+            max={100}
+            value={brushHardness}
+            disabled={
+              brushType === "pixel" ||
+              brushType === "dither" ||
+              brushType === "dither2"
+            }
+            onChange={(e) => setBrushHardness(Number(e.target.value))}
+            className="jelly-sprite__brush-slider"
+          />
+          <span className="jelly-sprite__brush-prop-val">{brushHardness}%</span>
         </div>
       </div>
 

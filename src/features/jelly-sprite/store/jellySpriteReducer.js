@@ -41,6 +41,8 @@ export function jellySpriteReducer(state, action) {
       return { ...state, brushSize: Math.max(1, Math.min(32, payload)) };
     case A.SET_BRUSH_OPACITY:
       return { ...state, brushOpacity: Math.max(1, Math.min(100, payload)) };
+    case A.SET_BRUSH_HARDNESS:
+      return { ...state, brushHardness: Math.max(0, Math.min(100, payload)) };
 
     // ── Color ─────────────────────────────────────────────────────────────
     case A.SET_FG_COLOR:
@@ -341,6 +343,7 @@ export function jellySpriteReducer(state, action) {
         brushType: s.brushType ?? state.brushType,
         brushSize: s.brushSize ?? state.brushSize,
         brushOpacity: s.brushOpacity ?? state.brushOpacity,
+        brushHardness: s.brushHardness ?? state.brushHardness,
         fillShapes: s.fillShapes ?? state.fillShapes,
         symmetryH: s.symmetryH ?? state.symmetryH,
         symmetryV: s.symmetryV ?? state.symmetryV,

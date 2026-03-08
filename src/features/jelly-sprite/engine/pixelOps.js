@@ -85,7 +85,52 @@ export function floodFill(buf, sx, sy, w, h, rgba, sel, lassoMask) {
 // ── Symmetry + brush stamping ─────────────────────────────────────────────────
 
 /**
- * paintWithSymmetry — paints at (x,y) and any mirror positions.
+ * Alpha-composite src over the existing pixel at (x,y) using Porter-Duff "over".
+ * Falls back to direct write for fully opaque src (fast path).
+ */
+function compositePixelConstrained(buf, x, y, w, h, src, sel, lassoMask) {
+  if (sel) {
+    if (x < sel.x || x >= sel.x + sel.w || y < sel.y || y >= sel.y + sel.h)
+      return;
+    if (lassoMask && !lassoMask[y * w + x]) return;
+  }
+  if (x < 0 || x >= w || y < 0 || y >= h) return;
+  const i = (y * w + x) * 4;
+  const sA = src[3] / 255;
+  if (sA >= 1) {
+    // Fully opaque — direct write (fast path)
+    buf[i] = src[0];
+    buf[i + 1] = src[1];
+    buf[i + 2] = src[2];
+    buf[i + 3] = 255;
+    return;
+  }
+  const dA = buf[i + 3] / 255;
+  const outA = sA + dA * (1 - sA);
+  if (outA < 1 / 255) {
+    buf[i] = buf[i + 1] = buf[i + 2] = buf[i + 3] = 0;
+    return;
+  }
+  buf[i] = Math.round((src[0] * sA + buf[i] * dA * (1 - sA)) / outA);
+  buf[i + 1] = Math.round((src[1] * sA + buf[i + 1] * dA * (1 - sA)) / outA);
+  buf[i + 2] = Math.round((src[2] * sA + buf[i + 2] * dA * (1 - sA)) / outA);
+  buf[i + 3] = Math.round(outA * 255);
+}
+
+/** Reduce the alpha of an existing pixel by `strength` (0–255). */
+function erasePixelConstrained(buf, x, y, w, h, strength, sel, lassoMask) {
+  if (sel) {
+    if (x < sel.x || x >= sel.x + sel.w || y < sel.y || y >= sel.y + sel.h)
+      return;
+    if (lassoMask && !lassoMask[y * w + x]) return;
+  }
+  if (x < 0 || x >= w || y < 0 || y >= h) return;
+  const i = (y * w + x) * 4;
+  buf[i + 3] = Math.round(buf[i + 3] * (1 - strength / 255));
+}
+
+/**
+ * paintWithSymmetry — composites rgba at (x,y) and any mirror positions.
  * If editingMaskId is set, writes to the mask buffer instead.
  */
 export function paintWithSymmetry(
@@ -105,21 +150,68 @@ export function paintWithSymmetry(
     if (symmetryH && symmetryV) applyMask(w - 1 - x, h - 1 - y);
     return;
   }
-  setPixelConstrained(buf, x, y, w, h, rgba, sel, lassoMask);
+  compositePixelConstrained(buf, x, y, w, h, rgba, sel, lassoMask);
   if (symmetryH)
-    setPixelConstrained(buf, w - 1 - x, y, w, h, rgba, sel, lassoMask);
+    compositePixelConstrained(buf, w - 1 - x, y, w, h, rgba, sel, lassoMask);
   if (symmetryV)
-    setPixelConstrained(buf, x, h - 1 - y, w, h, rgba, sel, lassoMask);
+    compositePixelConstrained(buf, x, h - 1 - y, w, h, rgba, sel, lassoMask);
   if (symmetryH && symmetryV)
-    setPixelConstrained(buf, w - 1 - x, h - 1 - y, w, h, rgba, sel, lassoMask);
+    compositePixelConstrained(
+      buf,
+      w - 1 - x,
+      h - 1 - y,
+      w,
+      h,
+      rgba,
+      sel,
+      lassoMask,
+    );
+}
+
+function eraseWithSymmetry(ctx, x, y, strength) {
+  const { buf, symmetryH, symmetryV, w, h, sel, lassoMask } = ctx;
+  erasePixelConstrained(buf, x, y, w, h, strength, sel, lassoMask);
+  if (symmetryH)
+    erasePixelConstrained(buf, w - 1 - x, y, w, h, strength, sel, lassoMask);
+  if (symmetryV)
+    erasePixelConstrained(buf, x, h - 1 - y, w, h, strength, sel, lassoMask);
+  if (symmetryH && symmetryV)
+    erasePixelConstrained(
+      buf,
+      w - 1 - x,
+      h - 1 - y,
+      w,
+      h,
+      strength,
+      sel,
+      lassoMask,
+    );
+}
+
+/**
+ * Compute a feather (hardness) weight for a pixel at offset (dx,dy) from
+ * brush centre within radius r.
+ * hardness: 0–100 (100 = hard edge, 0 = fully soft/Gaussian-like)
+ * Returns a multiplier 0–1 applied to the source alpha.
+ */
+function featherWeight(dx, dy, r, hardness) {
+  if (hardness >= 100 || r === 0) return 1;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  const normalized = r > 0 ? dist / r : 0; // 0 = centre, 1 = outer edge
+  const hardEdge = hardness / 100; // fraction of radius where falloff starts
+  if (normalized <= hardEdge) return 1;
+  const t = (normalized - hardEdge) / (1 - hardEdge); // 0–1 in falloff zone
+  // Cosine falloff — smooth S-curve
+  return 0.5 * (1 + Math.cos(Math.PI * t));
 }
 
 /**
  * stampBrush — render a single brush dab at (cx,cy).
- * ctx: { buf, maskBuf, editingMaskId, brushType, brushSize, symmetryH, symmetryV, w, h, sel, lassoMask }
+ * ctx: { buf, maskBuf, editingMaskId, brushType, brushSize, brushHardness,
+ *        symmetryH, symmetryV, w, h, sel, lassoMask }
  */
 export function stampBrush(ctx, cx, cy, rgba) {
-  const { brushType, brushSize } = ctx;
+  const { brushType, brushSize, brushHardness = 100 } = ctx;
   if (brushType === "pixel") {
     paintWithSymmetry(ctx, cx, cy, rgba);
     return;
@@ -131,15 +223,91 @@ export function stampBrush(ctx, cx, cy, rgba) {
   }
   for (let dy = -r; dy <= r; dy++) {
     for (let dx = -r; dx <= r; dx++) {
+      // ── Shape filter ────────────────────────────────────────────────────
       if (brushType === "round" && dx * dx + dy * dy > r * r) continue;
-      if (brushType === "square") {
-        /* all pass */
-      }
+      // square: all pass
       if (brushType === "diamond" && Math.abs(dx) + Math.abs(dy) > r) continue;
       if (brushType === "cross" && dx !== 0 && dy !== 0) continue;
       if (brushType === "dither" && (cx + cy + dx + dy) % 2 !== 0) continue;
       if (brushType === "dither2" && (cx + cy + dx + dy) % 2 === 0) continue;
-      paintWithSymmetry(ctx, cx + dx, cy + dy, rgba);
+      // star = cross union diagonal (8-point star)
+      if (
+        brushType === "star" &&
+        dx !== 0 &&
+        dy !== 0 &&
+        Math.abs(dx) !== Math.abs(dy)
+      )
+        continue;
+      // ring = circle outline (~inner 60% hollow)
+      if (brushType === "ring") {
+        const d2 = dx * dx + dy * dy;
+        const inner = Math.max(0, r - 2);
+        if (d2 < inner * inner || d2 > r * r) continue;
+      }
+      // slash = NE diagonal (dy === -dx)
+      if (brushType === "slash" && dy !== -dx) continue;
+      // bslash = NW diagonal (dy === dx)
+      if (brushType === "bslash" && dy !== dx) continue;
+
+      // ── Feathering ──────────────────────────────────────────────────────
+      let paintRgba = rgba;
+      if (brushHardness < 100 && r > 0) {
+        const w = featherWeight(dx, dy, r, brushHardness);
+        if (w <= 0) continue;
+        if (w < 1) {
+          paintRgba = [rgba[0], rgba[1], rgba[2], Math.round(rgba[3] * w)];
+        }
+      }
+      paintWithSymmetry(ctx, cx + dx, cy + dy, paintRgba);
+    }
+  }
+}
+
+/**
+ * stampErase — erase within the brush footprint with variable strength.
+ * strength: 0–255 (255 = full erase, scales with brushOpacity).
+ * Respects brush shape, size, hardness, and symmetry.
+ */
+export function stampErase(ctx, cx, cy, strength) {
+  const { brushType, brushSize, brushHardness = 100 } = ctx;
+  if (brushType === "pixel") {
+    eraseWithSymmetry(ctx, cx, cy, strength);
+    return;
+  }
+  const r = Math.max(0, brushSize - 1);
+  if (r === 0) {
+    eraseWithSymmetry(ctx, cx, cy, strength);
+    return;
+  }
+  for (let dy = -r; dy <= r; dy++) {
+    for (let dx = -r; dx <= r; dx++) {
+      if (brushType === "round" && dx * dx + dy * dy > r * r) continue;
+      if (brushType === "diamond" && Math.abs(dx) + Math.abs(dy) > r) continue;
+      if (brushType === "cross" && dx !== 0 && dy !== 0) continue;
+      if (brushType === "dither" && (cx + cy + dx + dy) % 2 !== 0) continue;
+      if (brushType === "dither2" && (cx + cy + dx + dy) % 2 === 0) continue;
+      if (
+        brushType === "star" &&
+        dx !== 0 &&
+        dy !== 0 &&
+        Math.abs(dx) !== Math.abs(dy)
+      )
+        continue;
+      if (brushType === "ring") {
+        const d2 = dx * dx + dy * dy;
+        const inner = Math.max(0, r - 2);
+        if (d2 < inner * inner || d2 > r * r) continue;
+      }
+      if (brushType === "slash" && dy !== -dx) continue;
+      if (brushType === "bslash" && dy !== dx) continue;
+
+      let s = strength;
+      if (brushHardness < 100 && r > 0) {
+        const w = featherWeight(dx, dy, r, brushHardness);
+        if (w <= 0) continue;
+        s = Math.round(strength * w);
+      }
+      eraseWithSymmetry(ctx, cx + dx, cy + dy, s);
     }
   }
 }

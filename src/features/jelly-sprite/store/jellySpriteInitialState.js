@@ -41,9 +41,10 @@ export const jellySpriteInitialState = {
   wandContiguous: true, // true = flood-fill, false = select all matching pixels
 
   // ── Brush ────────────────────────────────────────────────────────────────
-  brushType: "round", // round | square | diamond | cross | pixel | dither | dither2
+  brushType: "round", // round | square | diamond | cross | pixel | dither | dither2 | star | ring | slash | bslash
   brushSize: 1, // 1–32
   brushOpacity: 100, // 1–100 (percentage)
+  brushHardness: 100, // 0–100 (100 = hard edge, lower = feathered/soft)
 
   // ── Color ────────────────────────────────────────────────────────────────
   fgColor: "#000000",
