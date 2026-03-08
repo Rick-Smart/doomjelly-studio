@@ -34,6 +34,7 @@ import {
   drawRect,
   drawEllipse,
   magicWandMask,
+  magicWandMaskGlobal,
   pasteRegion,
 } from "./pixelOps.js";
 import {
@@ -95,14 +96,14 @@ function getActiveRgba(refs) {
 export function createDrawingEngine(refs) {
   // Pointer-handler-only transient state.
   let isDrawing = false;
-  let startPx = null;    // { x, y } — stroke start pixel
-  let lastPx = null;     // { x, y } — last seen pixel (for interpolation)
+  let startPx = null; // { x, y } — stroke start pixel
+  let lastPx = null; // { x, y } — last seen pixel (for interpolation)
   let moveOrigin = null; // { x, y, selX, selY } — for selection move
   let selMode = "replace"; // "replace" | "add" | "subtract" — set on pointer-down
   // Lasso drag state (typed-buffer, zero hot-path allocation).
   // Preallocated once; resized only when canvas is larger than previous alloc.
   let lassoXY = new Int16Array(0); // interleaved Int16 [x0,y0, x1,y1, ...]
-  let lassoXYLen = 0;    // logical point count (not byte count)
+  let lassoXYLen = 0; // logical point count (not byte count)
   let lassoLastPx = null;
   let lassoStartPx = null;
   let lassoPath2D = null;
@@ -249,7 +250,8 @@ export function createDrawingEngine(refs) {
                 // Pixel outside mask — leave on canvas, store transparent
                 for (let c = 0; c < 4; c++) state.movePixels[di + c] = 0;
               } else {
-                for (let c = 0; c < 4; c++) state.movePixels[di + c] = buf[si + c];
+                for (let c = 0; c < 4; c++)
+                  state.movePixels[di + c] = buf[si + c];
                 for (let c = 0; c < 4; c++) buf[si + c] = 0;
               }
             }
@@ -333,7 +335,10 @@ export function createDrawingEngine(refs) {
     if (tool === "select-wand") {
       const buf = refs.pixelBuffers[st.activeLayerId];
       if (buf) {
-        const wandMask = magicWandMask(buf, x, y, w, h);
+        const tol = st.wandTolerance ?? 0;
+        const wandFn =
+          st.wandContiguous !== false ? magicWandMask : magicWandMaskGlobal;
+        const wandMask = wandFn(buf, x, y, w, h, tol);
         if (wandMask) {
           if (selMode === "replace") {
             refs.selectionMask = wandMask;
@@ -616,20 +621,38 @@ export function createDrawingEngine(refs) {
   }
 
   // ── Clipboard / selection operations (delegated to tools/) ───────────────
-  function copySelection() { clipboardOps.copySelection(refs); }
-  function pasteSelection() { clipboardOps.pasteSelection(refs, setSelection); }
-  function deleteSelectionContents() { clipboardOps.deleteSelectionContents(refs); }
+  function copySelection() {
+    clipboardOps.copySelection(refs);
+  }
+  function pasteSelection() {
+    clipboardOps.pasteSelection(refs, setSelection);
+  }
+  function deleteSelectionContents() {
+    clipboardOps.deleteSelectionContents(refs);
+  }
   function cropToSelection() {
     // Phase M5+ — resize canvas to selection bounds. No-op for now.
   }
 
   // ── Selection transform operations (delegated to tools/) ─────────────────
-  function invertSelection() { selOps.invertSelection(refs, state, setSelection); }
-  function flipSelH() { selOps.flipSelH(refs, state, setSelection); }
-  function flipSelV() { selOps.flipSelV(refs, state, setSelection); }
-  function rotateSel90CW() { selOps.rotateSel90CW(refs, state, setSelection); }
-  function rotateSel90CCW() { selOps.rotateSel90CCW(refs, state, setSelection); }
-  function rotateSelArbitrary(deg) { selOps.rotateSelArbitrary(refs, state, setSelection, deg); }
+  function invertSelection() {
+    selOps.invertSelection(refs, state, setSelection);
+  }
+  function flipSelH() {
+    selOps.flipSelH(refs, state, setSelection);
+  }
+  function flipSelV() {
+    selOps.flipSelV(refs, state, setSelection);
+  }
+  function rotateSel90CW() {
+    selOps.rotateSel90CW(refs, state, setSelection);
+  }
+  function rotateSel90CCW() {
+    selOps.rotateSel90CCW(refs, state, setSelection);
+  }
+  function rotateSelArbitrary(deg) {
+    selOps.rotateSelArbitrary(refs, state, setSelection, deg);
+  }
 
   // ── Subscribe to selection changes ────────────────────────────────────────
   function onSelectionChange(fn) {

@@ -37,6 +37,8 @@ export const jellySpriteInitialState = {
   fillShapes: false, // outline vs filled for rect/ellipse
   symmetryH: false, // mirror paint horizontally
   symmetryV: false, // mirror paint vertically
+  wandTolerance: 15, // 0–255 per-channel color distance for magic wand
+  wandContiguous: true, // true = flood-fill, false = select all matching pixels
 
   // ── Brush ────────────────────────────────────────────────────────────────
   brushType: "round", // round | square | diamond | cross | pixel | dither | dither2

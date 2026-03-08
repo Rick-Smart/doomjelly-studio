@@ -51,6 +51,8 @@ function JellySpriteBody({ onSwitchToAnimator, onRegisterCollector }) {
     fillShapes,
     symmetryH,
     symmetryV,
+    wandTolerance,
+    wandContiguous,
     gridVisible,
     frameGridVisible,
     frameConfig,
@@ -104,6 +106,10 @@ function JellySpriteBody({ onSwitchToAnimator, onRegisterCollector }) {
       type: A.SET_SYMMETRY_V,
       payload: typeof v === "function" ? v(symmetryV) : v,
     });
+  const setWandTolerance = (v) =>
+    sd({ type: A.SET_WAND_TOLERANCE, payload: v });
+  const setWandContiguous = (v) =>
+    sd({ type: A.SET_WAND_CONTIGUOUS, payload: v });
   const setGridVisible = (v) =>
     sd({
       type: A.SET_GRID_VISIBLE,
@@ -1521,6 +1527,10 @@ function JellySpriteBody({ onSwitchToAnimator, onRegisterCollector }) {
     setSymmetryH,
     symmetryV,
     setSymmetryV,
+    wandTolerance,
+    setWandTolerance,
+    wandContiguous,
+    setWandContiguous,
     gridVisible,
     setGridVisible,
     frameGridVisible,

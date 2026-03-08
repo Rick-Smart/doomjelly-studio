@@ -9,7 +9,12 @@
  * Import what you need — no side effects, no globals.
  */
 
-import { hexToRgba, rgbaToHex, rasterRect, rasterEllipse } from "../jellySprite.utils.js";
+import {
+  hexToRgba,
+  rgbaToHex,
+  rasterRect,
+  rasterEllipse,
+} from "../jellySprite.utils.js";
 import { bresenhamLine } from "./selectionUtils.js";
 
 export { hexToRgba, rgbaToHex };
@@ -47,6 +52,15 @@ export function setPixelConstrained(buf, x, y, w, h, rgba, sel, lassoMask) {
 
 export function colorsMatch(a, b) {
   return a[0] === b[0] && a[1] === b[1] && a[2] === b[2] && a[3] === b[3];
+}
+
+export function colorsMatchTolerance(a, b, tol) {
+  return (
+    Math.abs(a[0] - b[0]) <= tol &&
+    Math.abs(a[1] - b[1]) <= tol &&
+    Math.abs(a[2] - b[2]) <= tol &&
+    Math.abs(a[3] - b[3]) <= tol
+  );
 }
 
 // ── Flood fill ────────────────────────────────────────────────────────────────
@@ -173,10 +187,10 @@ export function drawEllipse(ctx, x0, y0, x1, y1, filled, rgba) {
 // ── Magic wand ────────────────────────────────────────────────────────────────
 
 /**
- * BFS flood-fill from (sx,sy), matching the colour at that pixel.
+ * BFS flood-fill from (sx,sy), matching the colour at that pixel within tolerance.
  * Returns a Uint8Array(w*h) where 1 = selected pixel, or null if nothing matched.
  */
-export function magicWandMask(buf, sx, sy, w, h) {
+export function magicWandMask(buf, sx, sy, w, h, tol = 0) {
   const target = getPixel(buf, sx, sy, w);
   const mask = new Uint8Array(w * h);
   const visited = new Uint8Array(w * h);
@@ -188,10 +202,34 @@ export function magicWandMask(buf, sx, sy, w, h) {
     const i = y * w + x;
     if (visited[i]) continue;
     visited[i] = 1;
-    if (!colorsMatch(getPixel(buf, x, y, w), target)) continue;
+    if (!colorsMatchTolerance(getPixel(buf, x, y, w), target, tol)) continue;
     mask[i] = 1;
     found = true;
     queue.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
+  }
+  return found ? mask : null;
+}
+
+/**
+ * Global (non-contiguous) selection: scan ALL pixels and select those within
+ * tolerance of the colour at (sx, sy).
+ * Returns a Uint8Array(w*h) where 1 = selected pixel, or null if nothing matched.
+ */
+export function magicWandMaskGlobal(buf, sx, sy, w, h, tol = 0) {
+  const target = getPixel(buf, sx, sy, w);
+  const mask = new Uint8Array(w * h);
+  let found = false;
+  for (let i = 0; i < w * h; i++) {
+    if (
+      colorsMatchTolerance(
+        getPixel(buf, i % w, Math.floor(i / w), w),
+        target,
+        tol,
+      )
+    ) {
+      mask[i] = 1;
+      found = true;
+    }
   }
   return found ? mask : null;
 }

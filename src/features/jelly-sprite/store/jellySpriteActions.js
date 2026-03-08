@@ -11,6 +11,8 @@ export const SET_TOOL = "SET_TOOL"; // string (tool id)
 export const SET_FILL_SHAPES = "SET_FILL_SHAPES"; // boolean
 export const SET_SYMMETRY_H = "SET_SYMMETRY_H"; // boolean
 export const SET_SYMMETRY_V = "SET_SYMMETRY_V"; // boolean
+export const SET_WAND_TOLERANCE = "SET_WAND_TOLERANCE"; // number 0–255
+export const SET_WAND_CONTIGUOUS = "SET_WAND_CONTIGUOUS"; // boolean
 
 // ── Brush ─────────────────────────────────────────────────────────────────────
 export const SET_BRUSH_TYPE = "SET_BRUSH_TYPE"; // string (brush id)

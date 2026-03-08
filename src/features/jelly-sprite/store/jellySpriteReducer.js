@@ -29,6 +29,10 @@ export function jellySpriteReducer(state, action) {
       return { ...state, symmetryH: payload };
     case A.SET_SYMMETRY_V:
       return { ...state, symmetryV: payload };
+    case A.SET_WAND_TOLERANCE:
+      return { ...state, wandTolerance: Math.max(0, Math.min(255, payload)) };
+    case A.SET_WAND_CONTIGUOUS:
+      return { ...state, wandContiguous: payload };
 
     // ── Brush ─────────────────────────────────────────────────────────────
     case A.SET_BRUSH_TYPE:
@@ -321,7 +325,13 @@ export function jellySpriteReducer(state, action) {
     // Pixel buffer / refs restoration is handled imperatively in JellySprite.jsx.
     // payload: { storeState, frames, activeFrameIdx, layers, activeLayerId }
     case A.LOAD_JELLY_STATE: {
-      const { storeState: s, frames, activeFrameIdx, layers, activeLayerId } = payload;
+      const {
+        storeState: s,
+        frames,
+        activeFrameIdx,
+        layers,
+        activeLayerId,
+      } = payload;
       return {
         ...state,
         canvasW: s.canvasW ?? state.canvasW,
@@ -334,6 +344,8 @@ export function jellySpriteReducer(state, action) {
         fillShapes: s.fillShapes ?? state.fillShapes,
         symmetryH: s.symmetryH ?? state.symmetryH,
         symmetryV: s.symmetryV ?? state.symmetryV,
+        wandTolerance: s.wandTolerance ?? state.wandTolerance,
+        wandContiguous: s.wandContiguous ?? state.wandContiguous,
         fgColor: s.fgColor ?? state.fgColor,
         bgColor: s.bgColor ?? state.bgColor,
         fgAlpha: s.fgAlpha ?? state.fgAlpha,
