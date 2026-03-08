@@ -150,6 +150,12 @@ export function createDrawingEngine(refs) {
   let movePixelsOriginal = null;
   let moveOriginalW = 0;
   let moveOriginalH = 0;
+  // Canvas-space centre of the floating selection at the moment pixels were
+  // lifted. Used by rotateSelArbitrary so every slider tick re-anchors to the
+  // same point instead of reading refs.selection (which has already shifted
+  // from the previous tick, causing rounding-error drift across scrubs).
+  let moveOriginalCx = 0;
+  let moveOriginalCy = 0;
   let selMode = "replace"; // "replace" | "add" | "subtract" — set on pointer-down
 
   // ── Lasso drag state (typed-buffer, zero hot-path allocation) ─────────────
@@ -304,6 +310,8 @@ export function createDrawingEngine(refs) {
           movePixelsOriginal = new Uint8ClampedArray(movePixels);
           moveOriginalW = sel.w;
           moveOriginalH = sel.h;
+          moveOriginalCx = sel.x + sel.w / 2;
+          moveOriginalCy = sel.y + sel.h / 2;
         } else if (buf && movePixels) {
           // Subsequent drag: reuse the previewSnap from the first lift.
           // That snapshot already has the selected pixels erased, so it IS the
@@ -774,6 +782,8 @@ export function createDrawingEngine(refs) {
     movePixelsOriginal = new Uint8ClampedArray(movePixels);
     moveOriginalW = sel.w;
     moveOriginalH = sel.h;
+    moveOriginalCx = sel.x + sel.w / 2;
+    moveOriginalCy = sel.y + sel.h / 2;
     refs.selectionMaskOrigin = { x: sel.x, y: sel.y };
     return true;
   }
@@ -897,7 +907,43 @@ export function createDrawingEngine(refs) {
       moveOriginalH,
       deg,
     );
-    applyFloatingTransform(newBuf, newW, newH);
+    // Use the stored original center — NOT refs.selection — so every slider
+    // tick re-anchors to the same canvas point and can't compound rounding
+    // error into a drift (the previous applyFloatingTransform path read
+    // refs.selection, which had already shifted from the prior tick).
+    const newSel = {
+      x: Math.round(moveOriginalCx - newW / 2),
+      y: Math.round(moveOriginalCy - newH / 2),
+      w: newW,
+      h: newH,
+    };
+    movePixels = newBuf;
+    // Build a canvas-sized mask from the rotated pixels' alpha channel so the
+    // marching ants trace the actual rotated silhouette rather than a larger
+    // axis-aligned bounding box.
+    const st = refs.stateRef.current;
+    const { canvasW: cw, canvasH: ch } = st;
+    const rotMask = new Uint8Array(cw * ch);
+    for (let my = 0; my < newH; my++) {
+      for (let mx = 0; mx < newW; mx++) {
+        if (newBuf[(my * newW + mx) * 4 + 3] > 0) {
+          const cpx = newSel.x + mx;
+          const cpy = newSel.y + my;
+          if (cpx >= 0 && cpx < cw && cpy >= 0 && cpy < ch)
+            rotMask[cpy * cw + cpx] = 1;
+        }
+      }
+    }
+    refs.selectionMask = rotMask;
+    refs.selectionMaskOrigin = { x: newSel.x, y: newSel.y };
+    refs.selectionMaskPath = null;
+    setSelection(newSel, true); // fromMove=true — keep movePixels alive
+    const buf = refs.pixelBuffers[st.activeLayerId];
+    if (buf && previewSnap) {
+      buf.set(previewSnap);
+      pasteRegion(buf, newBuf, newSel.x, newSel.y, newW, newH, cw, ch);
+    }
+    refs.redraw?.();
     // NOTE: movePixelsOriginal intentionally NOT updated here.
     // The rotation slider always resamples from the pre-rotation source.
   }
