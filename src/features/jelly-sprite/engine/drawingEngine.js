@@ -34,13 +34,7 @@ import {
   drawRect,
   drawEllipse,
   magicWandMask,
-  copyRegion,
   pasteRegion,
-  flipHorizontal,
-  flipVertical,
-  rotateCW90,
-  rotateCCW90,
-  rotateArbitraryNearestNeighbor,
 } from "./pixelOps.js";
 import {
   buildLassoMask,
@@ -50,6 +44,8 @@ import {
   combineMasks,
   boundsFromMask,
 } from "./selectionUtils.js";
+import * as clipboardOps from "./tools/clipboardOps.js";
+import * as selOps from "./tools/selectionOps.js";
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
@@ -97,36 +93,31 @@ function getActiveRgba(refs) {
 // ── Factory ───────────────────────────────────────────────────────────────────
 
 export function createDrawingEngine(refs) {
-  // Per-stroke working state (private, not in refs)
+  // Pointer-handler-only transient state.
   let isDrawing = false;
-  let startPx = null; // { x, y } — stroke start pixel
-  let lastPx = null; // { x, y } — last seen pixel (for interpolation)
-  let previewSnap = null; // Uint8ClampedArray copy taken before shape preview
+  let startPx = null;    // { x, y } — stroke start pixel
+  let lastPx = null;     // { x, y } — last seen pixel (for interpolation)
   let moveOrigin = null; // { x, y, selX, selY } — for selection move
-  let movePixels = null; // Uint8ClampedArray — lifted floating pixels
-  // Original lifted pixels stored once so rotateSelArbitrary always resamples
-  // from the pristine source, avoiding compounding quality loss.
-  let movePixelsOriginal = null;
-  let moveOriginalW = 0;
-  let moveOriginalH = 0;
-  // Canvas-space centre of the floating selection at the moment pixels were
-  // lifted. Used by rotateSelArbitrary so every slider tick re-anchors to the
-  // same point instead of reading refs.selection (which has already shifted
-  // from the previous tick, causing rounding-error drift across scrubs).
-  let moveOriginalCx = 0;
-  let moveOriginalCy = 0;
   let selMode = "replace"; // "replace" | "add" | "subtract" — set on pointer-down
-
-  // ── Lasso drag state (typed-buffer, zero hot-path allocation) ─────────────
+  // Lasso drag state (typed-buffer, zero hot-path allocation).
   // Preallocated once; resized only when canvas is larger than previous alloc.
-  // Stored as interleaved Int16 [x0,y0, x1,y1, ...] in canvas pixels.
-  let lassoXY = new Int16Array(0);
-  let lassoXYLen = 0; // logical point count (not byte count)
-  let lassoLastPx = null; // last canvas-coord pixel for Bresenham bridging
-  let lassoStartPx = null; // first point, held for snap-to-start indicator
-  // The live Path2D is built incrementally — the renderer just calls stroke()
-  // on it rather than iterating the full point array every frame.
+  let lassoXY = new Int16Array(0); // interleaved Int16 [x0,y0, x1,y1, ...]
+  let lassoXYLen = 0;    // logical point count (not byte count)
+  let lassoLastPx = null;
+  let lassoStartPx = null;
   let lassoPath2D = null;
+
+  // Floating-selection state shared with selectionOps tool module.
+  // previewSnap = canvas snapshot with floating pixels erased (background).
+  const state = {
+    previewSnap: null,
+    movePixels: null,
+    movePixelsOriginal: null,
+    moveOriginalW: 0,
+    moveOriginalH: 0,
+    moveOriginalCx: 0,
+    moveOriginalCy: 0,
+  };
 
   // Notify listeners when selection changes (used to sync React state)
   const selListeners = [];
@@ -137,8 +128,8 @@ export function createDrawingEngine(refs) {
     refs.selection = val;
     refs.selectionMaskPath = null; // invalidate Path2D edge cache
     if (!fromMove) {
-      movePixels = null;
-      movePixelsOriginal = null;
+      state.movePixels = null;
+      state.movePixelsOriginal = null;
       // NOTE: do NOT clear previewSnap here — previewShape calls setSelection
       // on every pointer-move event to update the live selection rect preview,
       // and nulling previewSnap would cause previewShape to return early on the
@@ -185,11 +176,11 @@ export function createDrawingEngine(refs) {
 
   // ── Shape preview helper ───────────────────────────────────────────────────
   function previewShape(x0, y0, x1, y1) {
-    if (!previewSnap) return;
+    if (!state.previewSnap) return;
     const st = refs.stateRef.current;
     const buf = refs.pixelBuffers[st.activeLayerId];
     if (!buf) return;
-    buf.set(previewSnap);
+    buf.set(state.previewSnap);
 
     const rgba = getActiveRgba(refs);
     const ctx = makeBrushCtx(refs);
@@ -244,9 +235,9 @@ export function createDrawingEngine(refs) {
       if (sel) {
         moveOrigin = { x, y, selX: sel.x, selY: sel.y };
         const buf = refs.pixelBuffers[st.activeLayerId];
-        if (buf && !movePixels) {
+        if (buf && !state.movePixels) {
           // First drag: lift pixels out of the canvas buffer.
-          movePixels = new Uint8ClampedArray(sel.w * sel.h * 4);
+          state.movePixels = new Uint8ClampedArray(sel.w * sel.h * 4);
           for (let dy = 0; dy < sel.h; dy++) {
             for (let dx = 0; dx < sel.w; dx++) {
               const si = ((sel.y + dy) * w + (sel.x + dx)) * 4;
@@ -256,31 +247,31 @@ export function createDrawingEngine(refs) {
                 !refs.selectionMask[(sel.y + dy) * w + (sel.x + dx)]
               ) {
                 // Pixel outside mask — leave on canvas, store transparent
-                for (let c = 0; c < 4; c++) movePixels[di + c] = 0;
+                for (let c = 0; c < 4; c++) state.movePixels[di + c] = 0;
               } else {
-                for (let c = 0; c < 4; c++) movePixels[di + c] = buf[si + c];
+                for (let c = 0; c < 4; c++) state.movePixels[di + c] = buf[si + c];
                 for (let c = 0; c < 4; c++) buf[si + c] = 0;
               }
             }
           }
-          previewSnap = new Uint8ClampedArray(buf);
+          state.previewSnap = new Uint8ClampedArray(buf);
           // Store the pristine original so selection transform ops can
           // resample from it without compounding quality loss.
-          movePixelsOriginal = new Uint8ClampedArray(movePixels);
-          moveOriginalW = sel.w;
-          moveOriginalH = sel.h;
-          moveOriginalCx = sel.x + sel.w / 2;
-          moveOriginalCy = sel.y + sel.h / 2;
-        } else if (buf && movePixels) {
+          state.movePixelsOriginal = new Uint8ClampedArray(state.movePixels);
+          state.moveOriginalW = sel.w;
+          state.moveOriginalH = sel.h;
+          state.moveOriginalCx = sel.x + sel.w / 2;
+          state.moveOriginalCy = sel.y + sel.h / 2;
+        } else if (buf && state.movePixels) {
           // Subsequent drag: reuse the previewSnap from the first lift.
           // That snapshot already has the selected pixels erased, so it IS the
           // correct "canvas without floating pixels" background.  Rebuilding
           // from buf would erase blended background pixels at the drop position
           // (the "kneaded eraser" accumulation bug).
-          if (!previewSnap) {
+          if (!state.previewSnap) {
             // Safety fallback: only reached if previewSnap was cleared between
             // drags (e.g. undo/redo). Rebuild by zeroing the selection region.
-            previewSnap = new Uint8ClampedArray(buf);
+            state.previewSnap = new Uint8ClampedArray(buf);
             const sel = refs.selection;
             for (let dy = 0; dy < sel.h; dy++) {
               for (let dx = 0; dx < sel.w; dx++) {
@@ -290,10 +281,10 @@ export function createDrawingEngine(refs) {
                 if (refs.selectionMask && !refs.selectionMask[py * w + px])
                   continue;
                 const i = (py * w + px) * 4;
-                previewSnap[i] =
-                  previewSnap[i + 1] =
-                  previewSnap[i + 2] =
-                  previewSnap[i + 3] =
+                state.previewSnap[i] =
+                  state.previewSnap[i + 1] =
+                  state.previewSnap[i + 2] =
+                  state.previewSnap[i + 3] =
                     0;
               }
             }
@@ -310,7 +301,7 @@ export function createDrawingEngine(refs) {
         refs.selectionMask = null;
       refs.selectionPreviewRect = null; // clear stale add/subtract preview
       const buf = refs.pixelBuffers[st.activeLayerId];
-      if (buf) previewSnap = new Uint8ClampedArray(buf);
+      if (buf) state.previewSnap = new Uint8ClampedArray(buf);
     }
 
     // ── Lasso ───────────────────────────────────────────────────────────────
@@ -393,11 +384,11 @@ export function createDrawingEngine(refs) {
         y: moveOrigin.selY + ddy,
       };
       const buf = refs.pixelBuffers[st.activeLayerId];
-      if (buf && previewSnap) {
-        buf.set(previewSnap);
+      if (buf && state.previewSnap) {
+        buf.set(state.previewSnap);
         pasteRegion(
           buf,
-          movePixels,
+          state.movePixels,
           newSel.x,
           newSel.y,
           newSel.w,
@@ -585,15 +576,15 @@ export function createDrawingEngine(refs) {
       }
       lastPx = null;
       startPx = null;
-      previewSnap = null;
+      state.previewSnap = null;
       selMode = "replace";
       return;
     }
 
-    // ── Shape finalise ────────────────────────────────────────────────────────
+    // ── Shape finalise ────────────────────────────────────────────────────
     if (["line", "rect", "ellipse"].includes(tool)) {
       previewShape(startPx.x, startPx.y, x, y);
-      previewSnap = null;
+      state.previewSnap = null;
       refs.redraw?.();
     }
 
@@ -607,10 +598,10 @@ export function createDrawingEngine(refs) {
   function onPointerLeave() {
     if (!isDrawing) return;
     const st = refs.stateRef.current;
-    if (["line", "rect", "ellipse"].includes(st.tool) && previewSnap) {
+    if (["line", "rect", "ellipse"].includes(st.tool) && state.previewSnap) {
       const buf = refs.pixelBuffers[st.activeLayerId];
-      if (buf) buf.set(previewSnap);
-      previewSnap = null;
+      if (buf) buf.set(state.previewSnap);
+      state.previewSnap = null;
       refs.redraw?.();
     }
     isDrawing = false;
@@ -624,297 +615,21 @@ export function createDrawingEngine(refs) {
     }
   }
 
-  // ── Clipboard / selection operations ─────────────────────────────────────
-  function copySelection() {
-    const sel = refs.selection;
-    if (!sel) return;
-    const st = refs.stateRef.current;
-    const buf = refs.pixelBuffers[st.activeLayerId];
-    if (!buf) return;
-    refs.clipboard = copyRegion(
-      buf,
-      sel.x,
-      sel.y,
-      sel.w,
-      sel.h,
-      st.canvasW,
-      refs.selectionMask,
-    );
-    refs.clipboardW = sel.w;
-    refs.clipboardH = sel.h;
-  }
-
-  function pasteSelection() {
-    if (!refs.clipboard) return;
-    const st = refs.stateRef.current;
-    const buf = refs.pixelBuffers[st.activeLayerId];
-    if (!buf) return;
-    const { canvasW: w, canvasH: h } = st;
-    const px = Math.max(0, Math.floor(w / 2 - refs.clipboardW / 2));
-    const py = Math.max(0, Math.floor(h / 2 - refs.clipboardH / 2));
-    pasteRegion(
-      buf,
-      refs.clipboard,
-      px,
-      py,
-      refs.clipboardW,
-      refs.clipboardH,
-      w,
-      h,
-    );
-    setSelection({ x: px, y: py, w: refs.clipboardW, h: refs.clipboardH });
-    (refs.onStrokeComplete ?? refs.pushHistory)?.();
-    refs.redraw?.();
-  }
-
-  function deleteSelectionContents() {
-    const sel = refs.selection;
-    if (!sel) return;
-    const st = refs.stateRef.current;
-    const buf = refs.pixelBuffers[st.activeLayerId];
-    if (!buf) return;
-    const { canvasW: w, canvasH: h } = st;
-    for (let dy = 0; dy < sel.h; dy++) {
-      for (let dx = 0; dx < sel.w; dx++) {
-        const px = sel.x + dx,
-          py = sel.y + dy;
-        if (px < 0 || px >= w || py < 0 || py >= h) continue;
-        if (refs.selectionMask && !refs.selectionMask[py * w + px]) continue;
-        const i = (py * w + px) * 4;
-        buf[i] = buf[i + 1] = buf[i + 2] = buf[i + 3] = 0;
-      }
-    }
-    (refs.onStrokeComplete ?? refs.pushHistory)?.();
-    refs.redraw?.();
-  }
-
+  // ── Clipboard / selection operations (delegated to tools/) ───────────────
+  function copySelection() { clipboardOps.copySelection(refs); }
+  function pasteSelection() { clipboardOps.pasteSelection(refs, setSelection); }
+  function deleteSelectionContents() { clipboardOps.deleteSelectionContents(refs); }
   function cropToSelection() {
     // Phase M5+ — resize canvas to selection bounds. No-op for now.
   }
 
-  // ── Floating-selection helpers ────────────────────────────────────────────
-
-  /** Paste the floating pixels back onto the canvas and clear float state. */
-  function commitFloating() {
-    const sel = refs.selection;
-    if (!sel || !movePixels) return;
-    const st = refs.stateRef.current;
-    const { canvasW: w, canvasH: h } = st;
-    const buf = refs.pixelBuffers[st.activeLayerId];
-    if (!buf) return;
-    if (previewSnap) buf.set(previewSnap);
-    pasteRegion(buf, movePixels, sel.x, sel.y, sel.w, sel.h, w, h);
-    movePixels = null;
-    previewSnap = null;
-    movePixelsOriginal = null;
-  }
-
-  /**
-   * Ensure a floating selection exists. Lifts pixels from the canvas if not
-   * already floating. Returns false if there is no selection or no buffer.
-   */
-  function ensureFloatingSelection() {
-    if (movePixels) return true;
-    const sel = refs.selection;
-    if (!sel) return false;
-    const st = refs.stateRef.current;
-    const { canvasW: w, canvasH: h } = st;
-    const buf = refs.pixelBuffers[st.activeLayerId];
-    if (!buf) return false;
-    movePixels = new Uint8ClampedArray(sel.w * sel.h * 4);
-    for (let dy = 0; dy < sel.h; dy++) {
-      for (let dx = 0; dx < sel.w; dx++) {
-        const si = ((sel.y + dy) * w + (sel.x + dx)) * 4;
-        const di = (dy * sel.w + dx) * 4;
-        if (
-          refs.selectionMask &&
-          !refs.selectionMask[(sel.y + dy) * w + (sel.x + dx)]
-        ) {
-          for (let c = 0; c < 4; c++) movePixels[di + c] = 0;
-        } else {
-          for (let c = 0; c < 4; c++) movePixels[di + c] = buf[si + c];
-          for (let c = 0; c < 4; c++) buf[si + c] = 0;
-        }
-      }
-    }
-    previewSnap = new Uint8ClampedArray(buf);
-    movePixelsOriginal = new Uint8ClampedArray(movePixels);
-    moveOriginalW = sel.w;
-    moveOriginalH = sel.h;
-    moveOriginalCx = sel.x + sel.w / 2;
-    moveOriginalCy = sel.y + sel.h / 2;
-    refs.selectionMaskOrigin = { x: sel.x, y: sel.y };
-    return true;
-  }
-
-  /**
-   * Apply a transformed pixel buffer as the new floating selection.
-   * Keeps previewSnap (background) intact and redraws.
-   */
-  function applyFloatingTransform(newPixels, newW, newH) {
-    const sel = refs.selection;
-    if (!sel) return;
-    movePixels = newPixels;
-    // Reposition selection to keep the same centre point.
-    const cx = sel.x + sel.w / 2;
-    const cy = sel.y + sel.h / 2;
-    const newSel = {
-      x: Math.round(cx - newW / 2),
-      y: Math.round(cy - newH / 2),
-      w: newW,
-      h: newH,
-    };
-    // Replace the mask with a simple rect (correct for any post-transform shape).
-    refs.selectionMask = null;
-    refs.selectionMaskOrigin = { x: newSel.x, y: newSel.y };
-    setSelection(newSel, true); // fromMove=true — keep movePixels alive
-    // Re-composite onto the canvas so the user sees the change immediately.
-    const st = refs.stateRef.current;
-    const { canvasW: w, canvasH: h } = st;
-    const buf = refs.pixelBuffers[st.activeLayerId];
-    if (buf && previewSnap) {
-      buf.set(previewSnap);
-      pasteRegion(buf, newPixels, newSel.x, newSel.y, newW, newH, w, h);
-    }
-    refs.redraw?.();
-  }
-
-  // ── Selection transform operations ────────────────────────────────────────
-
-  /**
-   * Invert the current selection mask. If a floating selection is active,
-   * it is committed to the canvas first.
-   */
-  function invertSelection() {
-    const st = refs.stateRef.current;
-    const { canvasW: w, canvasH: h } = st;
-    // Commit any floating pixels before inverting so the canvas is current.
-    if (movePixels) {
-      commitFloating();
-      (refs.onStrokeComplete ?? refs.pushHistory)?.();
-    }
-    const existing = getOrBuildMask(refs, w, h);
-    if (!existing) return;
-    const inv = new Uint8Array(w * h);
-    for (let i = 0; i < w * h; i++) inv[i] = existing[i] ? 0 : 1;
-    refs.selectionMask = inv;
-    const bounds = boundsFromMask(inv, w, h);
-    if (bounds) {
-      setSelection(bounds);
-    } else {
-      refs.selectionMask = null;
-      setSelection(null);
-    }
-    refs.redraw?.();
-  }
-
-  /** Flip the floating selection (or canvas region) horizontally. */
-  function flipSelH() {
-    if (!ensureFloatingSelection()) return;
-    const sel = refs.selection;
-    const newPixels = new Uint8ClampedArray(movePixels);
-    flipHorizontal(newPixels, sel.w, sel.h);
-    applyFloatingTransform(newPixels, sel.w, sel.h);
-    // Update the rotation origin to the flipped state.
-    movePixelsOriginal = new Uint8ClampedArray(newPixels);
-  }
-
-  /** Flip the floating selection (or canvas region) vertically. */
-  function flipSelV() {
-    if (!ensureFloatingSelection()) return;
-    const sel = refs.selection;
-    const newPixels = new Uint8ClampedArray(movePixels);
-    flipVertical(newPixels, sel.w, sel.h);
-    applyFloatingTransform(newPixels, sel.w, sel.h);
-    movePixelsOriginal = new Uint8ClampedArray(newPixels);
-  }
-
-  /** Rotate the floating selection (or canvas region) 90° clockwise. */
-  function rotateSel90CW() {
-    if (!ensureFloatingSelection()) return;
-    const sel = refs.selection;
-    const newPixels = rotateCW90(movePixels, sel.w, sel.h);
-    // Dimensions swap on rotation.
-    applyFloatingTransform(newPixels, sel.h, sel.w);
-    movePixelsOriginal = new Uint8ClampedArray(newPixels);
-    moveOriginalW = sel.h;
-    moveOriginalH = sel.w;
-    // Re-anchor free-rotate center to the actual post-rotation position so
-    // subsequent slider scrubs don't drift from the rendered center.
-    const ns = refs.selection;
-    moveOriginalCx = ns.x + ns.w / 2;
-    moveOriginalCy = ns.y + ns.h / 2;
-  }
-
-  /** Rotate the floating selection (or canvas region) 90° counter-clockwise. */
-  function rotateSel90CCW() {
-    if (!ensureFloatingSelection()) return;
-    const sel = refs.selection;
-    const newPixels = rotateCCW90(movePixels, sel.w, sel.h);
-    applyFloatingTransform(newPixels, sel.h, sel.w);
-    movePixelsOriginal = new Uint8ClampedArray(newPixels);
-    moveOriginalW = sel.h;
-    moveOriginalH = sel.w;
-    // Re-anchor free-rotate center to the actual post-rotation position.
-    const ns = refs.selection;
-    moveOriginalCx = ns.x + ns.w / 2;
-    moveOriginalCy = ns.y + ns.h / 2;
-  }
-
-  /**
-   * Rotate the floating selection by an arbitrary angle (nearest-neighbour).
-   * Always resamples from the original lifted pixels, so slider scrubbing
-   * applies no compounding quality loss.
-   */
-  function rotateSelArbitrary(deg) {
-    if (!ensureFloatingSelection()) return;
-    if (!movePixelsOriginal) return;
-    const { newBuf, newW, newH } = rotateArbitraryNearestNeighbor(
-      movePixelsOriginal,
-      moveOriginalW,
-      moveOriginalH,
-      deg,
-    );
-    // Use the stored original center — NOT refs.selection — so every slider
-    // tick re-anchors to the same canvas point and can't compound rounding
-    // error into a drift (the previous applyFloatingTransform path read
-    // refs.selection, which had already shifted from the prior tick).
-    const newSel = {
-      x: Math.round(moveOriginalCx - newW / 2),
-      y: Math.round(moveOriginalCy - newH / 2),
-      w: newW,
-      h: newH,
-    };
-    movePixels = newBuf;
-    // Build a canvas-sized mask from the rotated pixels' alpha channel so the
-    // marching ants trace the actual rotated silhouette rather than a larger
-    // axis-aligned bounding box.
-    const st = refs.stateRef.current;
-    const { canvasW: cw, canvasH: ch } = st;
-    const rotMask = new Uint8Array(cw * ch);
-    for (let my = 0; my < newH; my++) {
-      for (let mx = 0; mx < newW; mx++) {
-        if (newBuf[(my * newW + mx) * 4 + 3] > 0) {
-          const cpx = newSel.x + mx;
-          const cpy = newSel.y + my;
-          if (cpx >= 0 && cpx < cw && cpy >= 0 && cpy < ch)
-            rotMask[cpy * cw + cpx] = 1;
-        }
-      }
-    }
-    refs.selectionMask = rotMask;
-    refs.selectionMaskOrigin = { x: newSel.x, y: newSel.y };
-    refs.selectionMaskPath = null;
-    setSelection(newSel, true); // fromMove=true — keep movePixels alive
-    const buf = refs.pixelBuffers[st.activeLayerId];
-    if (buf && previewSnap) {
-      buf.set(previewSnap);
-      pasteRegion(buf, newBuf, newSel.x, newSel.y, newW, newH, cw, ch);
-    }
-    refs.redraw?.();
-    // NOTE: movePixelsOriginal intentionally NOT updated here.
-    // The rotation slider always resamples from the pre-rotation source.
-  }
+  // ── Selection transform operations (delegated to tools/) ─────────────────
+  function invertSelection() { selOps.invertSelection(refs, state, setSelection); }
+  function flipSelH() { selOps.flipSelH(refs, state, setSelection); }
+  function flipSelV() { selOps.flipSelV(refs, state, setSelection); }
+  function rotateSel90CW() { selOps.rotateSel90CW(refs, state, setSelection); }
+  function rotateSel90CCW() { selOps.rotateSel90CCW(refs, state, setSelection); }
+  function rotateSelArbitrary(deg) { selOps.rotateSelArbitrary(refs, state, setSelection, deg); }
 
   // ── Subscribe to selection changes ────────────────────────────────────────
   function onSelectionChange(fn) {
