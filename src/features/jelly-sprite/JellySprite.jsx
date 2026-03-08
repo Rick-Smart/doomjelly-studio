@@ -18,7 +18,6 @@ import { wireHistoryEngine, seedHistory } from "./engine/historyEngine";
 // Defined once at module level so it's never recomputed per render.
 const _cursorSvg = `<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24'><line x1='0' y1='12' x2='10' y2='12' stroke='white' stroke-width='2'/><line x1='14' y1='12' x2='24' y2='12' stroke='white' stroke-width='2'/><line x1='12' y1='0' x2='12' y2='10' stroke='white' stroke-width='2'/><line x1='12' y1='14' x2='12' y2='24' stroke='white' stroke-width='2'/><line x1='0' y1='12' x2='10' y2='12' stroke='%23222' stroke-width='1'/><line x1='14' y1='12' x2='24' y2='12' stroke='%23222' stroke-width='1'/><line x1='12' y1='0' x2='12' y2='10' stroke='%23222' stroke-width='1'/><line x1='12' y1='14' x2='12' y2='24' stroke='%23222' stroke-width='1'/></svg>`;
 const CURSOR_PRECISION = `url("data:image/svg+xml,${_cursorSvg}") 12 12, crosshair`;
-import { useDrawingTools } from "./hooks/useDrawingTools";
 
 // ── Outer component — just provides the store context ─────────────────────────
 export function JellySprite({ onSwitchToAnimator }) {
@@ -154,27 +153,6 @@ function JellySpriteBody({ onSwitchToAnimator }) {
   const tileUpdateRef = useRef(null);
 
   // ── Bridge refs (M5) ───────────────────────────────────────────────────────
-  // layerDataRef / layerMaskDataRef are getter/setter proxies so that legacy
-  // hooks (useDrawingTools) read and write the same pixel store as the new
-  // engine (refs.pixelBuffers / refs.maskBuffers).
-  // Assigning `layerDataRef.current = obj` replaces refs.pixelBuffers entirely
-  // (correct semantics for frame-switching) rather than mutating in-place.
-  const layerDataRef = {
-    get current() {
-      return refs.pixelBuffers;
-    },
-    set current(val) {
-      refs.pixelBuffers = val;
-    },
-  };
-  const layerMaskDataRef = {
-    get current() {
-      return refs.maskBuffers;
-    },
-    set current(val) {
-      refs.maskBuffers = val;
-    },
-  };
   // Stable refs — synced every render so closures never go stale
   const layersRef = useRef(ss.layers);
   const activeLayerIdRef = useRef(ss.activeLayerId);
@@ -194,6 +172,14 @@ function JellySpriteBody({ onSwitchToAnimator }) {
   // playIntervalRef: holds setInterval id for playback (not in React state)
   const playIntervalRef = useRef(null);
 
+  // pixelsRef: live pointer to the active layer's Uint8ClampedArray.
+  // Kept in sync on layer-switch, init, and frame-load below.
+  const pixelsRef = useRef(null);
+  // marchingAntsRef: holds the rAF id for the marching-ants animation loop.
+  const marchingAntsRef = useRef(null);
+  // isDrawing: true while a pointer is held down (used for cursor style).
+  const isDrawing = useRef(false);
+
   // ── Stub refs — break circular hook dependencies ───────────────────────────
   const pushHistoryEntryStubRef = useRef(() => {});
   const redrawStubRef = useRef(() => {});
@@ -201,12 +187,6 @@ function JellySpriteBody({ onSwitchToAnimator }) {
 
   // ── useCanvas (M2 store-based) ─────────────────────────────────────────────
   const { canvasRef } = useCanvas();
-
-  // Backward-compat refs: useDrawingTools still
-  // read these. They are populated by the init useEffect below, exactly as
-  // before. The old pixel buffers keep the old rendering pipeline working
-  // while M3+ migrates drawing into the new store.
-  const pixelsRef = useRef(null);
 
   // redrawRef + redraw: delegate to refs.redraw (the new store renderer).
   // Old hooks / playback that call redrawRef.current?.() will trigger the
@@ -477,57 +457,8 @@ function JellySpriteBody({ onSwitchToAnimator }) {
     sd({ type: A.RENAME_FRAME, payload: { frameId, name } });
   }
 
-  // ── useDrawingTools ────────────────────────────────────────────────────────
-  const {
-    selection,
-    selectionRef,
-    lassoPathRef,
-    lassoMaskRef,
-    marchOffsetRef,
-    marchingAntsRef,
-    clipboardRef,
-    isDrawing,
-    onMouseDown: _onMouseDown,
-    onMouseMove: _onMouseMove,
-    onMouseUp: _onMouseUp,
-    onMouseLeave: _onMouseLeave,
-    copySelection,
-    pasteSelection,
-    deleteSelectionContents,
-    cropToSelection,
-    flipH,
-    flipV,
-    rotateCW,
-    rotateCCW,
-    setSelection,
-  } = useDrawingTools({
-    canvasW,
-    canvasH,
-    canvasRef,
-    zoom,
-    pixelsRef,
-    layerDataRef,
-    layerMaskDataRef,
-    editingMaskIdRef,
-    activeLayerIdRef,
-    tool,
-    brushType,
-    brushSize,
-    brushOpacity,
-    fillShapes,
-    symmetryH,
-    symmetryV,
-    fgColor,
-    fgAlpha,
-    pendingResizeDataRef,
-    resizeAnchor,
-    pushHistoryEntry: () => pushHistoryEntryStubRef.current(),
-    redraw: () => redrawStubRef.current(),
-    saveToProject: () => saveToProjectStubRef.current(),
-    setCanvasW,
-    setCanvasH,
-    setSelection: () => {},
-  });
+  // ── useDrawingTools removed (Phase G) ────────────────────────────────────
+  // All pointer handling now routes through refs.drawingEngine exclusively.
 
   // ── Patch stubs every render ───────────────────────────────────────────────
   function saveToProject() {
@@ -741,27 +672,22 @@ function JellySpriteBody({ onSwitchToAnimator }) {
   }
 
   // ── Mouse handlers ─────────────────────────────────────────────────────────
-  // M3: prefer the new store-based drawing engine when it's ready.
-  // The old _onMouseDown/_onMouseMove (from useDrawingTools) remain as fallback.
   function onMouseDown(e) {
-    const eng = refs.drawingEngine;
-    const hex = eng ? eng.onPointerDown(e) : _onMouseDown(e);
+    isDrawing.current = true;
+    const hex = refs.drawingEngine?.onPointerDown(e);
     if (hex) pickColor(hex);
   }
   function onMouseMove(e) {
-    const eng = refs.drawingEngine;
-    const hex = eng ? eng.onPointerMove(e) : _onMouseMove(e);
+    const hex = refs.drawingEngine?.onPointerMove(e);
     if (hex) pickColor(hex);
   }
   function onMouseUp(e) {
-    const eng = refs.drawingEngine;
-    if (eng) eng.onPointerUp(e);
-    else _onMouseUp?.(e);
+    isDrawing.current = false;
+    refs.drawingEngine?.onPointerUp(e);
   }
   function onMouseLeave(e) {
-    const eng = refs.drawingEngine;
-    if (eng) eng.onPointerLeave(e);
-    else _onMouseLeave?.(e);
+    isDrawing.current = false;
+    refs.drawingEngine?.onPointerLeave(e);
   }
 
   // ── Colour helpers ─────────────────────────────────────────────────────────
@@ -831,9 +757,10 @@ function JellySpriteBody({ onSwitchToAnimator }) {
       if (wrap) {
         const availW = wrap.clientWidth - 40;
         const availH = wrap.clientHeight - 40;
-        const fillZoom = Math.max(1, Math.min(MAX_ZOOM,
-          Math.floor(Math.min(availW / w, availH / h))
-        ));
+        const fillZoom = Math.max(
+          1,
+          Math.min(MAX_ZOOM, Math.floor(Math.min(availW / w, availH / h))),
+        );
         setZoom(fillZoom);
       }
     }
@@ -941,21 +868,10 @@ function JellySpriteBody({ onSwitchToAnimator }) {
       // Dispatch to store so renderer (refs.stateRef.current.selection) and
       // marching ants useEffect both see null
       sd({ type: A.SET_SELECTION, payload: null });
-      // Also clear the useDrawingTools local path (fallback)
-      setSelection(null);
-      selectionRef.current = null;
-      lassoMaskRef.current = null;
     },
-    copySelection: () =>
-      refs.drawingEngine ? refs.drawingEngine.copySelection() : copySelection(),
-    pasteSelection: () =>
-      refs.drawingEngine
-        ? refs.drawingEngine.pasteSelection()
-        : pasteSelection(),
-    deleteSelection: () =>
-      refs.drawingEngine
-        ? refs.drawingEngine.deleteSelectionContents()
-        : deleteSelectionContents(),
+    copySelection: () => refs.drawingEngine?.copySelection(),
+    pasteSelection: () => refs.drawingEngine?.pasteSelection(),
+    deleteSelection: () => refs.drawingEngine?.deleteSelectionContents(),
     selectAll: () => {
       const { canvasW: w, canvasH: h } = refs.stateRef.current;
       const mask = new Uint8Array(w * h).fill(1);
@@ -1012,7 +928,7 @@ function JellySpriteBody({ onSwitchToAnimator }) {
         refs.drawingEngine?.invertSelection?.();
       } else if (
         (e.key === "Delete" || e.key === "Backspace") &&
-        (refs.selection || selectionRef.current)
+        refs.selection
       ) {
         e.preventDefault();
         a.deleteSelection();
@@ -1091,7 +1007,7 @@ function JellySpriteBody({ onSwitchToAnimator }) {
     const offX = Math.round((nw - canvasW) * ax);
     const offY = Math.round((nh - canvasH) * ay);
     const resized = {};
-    for (const [lid, data] of Object.entries(layerDataRef.current)) {
+    for (const [lid, data] of Object.entries(refs.pixelBuffers)) {
       const buf = new Uint8ClampedArray(nw * nh * 4);
       for (let y = 0; y < canvasH; y++) {
         for (let x = 0; x < canvasW; x++) {
@@ -1170,7 +1086,7 @@ function JellySpriteBody({ onSwitchToAnimator }) {
   // ── Crop to selection ──────────────────────────────────────────────────────
   function cropToSelectionImpl() {
     // Prefer drawing engine selection (refs.selection), fall back to legacy path
-    const sel = refs.selection ?? selectionRef.current;
+    const sel = refs.selection;
     if (!sel) return;
     const { canvasW: w, canvasH: h } = refs.stateRef.current;
     const { x: sx, y: sy, w: sw, h: sh } = sel;
@@ -1468,10 +1384,10 @@ function JellySpriteBody({ onSwitchToAnimator }) {
     setBrushSize,
     brushOpacity,
     setBrushOpacity,
-    flipH,
-    flipV,
-    rotateCW,
-    rotateCCW,
+    flipH: () => refs.drawingEngine?.flipSelH?.(),
+    flipV: () => refs.drawingEngine?.flipSelV?.(),
+    rotateCW: () => refs.drawingEngine?.rotateSel90CW?.(),
+    rotateCCW: () => refs.drawingEngine?.rotateSel90CCW?.(),
     doUndo,
     doRedo,
     canUndo,
@@ -1485,23 +1401,13 @@ function JellySpriteBody({ onSwitchToAnimator }) {
     setFgAlpha,
     colorHistory,
     pickColor,
-    // selection from store (ss.selection) is the source of truth — the
-    // useDrawingTools local copy lags the new refs.drawingEngine path.
+    // selection from store (ss.selection) is the source of truth
     selection: ss.selection,
-    selectionRef,
-    lassoMaskRef,
-    clipboardRef,
-    copySelection: () =>
-      refs.drawingEngine ? refs.drawingEngine.copySelection() : copySelection(),
-    pasteSelection: () =>
-      refs.drawingEngine
-        ? refs.drawingEngine.pasteSelection()
-        : pasteSelection(),
+    copySelection: () => refs.drawingEngine?.copySelection(),
+    pasteSelection: () => refs.drawingEngine?.pasteSelection(),
     cropToSelection: cropToSelectionImpl,
     deleteSelectionContents: () =>
-      refs.drawingEngine
-        ? refs.drawingEngine.deleteSelectionContents()
-        : deleteSelectionContents(),
+      refs.drawingEngine?.deleteSelectionContents(),
     invertSelection: () => refs.drawingEngine?.invertSelection?.(),
     flipSelH: () => refs.drawingEngine?.flipSelH?.(),
     flipSelV: () => refs.drawingEngine?.flipSelV?.(),
