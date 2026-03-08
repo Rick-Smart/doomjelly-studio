@@ -1,7 +1,7 @@
 # JellySprite Architecture Reference
 
-> **Stack:** React 18 + Vite · **Design:** Option B pixel-in-refs  
-> **Last updated:** 2026-03-07 — all milestones (M1–M16) complete. Selection mask invariant and move tool bugs resolved (commits `b69a258`, `d2be244`).
+> **Stack:** React 19 + Vite · **Design:** Option B pixel-in-refs  
+> **Last updated:** 2026-03-08 — M20 complete (GIF export, magic wand tolerance, brush overhaul, canvas resize mask fix, IndexedDB storage).
 
 ---
 
@@ -108,7 +108,6 @@ src/features/jelly-sprite/
 ├── hooks/
 │   ├── useCanvas.js             Wires canvasEl/offscreenEl + all three engines on mount
 │   ├── useDrawingTools.js       Legacy hook — fallback for operations not on drawingEngine
-│   ├── useExport.js             All 4 export functions as a hook
 │   ├── useFramePlayback.js      setInterval-based playback management
 │   ├── useHistory.js            History stack state management
 │   └── useLayerManager.js       Layer CRUD operations
@@ -198,21 +197,21 @@ The `refs` object is created once in `JellySpriteProvider.jsx` via `useRef({...}
 
 ### Drawing / Selection State
 
-| Field             | Type                        | Description                                                                          |
-| ----------------- | --------------------------- | ------------------------------------------------------------------------------------ |
-| `clipboard`       | `Uint8ClampedArray \| null` | RGBA pixels of the copied region                                                     |
-| `clipboardW`      | `number`                    | Width of clipboard region in pixels                                                  |
-| `clipboardH`      | `number`                    | Height of clipboard region in pixels                                                 |
-| `selectionMask`         | `Uint8Array \| null`        | Per-pixel selection mask (1=selected, 0=not). **Always at current canvas coords** — translated on move pointer-up. |
+| Field                   | Type                        | Description                                                                                                                                                           |
+| ----------------------- | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `clipboard`             | `Uint8ClampedArray \| null` | RGBA pixels of the copied region                                                                                                                                      |
+| `clipboardW`            | `number`                    | Width of clipboard region in pixels                                                                                                                                   |
+| `clipboardH`            | `number`                    | Height of clipboard region in pixels                                                                                                                                  |
+| `selectionMask`         | `Uint8Array \| null`        | Per-pixel selection mask (1=selected, 0=not). **Always at current canvas coords** — translated on move pointer-up.                                                    |
 | `selectionMaskOrigin`   | `{x,y} \| null`             | Canvas position of the mask when it was last committed (after a selection tool or move pointer-up). Used by `buildMaskEdgePath` to offset mask lookups during a drag. |
-| `selectionMaskPath`     | `Path2D \| null`            | Cached `Path2D` of the marching ants boundary. Invalidated when zoom, position, or mask changes. |
-| `selectionMaskPathZoom` | `number`                    | Zoom value at time of last `selectionMaskPath` build. |
-| `selectionMaskPathX`    | `number`                    | `selection.x` at time of last path build — detects position change during move drag. |
-| `selectionMaskPathY`    | `number`                    | `selection.y` at time of last path build. |
-| `lassoPath`             | `{x,y}[]`                   | Live lasso points being drawn (shown as in-progress path)                            |
-| `marchOffset`           | `number`                    | Marching ants dash animation phase (advances ~8px/sec via timestamp delta)           |
-| `marchingAntsRaf`       | `number \| null`            | `requestAnimationFrame` id for ants animation                                        |
-| `selection`             | `SelectionRect \| null`     | Engine's live selection value; written by `drawingEngine`, mirrors `state.selection` |
+| `selectionMaskPath`     | `Path2D \| null`            | Cached `Path2D` of the marching ants boundary. Invalidated when zoom, position, or mask changes.                                                                      |
+| `selectionMaskPathZoom` | `number`                    | Zoom value at time of last `selectionMaskPath` build.                                                                                                                 |
+| `selectionMaskPathX`    | `number`                    | `selection.x` at time of last path build — detects position change during move drag.                                                                                  |
+| `selectionMaskPathY`    | `number`                    | `selection.y` at time of last path build.                                                                                                                             |
+| `lassoPath`             | `{x,y}[]`                   | Live lasso points being drawn (shown as in-progress path)                                                                                                             |
+| `marchOffset`           | `number`                    | Marching ants dash animation phase (advances ~8px/sec via timestamp delta)                                                                                            |
+| `marchingAntsRaf`       | `number \| null`            | `requestAnimationFrame` id for ants animation                                                                                                                         |
+| `selection`             | `SelectionRect \| null`     | Engine's live selection value; written by `drawingEngine`, mirrors `state.selection`                                                                                  |
 
 ### Canvas DOM Elements
 
@@ -294,9 +293,10 @@ These start as no-ops (`() => {}`) and are overwritten by the hooks that create 
   symmetryV:        false,      // mirror brush strokes vertically
 
   // ── Brush ──────────────────────────────────────────────────────────────────
-  brushType:        "round",    // round|square|diamond|cross|pixel|dither|dither2
+  brushType:        "round",    // round|square|diamond|cross|pixel|dither|dither2|star|ring|slash|bslash
   brushSize:        1,          // stamp radius in pixels (1–32)
-  brushOpacity:     100,        // 1–100; multiplied with fgAlpha for final alpha
+  brushOpacity:     100,        // 1–100; applied via Porter-Duff "over" compositing
+  brushHardness:    100,        // 0–100; cosine feather falloff at edges (100 = hard edge)
 
   // ── Color ─────────────────────────────────────────────────────────────────
   fgColor:          "#000000",  // foreground hex color
@@ -307,6 +307,10 @@ These start as no-ops (`() => {}`) and are overwritten by the hooks that create 
   // ── Palettes ──────────────────────────────────────────────────────────────
   palettes:         {...BUILTIN_PALETTES},  // { [name]: hex[] }
   activePalette:    "DoomJelly 32",
+
+  // ── Magic wand settings ──────────────────────────────────────────────────
+  wandTolerance:    15,         // 0–255; how different a pixel can be and still be selected
+  wandContiguous:   true,       // true = flood-fill neighbours; false = all matching pixels
 
   // ── Selection (metadata only) ─────────────────────────────────────────────
   // Pixel-level mask is in refs.selectionMask.
@@ -506,7 +510,7 @@ Pure function. Composites a layer stack onto a canvas element.
 Used by:
 
 - `canvasRenderer.js` — display compositing
-- `useExport.js` — compositing frames for export
+- `compositeFrameToCanvas()` in `JellySprite.jsx` — compositing frames for export
 - Thumbnail generation
 
 ---
@@ -671,19 +675,6 @@ History stack management hook. In the full Option B implementation the history i
 ### `useFramePlayback.js`
 
 Manages `setInterval`-based playback. Sets `refs.isPlaying = true/false` and calls `refs.redraw()` on each tick.
-
-### `useExport.js`
-
-All four export functions as a hook:
-
-| Function              | Output          | Description                                                                                      |
-| --------------------- | --------------- | ------------------------------------------------------------------------------------------------ |
-| `exportPNG()`         | `.png` download | Single frame (active) flattened to PNG                                                           |
-| `exportSpriteSheet()` | `.png` download | All frames arranged in a grid. Uses `exportFramesPerRow`, `exportPadding`, `exportLabels` state. |
-| `exportZIP()`         | `.zip` download | All frames as individual PNGs in a ZIP (uses JSZip)                                              |
-| `exportPalette()`     | `.hex` download | Active palette as a Lospec/Aseprite compatible `.hex` text file                                  |
-
-All functions call `saveCurrentFrameToRef()` first so the active frame's latest pixels are in `frameDataRef` before compositing.
 
 ---
 
@@ -958,56 +949,48 @@ Playback does **not** modify any buffers or dispatch any actions — it only cal
 
 ## 13. Export System
 
-### `useExport.js` API
+All export helpers live as inline functions inside `JellySprite.jsx` (not a separate hook). They are exposed on the context so `ExportModal` in `RightPanel.jsx` can call them.
 
-The hook receives pixel data refs rather than owning them:
+**Shared helpers:**
 
-```js
-const { exportPNG, exportSpriteSheet, exportZIP, exportPalette } = useExport({
-  canvasW,
-  canvasH,
-  framesRef,
-  activeFrameIdxRef,
-  layerDataRef,
-  layerMaskDataRef,
-  layersRef,
-  frameDataRef,
-  palettes,
-  activePalette,
-  exportFramesPerRow,
-  exportPadding,
-  exportLabels,
-  saveCurrentFrameToRef,
-  projectName,
-});
-```
+- `compositeFrameToCanvas(frameId)` — composites all visible layers for a frame → returns a `<canvas>`. Handles active frame (reads from live `layerDataRef`) vs non-active frames (reads from `frameDataRef`).
+- `triggerDownload(url, filename)` — appends a temporary `<a>` to `document.body`, clicks it, removes it. Must use `document.body.appendChild` for Firefox/Edge compatibility.
+
+**All downloads use `URL.createObjectURL(blob)` — never `toDataURL()`.** Chrome 65+ blocks JS-initiated downloads of `data:` URLs.
 
 ### `exportPNG()`
 
-1. `saveCurrentFrameToRef()` — flushes active frame pixels into `frameDataRef`
-2. `compositeFrameToCanvas(activeFrameId)` — layers → single canvas
-3. `canvas.toDataURL("image/png")` → trigger download
+1. `saveCurrentFrameToRef()` — flushes active frame pixels
+2. `compositeFrameToCanvas(activeFrameId)` → `canvas.toBlob()` → `URL.createObjectURL`
+3. Download as `<name>.png`
 
 ### `exportSpriteSheet(framesPerRow, padding, labels)`
 
-1. Save current frame.
-2. Compute output canvas dimensions: `ceil(frames.length / framesPerRow)` rows.
-3. Composite each frame; draw at `(col * (w + padding), row * (h + padding))`.
-4. If `labels`: draw frame name text above each frame.
-5. Trigger download as `.png`.
+1. Save current frame
+2. Compute sheet canvas: `ceil(frames.length / framesPerRow)` rows
+3. Composite each frame; draw at `(col * (fw + padding), row * (fh + padding))`
+4. Optional frame name labels
+5. `sheet.toBlob()` → download as `<name>_sheet.png`
 
-### `exportZIP()`
+### `exportFramesZip()`
 
-1. Save current frame.
-2. Create `JSZip` instance.
-3. For each frame: composite → `toDataURL` → convert to binary → `zip.file(name, blob)`.
-4. `zip.generateAsync({ type: "blob" })` → trigger download as `.zip`.
+1. Save current frame
+2. Create `JSZip` instance
+3. For each frame: composite → `toDataURL("image/png")` → base64 → `zip.file(name, b64, { base64: true })`
+4. `zip.generateAsync({ type: "blob" })` → download as `<name>_frames.zip`
 
-### `exportPalette()`
+### `exportGif()`
 
-1. Get `palettes[activePalette]` → array of hex strings.
-2. Join with newlines, strip `#` prefix → `.hex` file format (Lospec/Aseprite compatible).
-3. Trigger download as `<paletteName>.hex`.
+1. Save current frame
+2. For each frame: `compositeFrameToCanvas` → `getImageData` → `quantize(data, 256)` → `applyPalette` → `encoder.writeFrame(index, w, h, { palette, delay })`
+3. `encoder.finish()` → `new Blob([encoder.bytes()], { type: "image/gif" })` → download as `<name>.gif`
+4. Delay per frame = `Math.round(1000 / fps)` ms
+5. Uses `gifenc` (pure-JS, no worker files, ESM-compatible with Vite)
+
+### `exportPaletteHex()`
+
+1. Get `palettes[activePalette]` → hex strings, strip `#`, join newlines
+2. Download as `<paletteName>.hex` (Lospec/Aseprite format)
 
 ---
 
@@ -1232,6 +1215,26 @@ Do **not** read `refs.stateRef.current` in event handlers that run _during_ a Re
 
 ---
 
+### 16.9 Mask Buffer Resize — Single-Channel vs Four-Channel (Fixed M20)
+
+**Problem:** The original `resizeBuffer()` helper in `changeSize()` allocated a `Uint8ClampedArray(w * h * 4)` and used `* 4` index offsets — correct for RGBA pixel buffers. It was also used for mask buffers, which are `Uint8Array(w * h)` with 1 byte per pixel. Every mask resize produced a buffer 4× too large, with pixels mapped to wrong positions.
+
+**Fix:** A dedicated `resizeMaskBuffer(oldBuf, oldW, oldH, newW, newH, dx, dy)` was added that allocates `Uint8Array(nw * nh)` and uses single-channel indices. `changeSize()` now calls `resizeMaskBuffer` for all `maskBuffers` and `snap.maskBuffers` entries.
+
+**Rule:** Any time you see `Uint8Array` for a pixel-related buffer, it is a single-channel mask. Never multiply its index by 4.
+
+---
+
+### 16.10 Project Storage — localStorage Quota (Fixed M20)
+
+**Problem:** Project bodies were saved to `localStorage` via `localStorage.setItem('dj-project-<id>', JSON.stringify(data))`. Browsers cap `localStorage` at ~5 MB per origin. A modest sprite with several frames and layers (base64-encoded pixel buffers) easily exceeds this, throwing a `QuotaExceededError` caught as "Failed to save project."
+
+**Fix:** Project bodies are now stored in **IndexedDB** (no meaningful size limit). The small metadata index (`{ id, name, savedAt, animCount, frameCount, thumbnail }`) stays in `localStorage` since it's tiny.
+
+**Architecture:** `src/services/projectService.js` is the only file that knows about storage. The rest of the app calls `saveProjectToStorage`, `loadProjectFromStorage`, `deleteProjectFromStorage` — no other file imports from a database service. When the app moves to Supabase, only the internals of `projectService.js` change.
+
+---
+
 ---
 
 ## 17. Planned Refactors
@@ -1244,14 +1247,15 @@ ants path caching) and should be extracted into focused modules.
 
 **Target layout:**
 
-| File | Responsibility |
-| --- | --- |
-| `engine/selectionUtils.js` | Pure functions only: `buildRectMask`, `buildLassoMask`, `combineMasks`, `boundsFromMask`, `getOrBuildMask`, `translateMask`, `buildMaskEdgePath`. Zero refs, zero React. Unit-testable in isolation. |
-| `engine/tools/selectTool.js` | Handlers for `select-rect`, `select-lasso`, `select-wand`. Reads/writes `refs.selectionMask`, `refs.selectionMaskOrigin`, calls `setSelection`. |
-| `engine/tools/moveTool.js` | Handlers for `move` tool. Owns `movePixels`, `moveOrigin`, `previewSnap` as module-scope locals. Translates mask on pointer-up. |
-| `engine/drawingEngine.js` | Thin router — dispatches pointer events to the right tool module. Owns `setSelection` (shared by both tool modules via closure or passed as a param). |
+| File                         | Responsibility                                                                                                                                                                                       |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `engine/selectionUtils.js`   | Pure functions only: `buildRectMask`, `buildLassoMask`, `combineMasks`, `boundsFromMask`, `getOrBuildMask`, `translateMask`, `buildMaskEdgePath`. Zero refs, zero React. Unit-testable in isolation. |
+| `engine/tools/selectTool.js` | Handlers for `select-rect`, `select-lasso`, `select-wand`. Reads/writes `refs.selectionMask`, `refs.selectionMaskOrigin`, calls `setSelection`.                                                      |
+| `engine/tools/moveTool.js`   | Handlers for `move` tool. Owns `movePixels`, `moveOrigin`, `previewSnap` as module-scope locals. Translates mask on pointer-up.                                                                      |
+| `engine/drawingEngine.js`    | Thin router — dispatches pointer events to the right tool module. Owns `setSelection` (shared by both tool modules via closure or passed as a param).                                                |
 
 **Invariants to preserve (do not break these):**
+
 - `refs.selectionMask` is always at current absolute canvas coords after any pointer-up
 - `refs.selectionMaskOrigin` always equals `{x: refs.selection.x, y: refs.selection.y}` between drags
 - `setSelection(val, fromMove)` — `fromMove=true` skips clearing `movePixels` and `selectionMaskOrigin`
