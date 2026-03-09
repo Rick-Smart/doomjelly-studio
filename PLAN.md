@@ -89,7 +89,12 @@
 
 ## ✅ Shipped
 
-### M20 (current sprint — 2026-03-08)
+### M21 (2026-03-08)
+
+- **Onion skinning render-order fix** — ghost frames were previously composited onto `ctx` _before_ the active frame, so any opaque pixel in the current frame completely buried them. Ghosts are now drawn as an overlay _above_ the active frame at 30% opacity (standard Aseprite/Krita behaviour). Commit `211ab11`.
+- **Error boundary** — two-level `ErrorBoundary` class component catches render crashes: one wrapping the whole app, one wrapping `<JellySprite>` so a Forge crash leaves nav/page chrome intact.
+
+### M20 (2026-03-08)
 
 - **Animated GIF export** — export all frames at project FPS as `.gif` (uses `gifenc`, no worker files needed; blob URL download)
 - **Export download fix** — `triggerDownload` now appends anchor to DOM before `.click()` (Firefox/Edge fix); PNG and sprite sheet switched from `data:` URL to `toBlob() + URL.createObjectURL()` (Chrome 65+ fix)

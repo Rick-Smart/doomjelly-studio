@@ -1,7 +1,7 @@
 # JellySprite Architecture Reference
 
 > **Stack:** React 19 + Vite · **Design:** Option B pixel-in-refs  
-> **Last updated:** 2026-03-08 — M20 complete (GIF export, magic wand tolerance, brush overhaul, canvas resize mask fix, IndexedDB storage).
+> **Last updated:** 2026-03-08 — M21 complete (onion skinning overlay fix, error boundary).
 
 ---
 
@@ -479,8 +479,8 @@ Creates the `redraw()` function. Call `refs.redraw()` any time pixels or display
 **Render order (single call):**
 
 1. Clear the visible canvas.
-2. If `onionSkinning` is on and not playing: composite previous frame (red tint) and next frame (blue tint) at 30% opacity.
-3. Composite active (or playback) frame's layers via `compositeLayersToCanvas` → draw scaled to `zoom` onto visible canvas.
+2. Composite active (or playback) frame's layers via `compositeLayersToCanvas` → draw scaled to `zoom` onto visible canvas.
+3. If `onionSkinning` is on and not playing: draw previous frame (red tint) and next frame (blue tint) **as overlay** at 30% opacity on top of the active frame.
 4. If `refImgEl` and `refVisible`: draw reference image overlay at `refOpacity`.
 5. If `gridVisible && zoom >= 4`: draw pixel grid.
 6. If `frameGridVisible && frameConfig`: draw frame boundary grid.
@@ -1222,6 +1222,14 @@ Do **not** read `refs.stateRef.current` in event handlers that run _during_ a Re
 **Fix:** A dedicated `resizeMaskBuffer(oldBuf, oldW, oldH, newW, newH, dx, dy)` was added that allocates `Uint8Array(nw * nh)` and uses single-channel indices. `changeSize()` now calls `resizeMaskBuffer` for all `maskBuffers` and `snap.maskBuffers` entries.
 
 **Rule:** Any time you see `Uint8Array` for a pixel-related buffer, it is a single-channel mask. Never multiply its index by 4.
+
+---
+
+### 16.11 Onion Skinning — Ghosts Invisible Over Opaque Pixels (Fixed M21)
+
+**Problem:** Onion-skin ghost frames were composited onto `ctx` _before_ the active frame. Because `globalCompositeOperation` defaults to `source-over`, any opaque pixel in the current frame painted over the ghost completely, making ghosts visible only in fully-transparent areas. With any drawn content they were invisible.
+
+**Fix:** The render order in `canvasRenderer.js` was inverted so the active frame is drawn first, then the ghost overlays are painted on top at `ONION_OPACITY` (0.3). This is the standard animation-tool behaviour (Aseprite, Krita, etc.).
 
 ---
 
