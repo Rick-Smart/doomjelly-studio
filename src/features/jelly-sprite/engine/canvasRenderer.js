@@ -35,7 +35,8 @@ function buildMaskEdgePath(mask, sel, maskOrigin, w, h, z) {
   // Look up a mask bit at display position (px, py) by translating back to
   // the original mask coordinates.
   const bit = (px, py) => {
-    const mx = px - ox, my = py - oy;
+    const mx = px - ox,
+      my = py - oy;
     if (mx < 0 || mx >= w || my < 0 || my >= h) return 0;
     return mask[my * w + mx];
   };
@@ -47,10 +48,7 @@ function buildMaskEdgePath(mask, sel, maskOrigin, w, h, z) {
     // top edges
     let runX = -1;
     for (let px = bx; px <= bx + bw; px++) {
-      const edge =
-        px < bx + bw &&
-        bit(px, py) &&
-        !bit(px, py - 1);
+      const edge = px < bx + bw && bit(px, py) && !bit(px, py - 1);
       if (edge && runX < 0) {
         runX = px;
       } else if (!edge && runX >= 0) {
@@ -62,10 +60,7 @@ function buildMaskEdgePath(mask, sel, maskOrigin, w, h, z) {
     // bottom edges
     runX = -1;
     for (let px = bx; px <= bx + bw; px++) {
-      const edge =
-        px < bx + bw &&
-        bit(px, py) &&
-        !bit(px, py + 1);
+      const edge = px < bx + bw && bit(px, py) && !bit(px, py + 1);
       if (edge && runX < 0) {
         runX = px;
       } else if (!edge && runX >= 0) {
@@ -81,10 +76,7 @@ function buildMaskEdgePath(mask, sel, maskOrigin, w, h, z) {
     // left edges
     let runY = -1;
     for (let py = by; py <= by + bh; py++) {
-      const edge =
-        py < by + bh &&
-        bit(px, py) &&
-        !bit(px - 1, py);
+      const edge = py < by + bh && bit(px, py) && !bit(px - 1, py);
       if (edge && runY < 0) {
         runY = py;
       } else if (!edge && runY >= 0) {
@@ -96,10 +88,7 @@ function buildMaskEdgePath(mask, sel, maskOrigin, w, h, z) {
     // right edges
     runY = -1;
     for (let py = by; py <= by + bh; py++) {
-      const edge =
-        py < by + bh &&
-        bit(px, py) &&
-        !bit(px + 1, py);
+      const edge = py < by + bh && bit(px, py) && !bit(px + 1, py);
       if (edge && runY < 0) {
         runY = py;
       } else if (!edge && runY >= 0) {
@@ -153,7 +142,35 @@ export function createRenderer(refs) {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // ── Onion skinning ────────────────────────────────────────────────────
+    // ── Composite active (or playback) frame ──────────────────────────────
+    if (displayFrame) {
+      const isActiveFrame = dispIdx === activeFrameIdx;
+      const renderLayers = isActiveFrame
+        ? layers
+        : (refs.frameSnapshots[displayFrame.id]?.layers ?? layers);
+      const renderPixelBuffers = isActiveFrame
+        ? refs.pixelBuffers
+        : (refs.frameSnapshots[displayFrame.id]?.pixelBuffers ??
+          refs.pixelBuffers);
+      const renderMaskBuffers = isActiveFrame
+        ? refs.maskBuffers
+        : (refs.frameSnapshots[displayFrame.id]?.maskBuffers ??
+          refs.maskBuffers);
+      compositeLayersToCanvas(
+        renderLayers,
+        renderPixelBuffers,
+        renderMaskBuffers,
+        off,
+      );
+    }
+
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(off, 0, 0, w * z, h * z);
+
+    // ── Onion skinning (drawn as overlay above active frame) ──────────────
+    // Ghosts are composited ON TOP of the active frame so they remain visible
+    // regardless of whether the current frame has opaque content. This is the
+    // standard behaviour in animation tools (e.g. Aseprite).
     if (onionSkinning && !refs.isPlaying && frames.length > 1) {
       const curIdx = activeFrameIdx;
 
@@ -191,31 +208,6 @@ export function createRenderer(refs) {
       if (curIdx < frames.length - 1)
         drawGhost(curIdx + 1, "rgba(80,80,255,0.5)");
     }
-
-    // ── Composite active (or playback) frame ──────────────────────────────
-    if (displayFrame) {
-      const isActiveFrame = dispIdx === activeFrameIdx;
-      const renderLayers = isActiveFrame
-        ? layers
-        : (refs.frameSnapshots[displayFrame.id]?.layers ?? layers);
-      const renderPixelBuffers = isActiveFrame
-        ? refs.pixelBuffers
-        : (refs.frameSnapshots[displayFrame.id]?.pixelBuffers ??
-          refs.pixelBuffers);
-      const renderMaskBuffers = isActiveFrame
-        ? refs.maskBuffers
-        : (refs.frameSnapshots[displayFrame.id]?.maskBuffers ??
-          refs.maskBuffers);
-      compositeLayersToCanvas(
-        renderLayers,
-        renderPixelBuffers,
-        renderMaskBuffers,
-        off,
-      );
-    }
-
-    ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(off, 0, 0, w * z, h * z);
 
     // ── Reference image overlay ───────────────────────────────────────────
     if (refs.refImgEl && refVisible) {
@@ -301,7 +293,8 @@ export function createRenderer(refs) {
         const curX = xy[(n - 1) * 2];
         const curY = xy[(n - 1) * 2 + 1];
         const snapDist = Math.max(2, 8 / z);
-        const dx = curX - sp.x, dy = curY - sp.y;
+        const dx = curX - sp.x,
+          dy = curY - sp.y;
         if (Math.sqrt(dx * dx + dy * dy) <= snapDist) {
           ctx.fillStyle = "rgba(255,255,255,0.9)";
           ctx.beginPath();
