@@ -1,26 +1,13 @@
-import { useRef, useEffect } from "react";
+﻿import { useRef, useEffect } from "react";
 import { useJellySpriteStore } from "../store/useJellySpriteStore.js";
 import { createRenderer } from "../engine/canvasRenderer.js";
 import { createDrawingEngine } from "../engine/drawingEngine.js";
 
-/**
- * useCanvas — M2/M3 rebuild.
- *
- * On mount:
- *   1. Attaches to the <canvas> element (refs.canvasEl)
- *   2. Creates offscreen canvas
- *   3. Initialises pixel buffers for any layers that don't have one yet
- *   4. Wires canvasRenderer → refs.redraw
- *   5. Wires historyEngine → refs.pushHistory / refs.undoHistory / refs.redoHistory
- *   6. Wires drawingEngine → refs.drawingEngine  (pointer events, clipboard ops)
- *
- * Returns { canvasRef } — mount on the <canvas> element.
- */
 export function useCanvas() {
   const { refs, state, dispatch } = useJellySpriteStore();
   const canvasRef = useRef(null);
 
-  // ── On mount: create offscreen, init pixel buffers, wire all engines ───
+  // On mount: create offscreen, init pixel buffers, wire all engines
   useEffect(() => {
     const { canvasW, canvasH, layers } = refs.stateRef.current;
 
@@ -59,7 +46,7 @@ export function useCanvas() {
     refs.redraw();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Resize offscreen when canvas dimensions change ─────────────────────
+  // Resize offscreen when canvas dimensions change
   // NOTE: do NOT call redraw() here. This effect fires before JellySprite's
   // own [canvasW, canvasH] effect, which rebuilds the pixel buffers at the
   // new size and then calls redraw(). Calling redraw() here would composite
@@ -70,7 +57,7 @@ export function useCanvas() {
     refs.offscreenEl.height = state.canvasH;
   }, [state.canvasW, state.canvasH]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Redraw on visual-only metadata changes ─────────────────────────────
+  // Redraw on visual-only metadata changes
   useEffect(() => {
     refs.redraw?.();
   }, [

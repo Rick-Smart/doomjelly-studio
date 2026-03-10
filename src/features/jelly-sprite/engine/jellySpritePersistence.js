@@ -1,15 +1,4 @@
-/**
- * jellySpritePersistence.js
- *
- * Serialize / deserialize the full JellySprite editor state so projects
- * can be fully round-tripped through save → localStorage → load.
- *
- * Serialization produces a plain-JSON object (no typed arrays, no DOM refs).
- * Pixel buffers (Uint8ClampedArray) are stored as base64 strings.
- * Mask buffers (Uint8Array) are also base64.
- */
-
-// ── base64 helpers ────────────────────────────────────────────────────────────
+﻿// base64 helpers
 
 function uint8ToBase64(arr) {
   if (!arr || arr.length === 0) return "";
@@ -38,7 +27,7 @@ function base64ToUint8(b64) {
   return out;
 }
 
-// ── Serialize ─────────────────────────────────────────────────────────────────
+// Serialize
 
 /**
  * Snapshots the entire JellySprite state into a plain JSON-serialisable object.
@@ -116,7 +105,7 @@ export function serializeJellySprite(refs, ss, frames) {
   };
 }
 
-// ── Deserialize ───────────────────────────────────────────────────────────────
+// Deserialize
 
 /**
  * Restores JellySprite state from a previously-serialized object.

@@ -1,24 +1,4 @@
-/**
- * Image export service — canvas-based PNG generation.
- *
- * buildPackedAtlas — crops every unique (col,row) cell referenced by the
- *   selected animations from the source sheet, arranges them into a tight
- *   roughly-square grid PNG, and generates a matching atlas JSON.
- *
- * buildAnimStrips — renders each animation as a horizontal strip PNG
- *   (frameW × frameCount wide, frameH tall) with a matching JSON descriptor.
- *
- * All output images use native (1×) pixel coordinates regardless of the
- * project's display scale setting.
- */
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-/**
- * Load an image from a URL (object URL or data URL).
- * Returns a Promise<HTMLImageElement>.
- */
-export function loadImage(src) {
+﻿export function loadImage(src) {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => resolve(img);
@@ -65,7 +45,7 @@ export function canvasToBlob(canvas) {
   });
 }
 
-// ── Packed Atlas ──────────────────────────────────────────────────────────────
+// Packed Atlas
 
 /**
  * Build a packed atlas PNG + JSON descriptor.
@@ -156,7 +136,7 @@ export function buildPackedAtlas(srcImg, animations, frameConfig, options) {
   };
 }
 
-// ── Animation Strips ──────────────────────────────────────────────────────────
+// Animation Strips
 
 /**
  * Build per-animation strip images.

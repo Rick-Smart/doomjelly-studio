@@ -1,15 +1,3 @@
-/**
- * compositeEngine.js
- *
- * Composites a frame's layer stack onto a given canvas element.
- * Pure function — no React, no state. Called by the renderer and the
- * thumbnail/export systems.
- *
- * @param {Object[]} layers          - Array of layer metadata objects (bottom → top order)
- * @param {Object}   pixelBuffers    - { [layerId]: Uint8ClampedArray }
- * @param {Object}   maskBuffers     - { [layerId]: Uint8Array } (optional per layer)
- * @param {HTMLCanvasElement} target - Canvas to draw onto (must already be sized w×h)
- */
 export function compositeLayersToCanvas(layers, pixelBuffers, maskBuffers, target) {
   const w = target.width;
   const h = target.height;

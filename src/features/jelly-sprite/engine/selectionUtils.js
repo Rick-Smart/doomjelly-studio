@@ -1,16 +1,4 @@
-/**
- * selectionUtils.js
- *
- * Pure, engine-layer helpers for selection masks and pixel-accurate line
- * drawing. No React imports; no refs; no side effects.
- *
- * Kept inside engine/ so the drawing engine can import from within its own
- * layer rather than reaching up into the feature-level utils.
- */
-
-// ── Mask construction ─────────────────────────────────────────────────────────
-
-/** Fill a rectangular region into a flat Uint8Array bitmask (1 = selected). */
+﻿/** Fill a rectangular region into a flat Uint8Array bitmask (1 = selected). */
 export function buildRectMask(sel, w, h) {
   const mask = new Uint8Array(w * h);
   const x1 = Math.max(0, sel.x),
@@ -68,7 +56,7 @@ export function boundsFromMask(mask, w, h) {
   return { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 };
 }
 
-// ── Geometric primitives ──────────────────────────────────────────────────────
+// Geometric primitives
 
 /**
  * Scanline polygon fill → Uint8Array bitmask (1 = inside) in full canvas

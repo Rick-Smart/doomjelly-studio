@@ -1,9 +1,5 @@
 import { useState, useCallback } from "react";
 
-/**
- * useState backed by localStorage.
- * Value is serialised via JSON. Falls back to initialValue on parse errors.
- */
 export function useLocalStorage(key, initialValue) {
   const [storedValue, setStoredValue] = useState(() => {
     try {

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+﻿import { useState, useRef, useEffect, useCallback } from "react";
 import { ColorPicker } from "../../../ui/ColorPicker";
 import { PaletteManager } from "../../../ui/PaletteManager";
 import { useJellySprite } from "../JellySpriteContext";
@@ -10,7 +10,7 @@ import {
 } from "../jellySprite.constants";
 import { BrushThumb } from "../BrushThumb";
 
-// ── Right panel container ─────────────────────────────────────────────────────
+// Right panel container
 export function RightPanel() {
   const {
     fgColor,
@@ -107,7 +107,7 @@ export function RightPanel() {
   );
 }
 
-// ── Selection tab ─────────────────────────────────────────────────────────────
+// Selection tab
 function SelectionTabBody() {
   const {
     selection,
@@ -301,7 +301,7 @@ function SelectionTabBody() {
   );
 }
 
-// ── Brush tab ─────────────────────────────────────────────────────────────────
+// Brush tab
 function BrushTabBody() {
   const {
     brushType,
@@ -472,8 +472,8 @@ function BrushTabBody() {
   );
 }
 
-// ── Layers tab ────────────────────────────────────────────────────────────────
-// ── LayerRow card ─────────────────────────────────────────────────────────────
+// Layers tab
+// LayerRow card
 function LayerRow({ layer, isActive }) {
   const {
     activeLayerId,
@@ -681,7 +681,7 @@ function LayerRow({ layer, isActive }) {
   );
 }
 
-// ── Layers tab ────────────────────────────────────────────────────────────────
+// Layers tab
 function LayersTabBody() {
   const { layers, activeLayerId, addLayer, mergeLayerDown, flattenAll } =
     useJellySprite();
@@ -729,7 +729,7 @@ function LayersTabBody() {
   );
 }
 
-// ── Canvas settings tab ───────────────────────────────────────────────────────
+// Canvas settings tab
 function CanvasTabBody() {
   const {
     canvasW,
@@ -819,7 +819,7 @@ function CanvasTabBody() {
   );
 }
 
-// ── View tab ──────────────────────────────────────────────────────────────────
+// View tab
 function ViewTabBody() {
   const {
     refImage,
@@ -1042,7 +1042,7 @@ function ViewTabBody() {
   );
 }
 
-// ── More tab ──────────────────────────────────────────────────────────────────
+// More tab
 function MoreTabBody() {
   const { projectState, importFromAnimator, useInAnimator, setExportOpen } =
     useJellySprite();
@@ -1075,7 +1075,7 @@ function MoreTabBody() {
   );
 }
 
-// ── Export modal ──────────────────────────────────────────────────────────────
+// Export modal
 export function ExportModal() {
   const {
     exportOpen,

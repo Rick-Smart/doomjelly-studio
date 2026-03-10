@@ -1,9 +1,5 @@
 import { useState, useEffect } from "react";
 
-/**
- * Returns a debounced version of `value` that only updates after
- * `delay` ms of inactivity. Useful for live-input driven expensive work.
- */
 export function useDebounce(value, delay = 300) {
   const [debouncedValue, setDebouncedValue] = useState(value);
 

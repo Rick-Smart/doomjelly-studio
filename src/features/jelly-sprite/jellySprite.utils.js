@@ -1,4 +1,4 @@
-// ── Pure utility & drawing functions ─────────────────────────────────────────
+﻿// Pure utility & drawing functions
 
 export function hexToRgba(hex, alpha = 255) {
   return [

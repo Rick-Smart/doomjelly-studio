@@ -1,11 +1,3 @@
-/**
- * Database service — localStorage stub.
- *
- * All methods return Promises to match the async Supabase API shape.
- * To migrate: replace internals with supabase.from('projects')... calls.
- * The rest of the app never changes.
- */
-
 const INDEX_KEY = "dj-projects-index";
 
 function readIndex() {

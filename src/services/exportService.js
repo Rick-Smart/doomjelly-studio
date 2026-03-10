@@ -1,17 +1,4 @@
-/**
- * Export service — converts project data into various animation JSON formats.
- *
- * All generators take:
- *   animations  array   Full animations array from ProjectContext
- *   frameConfig object  { frameW, frameH, offsetX, offsetY, gutterX, gutterY, scale }
- *   options     object  { target: 'active' | 'all', activeAnimationId }
- *
- * Returns a plain JS value suitable for JSON.stringify.
- */
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function frameToRect(frame, frameConfig) {
+﻿function frameToRect(frame, frameConfig) {
   const { frameW, frameH, offsetX, offsetY, gutterX, gutterY } = frameConfig;
   return {
     x: offsetX + frame.col * (frameW + gutterX),
@@ -28,7 +15,7 @@ function pickAnimations(animations, options) {
   return animations;
 }
 
-// ── Format: Generic JSON ──────────────────────────────────────────────────────
+// Format: Generic JSON
 
 /**
  * Simple flat array format.
@@ -49,7 +36,7 @@ export function toGenericJSON(animations, frameConfig, options) {
   return result;
 }
 
-// ── Format: Phaser 3 JSON Atlas ───────────────────────────────────────────────
+// Format: Phaser 3 JSON Atlas
 
 /**
  * Phaser 3 texture atlas + animation config shape.
@@ -115,7 +102,7 @@ export function toPhaser3JSON(animations, frameConfig, options) {
   };
 }
 
-// ── Format: Canvas/Sprite.js (UI_TOOLS convention) ──────────────────────────
+// Format: Canvas/Sprite.js (UI_TOOLS convention)
 
 /**
  * canvas/sprite.js format — returns a plain object; serialize() converts to
@@ -147,7 +134,7 @@ function serializeCanvasSpriteJS(data) {
   return `export const animations = ${js};\n`;
 }
 
-// ── Format registry ───────────────────────────────────────────────────────────
+// Format registry
 
 export const EXPORT_FORMATS = [
   {
@@ -172,7 +159,7 @@ export const EXPORT_FORMATS = [
   },
 ];
 
-// ── Download helper ───────────────────────────────────────────────────────────
+// Download helper
 
 export function downloadJSON(data, filename) {
   const blob = new Blob([JSON.stringify(data, null, 2)], {

@@ -1,29 +1,10 @@
-/**
- * Project persistence service.
- *
- * Handles:
- *  - Serialising / deserialising the .doomjelly.json format
- *  - Downloading a project as a file
- *  - Loading a project from a user-selected file
- *  - localStorage index (list, save-entry, delete-entry)
- *
- * Schema v1 (legacy):
- *   { version:1, frameConfig, animations, jellySpriteDataUrl }
- *
- * Schema v2 (current):
- *   Adds jellySpriteState — the full editor save from jellySpritePersistence.
- *   v1 files load cleanly (jellySpriteState will be absent/null).
- */
-
-import { supabase, isSupabaseEnabled } from "./supabase.js";
+﻿import { supabase, isSupabaseEnabled } from "./supabase.js";
 
 const SCHEMA_VERSION = 2;
 const INDEX_KEY = "dj-projects-index";
 const IDB_NAME = "doomjelly-studio";
 const IDB_STORE = "projects";
 const IDB_VERSION = 1;
-
-// ── Supabase helpers (only used when isSupabaseEnabled) ───────────────────────
 
 async function sbList() {
   const { data, error } = await supabase
@@ -101,7 +82,7 @@ async function sbDelete(id) {
   if (error) throw error;
 }
 
-// ── IndexedDB helpers ─────────────────────────────────────────────────────────
+// IndexedDB helpers
 
 function openDB() {
   return new Promise((resolve, reject) => {
@@ -144,7 +125,7 @@ async function idbDelete(id) {
   });
 }
 
-// ── localStorage index helpers (small metadata only) ─────────────────────────
+// localStorage index helpers (small metadata only)
 
 function readIndex() {
   try {
@@ -158,7 +139,7 @@ function writeIndex(list) {
   localStorage.setItem(INDEX_KEY, JSON.stringify(list));
 }
 
-// ── Serialisation ─────────────────────────────────────────────────────────────
+// Serialisation
 
 /**
  * Converts ProjectContext state + optional JellySprite editor state into the
@@ -195,7 +176,7 @@ export function serialiseProject(state, jellySpriteState, type = "animator") {
   };
 }
 
-// ── File download ─────────────────────────────────────────────────────────────
+// File download
 
 /**
  * Triggers a browser download of the project as a .doomjelly.json file.
@@ -215,7 +196,7 @@ export function downloadProject(state) {
   return data;
 }
 
-// ── File load ─────────────────────────────────────────────────────────────────
+// File load
 
 /**
  * Opens a file picker and resolves with the parsed project object.
@@ -257,7 +238,7 @@ export function pickAndLoadProject() {
   });
 }
 
-// ── localStorage project list ─────────────────────────────────────────────────
+// localStorage project list
 
 /** Returns the index array of { id, name, savedAt, animCount, frameCount, thumbnail } entries. */
 export async function listProjects() {

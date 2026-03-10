@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react";
+﻿import { createContext, useContext, useEffect, useState } from "react";
 
 /**
  * Theme registry — add new themes here as objects of CSS custom property values.
@@ -95,7 +95,7 @@ export const DEFAULT_CUSTOM_VARS = {
   "--danger":     "#ef4444",
 };
 
-// ── Helpers ───────────────────────────────────────────────
+// Helpers
 
 /** Darken a 6-digit hex color by 20%. */
 function darken(hex) {
@@ -114,7 +114,7 @@ function isLightHex(hex) {
   return (r * 299 + g * 587 + b * 114) / 1000 > 128;
 }
 
-// ── Constants ─────────────────────────────────────────────
+// Constants
 
 const DEFAULT_THEME        = "dark";
 const STORAGE_KEY          = "dj-theme";
@@ -124,7 +124,7 @@ const CUSTOM_BG_OPACITY_KEY = "dj-theme-custom-bg-opacity";
 
 const ThemeContext = createContext(null);
 
-// ── Provider ──────────────────────────────────────────────
+// Provider
 
 export function ThemeProvider({ children }) {
   const [theme, setThemeState] = useState(() => {

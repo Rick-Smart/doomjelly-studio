@@ -1,12 +1,3 @@
-/**
- * Storage service — object URL stub.
- *
- * Returns Promises to match the async Supabase Storage API shape.
- * To migrate: replace internals with supabase.storage.from('sprites')... calls.
- * Object URLs are in-memory only; they don't survive page refresh,
- * which is intentional for the dev stub (user re-imports the sheet).
- */
-
 const cache = new Map();
 
 export async function uploadSprite(file) {

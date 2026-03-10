@@ -1,17 +1,6 @@
 import { useRef, useCallback, useState, useEffect } from "react";
 
-/**
- * rAF-based animation playback loop.
- *
- * Advances through frames based on per-frame tick counts at a configurable
- * ticks-per-second rate. Supports loop, ping-pong, and once modes.
- *
- * @param {Array<{ticks: number}>} frames
- * @param {{ mode?, speed?, ticksPerSecond?, resetKey? }} opts
- *   resetKey: when this value changes playback resets to frame 0.
- *             Pass activeAnimationId so switching animations resets.
- * @returns {{ frameIndex, isPlaying, play, pause, seek }}
- */
+// resetKey resets playback to frame 0 on change — pass activeAnimationId so switching anims resets
 export function useAnimationLoop(
   frames,
   { mode = "loop", speed = 1, ticksPerSecond = 60, resetKey } = {},

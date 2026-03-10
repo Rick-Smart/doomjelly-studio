@@ -8,7 +8,8 @@ const key =
 
 /**
  * Supabase client singleton.
- * Will be `null` when VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY are not set,
+ * Will be 
+ull` when VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY are not set,
  * which keeps the app fully functional in offline / local-dev mode.
  */
 export const supabase = url && key ? createClient(url, key) : null;

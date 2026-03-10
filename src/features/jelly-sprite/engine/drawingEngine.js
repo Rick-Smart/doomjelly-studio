@@ -1,29 +1,4 @@
-/**
- * drawingEngine.js
- *
- * Creates and returns pointer-event handlers that paint into refs.pixelBuffers,
- * manage selection, and call refs.redraw() after every change.
- *
- * Design rules:
- * - Never closes over React state. All state is read from refs.stateRef.current.
- * - All pixel mutations go through pixelOps helpers.
- * - Calls refs.onStrokeComplete() on stroke completion (history + thumbnail + dispatch).
- * - Does NOT touch React setState — that is handled by the returned
- *   { getSelection } helper which JellySpriteBody uses to sync React state.
- *
- * Wired once from useCanvas (after buffers + renderer are ready):
- *
- *   const engine = createDrawingEngine(refs);
- *   refs.drawingEngine = engine;
- *
- * The canvas element calls:
- *   engine.onPointerDown(e)
- *   engine.onPointerMove(e)
- *   engine.onPointerUp(e)
- *   engine.onPointerLeave(e)
- */
-
-import {
+﻿import {
   hexToRgba,
   rgbaToHex,
   getPixel,
@@ -49,7 +24,7 @@ import {
 import * as clipboardOps from "./tools/clipboardOps.js";
 import * as selOps from "./tools/selectionOps.js";
 
-// ── Internal helpers ──────────────────────────────────────────────────────────
+// Internal helpers
 
 function canvasCoords(e, canvasEl, zoom, w, h) {
   const rect = canvasEl.getBoundingClientRect();
@@ -59,7 +34,7 @@ function canvasCoords(e, canvasEl, zoom, w, h) {
   };
 }
 
-// ── Brush context ─────────────────────────────────────────────────────────────
+// Brush context
 /**
  * Passed to stampBrush / paintWithSymmetry / sprayBrush.
  */
@@ -93,7 +68,7 @@ function getActiveRgba(refs) {
   );
 }
 
-// ── Factory ───────────────────────────────────────────────────────────────────
+// Factory
 
 export function createDrawingEngine(refs) {
   // Pointer-handler-only transient state.
@@ -145,7 +120,7 @@ export function createDrawingEngine(refs) {
     for (const fn of selListeners) fn(val);
   }
 
-  // ── Single-coord apply ─────────────────────────────────────────────────────
+  // Single-coord apply
   function applyFreehand(x, y) {
     const st = refs.stateRef.current;
     const tool = st.tool;
@@ -179,7 +154,7 @@ export function createDrawingEngine(refs) {
     return null;
   }
 
-  // ── Shape preview helper ───────────────────────────────────────────────────
+  // Shape preview helper
   function previewShape(x0, y0, x1, y1) {
     if (!state.previewSnap) return;
     const st = refs.stateRef.current;
@@ -220,7 +195,7 @@ export function createDrawingEngine(refs) {
     }
   }
 
-  // ── Pointer down ───────────────────────────────────────────────────────────
+  // Pointer down
   function onPointerDown(e) {
     if (e.button !== 0) return null;
     e.preventDefault();
@@ -234,7 +209,7 @@ export function createDrawingEngine(refs) {
     startPx = { x, y };
     lastPx = { x, y };
 
-    // ── Move ────────────────────────────────────────────────────────────────
+    // Move
     if (tool === "move") {
       const sel = refs.selection;
       if (sel) {
@@ -301,7 +276,7 @@ export function createDrawingEngine(refs) {
       return null;
     }
 
-    // ── Shape tools: snapshot for preview ───────────────────────────────────
+    // Shape tools: snapshot for preview
     if (["line", "rect", "ellipse", "select-rect"].includes(tool)) {
       if (tool === "select-rect" && selMode === "replace")
         refs.selectionMask = null;
@@ -310,7 +285,7 @@ export function createDrawingEngine(refs) {
       if (buf) state.previewSnap = new Uint8ClampedArray(buf);
     }
 
-    // ── Lasso ───────────────────────────────────────────────────────────────
+    // Lasso
     if (tool === "select-lasso") {
       if (selMode === "replace") {
         refs.selectionMask = null;
@@ -335,7 +310,7 @@ export function createDrawingEngine(refs) {
       return null;
     }
 
-    // ── Magic wand ──────────────────────────────────────────────────────────
+    // Magic wand
     if (tool === "select-wand") {
       const buf = refs.pixelBuffers[st.activeLayerId];
       if (buf) {
@@ -366,7 +341,7 @@ export function createDrawingEngine(refs) {
       return null;
     }
 
-    // ── Freehand tools ───────────────────────────────────────────────────────
+    // Freehand tools
     if (!["select-rect", "move"].includes(tool)) {
       const pickedHex = applyFreehand(x, y);
       refs.redraw?.();
@@ -375,7 +350,7 @@ export function createDrawingEngine(refs) {
     return null;
   }
 
-  // ── Pointer move ───────────────────────────────────────────────────────────
+  // Pointer move
   function onPointerMove(e) {
     if (!isDrawing) return null;
 
@@ -383,7 +358,7 @@ export function createDrawingEngine(refs) {
     const { canvasW: w, canvasH: h, zoom, tool } = st;
     const { x, y } = canvasCoords(e, refs.canvasEl, zoom, w, h);
 
-    // ── Move ────────────────────────────────────────────────────────────────
+    // Move
     if (tool === "move" && moveOrigin) {
       const ddx = x - moveOrigin.x;
       const ddy = y - moveOrigin.y;
@@ -411,7 +386,7 @@ export function createDrawingEngine(refs) {
       return null;
     }
 
-    // ── Lasso ───────────────────────────────────────────────────────────────
+    // Lasso
     if (tool === "select-lasso" && lassoLastPx) {
       const { canvasW: lw, canvasH: lh, zoom: lz } = st;
       // Bresenham-connect last stored pixel to current to fill skipped pixels
@@ -434,7 +409,7 @@ export function createDrawingEngine(refs) {
       return null;
     }
 
-    // ── Shape preview ────────────────────────────────────────────────────────
+    // Shape preview
     if (["line", "rect", "ellipse", "select-rect"].includes(tool)) {
       previewShape(startPx.x, startPx.y, x, y);
       refs.redraw?.();
@@ -457,7 +432,7 @@ export function createDrawingEngine(refs) {
     return null;
   }
 
-  // ── Pointer up ─────────────────────────────────────────────────────────────
+  // Pointer up
   function onPointerUp(e) {
     if (!isDrawing) return;
     isDrawing = false;
@@ -466,7 +441,7 @@ export function createDrawingEngine(refs) {
     const { canvasW: w, canvasH: h, zoom, tool } = st;
     const { x, y } = canvasCoords(e, refs.canvasEl, zoom, w, h);
 
-    // ── Move finalise ────────────────────────────────────────────────────────
+    // Move finalise
     if (tool === "move" && moveOrigin) {
       // Translate the selection mask to its new absolute canvas position.
       // This keeps refs.selectionMask in sync with where the pixels actually
@@ -508,7 +483,7 @@ export function createDrawingEngine(refs) {
       return;
     }
 
-    // ── Lasso finalise ────────────────────────────────────────────────────────
+    // Lasso finalise
     if (tool === "select-lasso") {
       // Clear live-drag renderer state
       refs.lassoPath2D = null;
@@ -556,7 +531,7 @@ export function createDrawingEngine(refs) {
       return;
     }
 
-    // ── Rect select finalise ─────────────────────────────────────────────────
+    // Rect select finalise
     if (tool === "select-rect") {
       refs.selectionPreviewRect = null; // clear the in-drag preview
       const lx = Math.min(startPx.x, x),
@@ -590,7 +565,7 @@ export function createDrawingEngine(refs) {
       return;
     }
 
-    // ── Shape finalise ────────────────────────────────────────────────────
+    // Shape finalise
     if (["line", "rect", "ellipse"].includes(tool)) {
       previewShape(startPx.x, startPx.y, x, y);
       state.previewSnap = null;
@@ -603,7 +578,7 @@ export function createDrawingEngine(refs) {
     (refs.onStrokeComplete ?? refs.pushHistory)?.();
   }
 
-  // ── Pointer leave ──────────────────────────────────────────────────────────
+  // Pointer leave
   function onPointerLeave() {
     if (!isDrawing) return;
     const st = refs.stateRef.current;
@@ -624,7 +599,7 @@ export function createDrawingEngine(refs) {
     }
   }
 
-  // ── Clipboard / selection operations (delegated to tools/) ───────────────
+  // Clipboard / selection operations (delegated to tools/)
   function copySelection() {
     clipboardOps.copySelection(refs);
   }
@@ -638,7 +613,7 @@ export function createDrawingEngine(refs) {
     // Phase M5+ — resize canvas to selection bounds. No-op for now.
   }
 
-  // ── Selection transform operations (delegated to tools/) ─────────────────
+  // Selection transform operations (delegated to tools/)
   function invertSelection() {
     selOps.invertSelection(refs, state, setSelection);
   }
@@ -658,7 +633,7 @@ export function createDrawingEngine(refs) {
     selOps.rotateSelArbitrary(refs, state, setSelection, deg);
   }
 
-  // ── Subscribe to selection changes ────────────────────────────────────────
+  // Subscribe to selection changes
   function onSelectionChange(fn) {
     selListeners.push(fn);
     return () => {

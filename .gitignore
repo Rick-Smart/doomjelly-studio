@@ -14,6 +14,8 @@ dist-ssr
 
 # Local planning docs (not for repo)
 ROADMAP.md
+PLAN.md
+JELLYSPRITE_ARCHITECTURE.md
 
 # Editor directories and files
 .vscode/*

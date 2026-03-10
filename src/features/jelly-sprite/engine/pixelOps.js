@@ -1,15 +1,4 @@
-/**
- * pixelOps.js
- *
- * Pure pixel-manipulation helpers. All functions operate on a
- * Uint8ClampedArray buffer and take explicit width/height params so
- * they can be used for any buffer (active layer, clipboard, mask, etc.)
- * without closing over any React state.
- *
- * Import what you need — no side effects, no globals.
- */
-
-import {
+﻿import {
   hexToRgba,
   rgbaToHex,
   rasterRect,
@@ -19,7 +8,7 @@ import { bresenhamLine } from "./selectionUtils.js";
 
 export { hexToRgba, rgbaToHex };
 
-// ── Low-level ─────────────────────────────────────────────────────────────────
+// Low-level
 
 /** Read one pixel from buf. Returns [r,g,b,a]. */
 export function getPixel(buf, x, y, w) {
@@ -63,7 +52,7 @@ export function colorsMatchTolerance(a, b, tol) {
   );
 }
 
-// ── Flood fill ────────────────────────────────────────────────────────────────
+// Flood fill
 
 export function floodFill(buf, sx, sy, w, h, rgba, sel, lassoMask) {
   const target = getPixel(buf, sx, sy, w);
@@ -82,7 +71,7 @@ export function floodFill(buf, sx, sy, w, h, rgba, sel, lassoMask) {
   }
 }
 
-// ── Symmetry + brush stamping ─────────────────────────────────────────────────
+// Symmetry + brush stamping
 
 /**
  * Alpha-composite src over the existing pixel at (x,y) using Porter-Duff "over".
@@ -223,7 +212,7 @@ export function stampBrush(ctx, cx, cy, rgba) {
   }
   for (let dy = -r; dy <= r; dy++) {
     for (let dx = -r; dx <= r; dx++) {
-      // ── Shape filter ────────────────────────────────────────────────────
+      // Shape filter
       if (brushType === "round" && dx * dx + dy * dy > r * r) continue;
       // square: all pass
       if (brushType === "diamond" && Math.abs(dx) + Math.abs(dy) > r) continue;
@@ -249,7 +238,7 @@ export function stampBrush(ctx, cx, cy, rgba) {
       // bslash = NW diagonal (dy === dx)
       if (brushType === "bslash" && dy !== dx) continue;
 
-      // ── Feathering ──────────────────────────────────────────────────────
+      // Feathering
       let paintRgba = rgba;
       if (brushHardness < 100 && r > 0) {
         const w = featherWeight(dx, dy, r, brushHardness);
@@ -328,7 +317,7 @@ export function sprayBrush(ctx, cx, cy, rgba) {
   }
 }
 
-// ── Shape rasterisers ─────────────────────────────────────────────────────────
+// Shape rasterisers
 
 export function drawLine(ctx, x0, y0, x1, y1, rgba) {
   bresenhamLine(x0, y0, x1, y1, (px, py) =>
@@ -352,7 +341,7 @@ export function drawEllipse(ctx, x0, y0, x1, y1, filled, rgba) {
   );
 }
 
-// ── Magic wand ────────────────────────────────────────────────────────────────
+// Magic wand
 
 /**
  * BFS flood-fill from (sx,sy), matching the colour at that pixel within tolerance.
@@ -402,7 +391,7 @@ export function magicWandMaskGlobal(buf, sx, sy, w, h, tol = 0) {
   return found ? mask : null;
 }
 
-// ── Clipboard helpers ─────────────────────────────────────────────────────────
+// Clipboard helpers
 
 /** Copy a rectangular region from buf into a new Uint8ClampedArray. */
 export function copyRegion(buf, sx, sy, sw, sh, canvasW, lassoMask) {
@@ -439,7 +428,7 @@ export function pasteRegion(dst, cbuf, dx, dy, sw, sh, canvasW, canvasH) {
   }
 }
 
-// ── Transform helpers ─────────────────────────────────────────────────────────
+// Transform helpers
 
 export function flipHorizontal(buf, w, h) {
   for (let y = 0; y < h; y++) {

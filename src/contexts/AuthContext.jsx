@@ -1,15 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { supabase, isSupabaseEnabled } from "../services/supabase.js";
 
-/**
- * Auth context.
- *
- * Three modes (controlled by env vars):
- *  1. VITE_AUTH_BYPASS=true  → instant "dev user", no real auth (local dev / IDB mode)
- *  2. isSupabaseEnabled=true → Supabase email/password auth with session persistence
- *  3. Neither               → login form exists but backend is absent (shouldn't be shipped)
- */
-
 const DEV_USER = {
   id: "dev-user",
   email: "dev@doomjelly.local",

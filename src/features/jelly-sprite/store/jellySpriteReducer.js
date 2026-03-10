@@ -1,14 +1,11 @@
-import { MAX_COLOUR_HISTORY, MAX_ZOOM } from "../jellySprite.constants";
+﻿import { MAX_COLOUR_HISTORY, MAX_ZOOM } from "../jellySprite.constants";
 import * as A from "./jellySpriteActions";
 
-// ── Reducer ───────────────────────────────────────────────────────────────────
-// Pure function — no side effects, no refs, no pixel data.
-// Every case returns a new state object (or the same state if nothing changed).
 export function jellySpriteReducer(state, action) {
   const { type, payload } = action;
 
   switch (type) {
-    // ── Canvas geometry ───────────────────────────────────────────────────
+    // Canvas geometry
     case A.SET_CANVAS_SIZE:
       return {
         ...state,
@@ -20,7 +17,7 @@ export function jellySpriteReducer(state, action) {
     case A.SET_ZOOM:
       return { ...state, zoom: Math.max(1, Math.min(MAX_ZOOM, payload)) };
 
-    // ── Tools ─────────────────────────────────────────────────────────────
+    // Tools
     case A.SET_TOOL:
       return { ...state, tool: payload };
     case A.SET_FILL_SHAPES:
@@ -34,7 +31,7 @@ export function jellySpriteReducer(state, action) {
     case A.SET_WAND_CONTIGUOUS:
       return { ...state, wandContiguous: payload };
 
-    // ── Brush ─────────────────────────────────────────────────────────────
+    // Brush
     case A.SET_BRUSH_TYPE:
       return { ...state, brushType: payload };
     case A.SET_BRUSH_SIZE:
@@ -44,7 +41,7 @@ export function jellySpriteReducer(state, action) {
     case A.SET_BRUSH_HARDNESS:
       return { ...state, brushHardness: Math.max(0, Math.min(100, payload)) };
 
-    // ── Color ─────────────────────────────────────────────────────────────
+    // Color
     case A.SET_FG_COLOR:
       return { ...state, fgColor: payload };
     case A.SET_BG_COLOR:
@@ -62,7 +59,7 @@ export function jellySpriteReducer(state, action) {
       return { ...state, fgColor: hex, colorHistory: history };
     }
 
-    // ── Palette ───────────────────────────────────────────────────────────
+    // Palette
     case A.SET_ACTIVE_PALETTE:
       return { ...state, activePalette: payload };
     case A.PALETTE_ADD_COLOR: {
@@ -115,7 +112,7 @@ export function jellySpriteReducer(state, action) {
         palettes: { ...state.palettes, [payload.name]: payload.colors },
       };
 
-    // ── Layers ────────────────────────────────────────────────────────────
+    // Layers
     case A.SET_LAYERS:
       return { ...state, layers: payload };
     case A.SET_ACTIVE_LAYER:
@@ -193,7 +190,7 @@ export function jellySpriteReducer(state, action) {
       };
     }
 
-    // ── Frames ────────────────────────────────────────────────────────────
+    // Frames
     case A.ADD_FRAME:
       return {
         ...state,
@@ -249,7 +246,7 @@ export function jellySpriteReducer(state, action) {
         },
       };
 
-    // ── Playback ──────────────────────────────────────────────────────────
+    // Playback
     case A.SET_IS_PLAYING:
       return { ...state, isPlaying: payload };
     case A.SET_FPS:
@@ -259,11 +256,11 @@ export function jellySpriteReducer(state, action) {
     case A.SET_ONION_SKINNING:
       return { ...state, onionSkinning: payload };
 
-    // ── Selection ─────────────────────────────────────────────────────────
+    // Selection
     case A.SET_SELECTION:
       return { ...state, selection: payload };
 
-    // ── History ───────────────────────────────────────────────────────────
+    // History
     case A.STROKE_COMPLETE: {
       const { frameId, dataUrl } = payload;
       return {
@@ -286,7 +283,7 @@ export function jellySpriteReducer(state, action) {
         canRedo: payload.canRedo,
       };
 
-    // ── View ──────────────────────────────────────────────────────────────
+    // View
     case A.SET_GRID_VISIBLE:
       return { ...state, gridVisible: payload };
     case A.SET_FRAME_GRID_VISIBLE:
@@ -304,7 +301,7 @@ export function jellySpriteReducer(state, action) {
     case A.SET_TILE_COUNT:
       return { ...state, tileCount: payload };
 
-    // ── UI ────────────────────────────────────────────────────────────────
+    // UI
     case A.SET_PANEL_TAB:
       return { ...state, panelTab: payload };
     case A.SET_EXPORT_OPEN:
@@ -322,7 +319,7 @@ export function jellySpriteReducer(state, action) {
     case A.SET_CUSTOM_H:
       return { ...state, customH: payload };
 
-    // ── Persistence ────────────────────────────────────────────────────────
+    // Persistence
     // Atomic batch restore of all store fields from a saved project.
     // Pixel buffer / refs restoration is handled imperatively in JellySprite.jsx.
     // payload: { storeState, frames, activeFrameIdx, layers, activeLayerId }

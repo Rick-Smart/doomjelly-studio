@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+﻿import { useState, useMemo } from "react";
 import JSZip from "jszip";
 import { useProject } from "../../../contexts/ProjectContext";
 import { Modal } from "../../../ui/Modal";
@@ -60,7 +60,7 @@ export function ExportPanel({ isOpen, onClose }) {
     [animations, target, activeAnimationId],
   );
 
-  // ── JSON preview ──────────────────────────────────────────
+  // JSON preview
   const generated = useMemo(() => {
     if (exportType !== "json" || !format || animations.length === 0)
       return null;
@@ -81,7 +81,7 @@ export function ExportPanel({ isOpen, onClose }) {
       : JSON.stringify(generated, null, 2);
   }, [generated, format]);
 
-  // ── Atlas info (sync, no image load needed) ───────────────
+  // Atlas info (sync, no image load needed)
   const atlasInfo = useMemo(() => {
     if (exportType !== "atlas") return null;
     const { frameW, frameH } = frameConfig;
@@ -95,7 +95,7 @@ export function ExportPanel({ isOpen, onClose }) {
     return { count, cols, rows, w: cols * frameW, h: rows * frameH };
   }, [exportType, selectedAnims, frameConfig]);
 
-  // ── Strips info (sync) ────────────────────────────────────
+  // Strips info (sync)
   const stripsInfo = useMemo(() => {
     if (exportType !== "strips") return null;
     const { frameW, frameH } = frameConfig;
@@ -109,7 +109,7 @@ export function ExportPanel({ isOpen, onClose }) {
       }));
   }, [exportType, selectedAnims, frameConfig]);
 
-  // ── Download helpers ──────────────────────────────────────
+  // Download helpers
   function triggerDownload(blob, filename) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");

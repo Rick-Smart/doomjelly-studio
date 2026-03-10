@@ -1,18 +1,4 @@
-/**
- * canvasRenderer.js
- *
- * Creates and returns the core redraw() function for the JellySprite canvas.
- *
- * Design rules:
- * - Never closes over React state directly — reads everything from refs.stateRef.current
- *   so the closure never goes stale between renders.
- * - All pixel data is read from refs.pixelBuffers and refs.frameSnapshots.
- * - canvas2d API only — no React involved.
- *
- * @param {Object} refs   - The stable refs object from JellySpriteProvider
- * @returns {{ redraw: () => void }}
- */
-import { compositeLayersToCanvas } from "./compositeEngine.js";
+﻿import { compositeLayersToCanvas } from "./compositeEngine.js";
 
 const ONION_OPACITY = 0.3;
 
@@ -43,7 +29,7 @@ function buildMaskEdgePath(mask, sel, maskOrigin, w, h, z) {
 
   const path = new Path2D();
 
-  // ── Horizontal runs ────────────────────────────────────────────────────
+  // Horizontal runs
   for (let py = by; py < by + bh; py++) {
     // top edges
     let runX = -1;
@@ -71,7 +57,7 @@ function buildMaskEdgePath(mask, sel, maskOrigin, w, h, z) {
     }
   }
 
-  // ── Vertical runs ──────────────────────────────────────────────────────
+  // Vertical runs
   for (let px = bx; px < bx + bw; px++) {
     // left edges
     let runY = -1;
@@ -142,7 +128,7 @@ export function createRenderer(refs) {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // ── Composite active (or playback) frame ──────────────────────────────
+    // Composite active (or playback) frame
     if (displayFrame) {
       const isActiveFrame = dispIdx === activeFrameIdx;
       const renderLayers = isActiveFrame
@@ -167,7 +153,7 @@ export function createRenderer(refs) {
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(off, 0, 0, w * z, h * z);
 
-    // ── Onion skinning (drawn as overlay above active frame) ──────────────
+    // Onion skinning (drawn as overlay above active frame)
     // Ghosts are composited ON TOP of the active frame so they remain visible
     // regardless of whether the current frame has opaque content. This is the
     // standard behaviour in animation tools (e.g. Aseprite).
@@ -209,7 +195,7 @@ export function createRenderer(refs) {
         drawGhost(curIdx + 1, "rgba(80,80,255,0.5)");
     }
 
-    // ── Reference image overlay ───────────────────────────────────────────
+    // Reference image overlay
     if (refs.refImgEl && refVisible) {
       ctx.globalAlpha = refOpacity;
       ctx.imageSmoothingEnabled = true;
@@ -218,7 +204,7 @@ export function createRenderer(refs) {
       ctx.imageSmoothingEnabled = false;
     }
 
-    // ── Pixel grid ────────────────────────────────────────────────────────
+    // Pixel grid
     if (gridVisible && z >= 4) {
       ctx.lineWidth = 1;
       // Draw light lines first, then dark lines on top so the grid is visible
@@ -251,7 +237,7 @@ export function createRenderer(refs) {
       }
     }
 
-    // ── Frame grid ────────────────────────────────────────────────────────
+    // Frame grid
     if (frameGridVisible && frameConfig) {
       const { frameW, frameH } = frameConfig;
       if (frameW > 0 && frameH > 0) {
@@ -272,7 +258,7 @@ export function createRenderer(refs) {
       }
     }
 
-    // ── Live lasso path ───────────────────────────────────────────────────
+    // Live lasso path
     // lassoPath2D is built incrementally in drawingEngine — O(1) to stroke.
     if (refs.lassoPath2D && refs.lassoXYLen > 1) {
       ctx.save();
@@ -308,7 +294,7 @@ export function createRenderer(refs) {
       ctx.restore();
     }
 
-    // ── Marching ants selection ───────────────────────────────────────────
+    // Marching ants selection
     if (selection) {
       const offset = refs.marchOffset ?? 0;
       ctx.save();
@@ -374,7 +360,7 @@ export function createRenderer(refs) {
       ctx.restore();
     }
 
-    // ── Add/subtract rect-select preview ─────────────────────────────────
+    // Add/subtract rect-select preview
     // Drawn while the user is dragging a new rect in add/subtract mode so
     // they can see the in-progress shape without disturbing the existing ants.
     if (refs.selectionPreviewRect) {
@@ -391,7 +377,7 @@ export function createRenderer(refs) {
       ctx.restore();
     }
 
-    // ── Tile preview ──────────────────────────────────────────────────────
+    // Tile preview
     if (tileVisible && refs.tileCanvasEl) {
       const tc = refs.tileCanvasEl;
       const n = tileCount ?? 2;

@@ -1,33 +1,3 @@
-/**
- * historyEngine.js
- *
- * Snapshot-based undo/redo stored entirely in refs.historyStack /
- * refs.historyIndex — no React state involved.
- *
- * A history entry captures:
- *   - deep copies of all pixelBuffers  (active frame only — other frames
- *     are already persisted in refs.frameSnapshots)
- *   - deep copies of all maskBuffers
- *   - the layers array (metadata, not arrays of pixels)
- *   - activeLayerId
- *
- * Calling pushHistory() creates the snapshot.
- * undoHistory(dispatch) / redoHistory(dispatch) restore one step.
- *
- * The functions are stored directly on refs so the drawing engine and
- * keyboard-shortcut handlers can call them without prop-drilling.
- *
- * Usage (called from useCanvas or JellySpriteBody once on mount):
- *
- *   import { wireHistoryEngine } from "../engine/historyEngine";
- *   wireHistoryEngine(refs);
- *
- * After that:
- *   refs.pushHistory()          // call after every stroke/operation
- *   refs.undoHistory(dispatch)
- *   refs.redoHistory(dispatch)
- */
-
 import { MAX_HISTORY } from "../jellySprite.constants.js";
 import * as A from "../store/jellySpriteActions.js";
 

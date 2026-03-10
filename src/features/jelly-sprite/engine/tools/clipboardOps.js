@@ -1,10 +1,3 @@
-/**
- * clipboardOps.js
- *
- * Copy / paste / delete selection contents.
- * Pure over refs — no shared pointer-handler state required.
- */
-
 import { copyRegion, pasteRegion } from "../pixelOps.js";
 
 export function copySelection(refs) {

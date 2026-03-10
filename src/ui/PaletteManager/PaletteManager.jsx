@@ -1,8 +1,8 @@
-import { useState, useRef } from "react";
+﻿import { useState, useRef } from "react";
 import "./PaletteManager.css";
 import { hexToRgb, rgbToHex } from "../ColorPicker";
 
-// ── Built-in palette presets ──────────────────────────────────────────────────
+// Built-in palette presets
 export const BUILTIN_PALETTES = {
   "DoomJelly 32": [
     "#000000",
@@ -135,7 +135,7 @@ function generateRamp(hexA, hexB, steps) {
   });
 }
 
-// ── Component ─────────────────────────────────────────────────────────────────
+// Component
 
 /**
  * props:

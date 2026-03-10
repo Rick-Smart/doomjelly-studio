@@ -8,18 +8,6 @@ import {
   useCallback,
 } from "react";
 
-/**
- * Project state shape:
- * {
- *   id: string | null,
- *   name: string,
- *   spriteSheet: { dataUrl, filename, width, height } | null,
- *   frameConfig: { frameW, frameH, scale, offsetX, offsetY, gutterX, gutterY },
- *   animations: [{ id, name, frames: [] }],
- *   activeAnimationId: string | null,
- * }
- */
-
 const STORAGE_KEY = "dj-project";
 
 const initialState = {

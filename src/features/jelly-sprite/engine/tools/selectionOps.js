@@ -1,16 +1,4 @@
-/**
- * selectionOps.js
- *
- * Floating-selection management and selection transform operations.
- *
- * All exported functions accept (refs, state, setSelection) where:
- *   refs       — the shared refs object from JellySpriteProvider
- *   state      — the floatState object from createDrawingEngine (contains
- *                previewSnap, movePixels, movePixelsOriginal, moveOriginalW/H/Cx/Cy)
- *   setSelection — the engine-internal setSelection notifier function
- */
-
-import {
+﻿import {
   pasteRegion,
   flipHorizontal,
   flipVertical,
@@ -20,7 +8,7 @@ import {
 } from "../pixelOps.js";
 import { getOrBuildMask, boundsFromMask } from "../selectionUtils.js";
 
-// ── Internal helpers (not exported) ──────────────────────────────────────────
+// Internal helpers (not exported)
 
 function commitFloating(refs, state) {
   const sel = refs.selection;
@@ -95,7 +83,7 @@ function applyFloatingTransform(refs, state, setSelection, newPixels, newW, newH
   refs.redraw?.();
 }
 
-// ── Exported operations ───────────────────────────────────────────────────────
+// Exported operations
 
 /**
  * Invert the current selection mask. Commits any floating selection first.

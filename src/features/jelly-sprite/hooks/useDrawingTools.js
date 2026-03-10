@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from "react";
+﻿import { useRef, useState, useEffect } from "react";
 import { hexToRgba, rgbaToHex, rasterRect, rasterEllipse } from "../jellySprite.utils";
 import { buildLassoMask, bresenhamLine } from "../engine/selectionUtils.js";
 
@@ -64,7 +64,7 @@ export function useDrawingTools({
     if (setSelection) setSelection(val);
   }
 
-  // ── Pixel helpers ──────────────────────────────────────────────────────────
+  // Pixel helpers
   function getPixel(x, y) {
     const i = (y * canvasW + x) * 4,
       p = pixelsRef.current;
@@ -183,7 +183,7 @@ export function useDrawingTools({
     }
   }
 
-  // ── Drawing ────────────────────────────────────────────────────────────────
+  // Drawing
   function getActiveRgba() {
     return hexToRgba(fgColor, Math.round(fgAlpha * (brushOpacity / 100) * 255));
   }
@@ -264,7 +264,7 @@ export function useDrawingTools({
     _setSelection(newSel);
   }
 
-  // ── Mouse handlers ─────────────────────────────────────────────────────────
+  // Mouse handlers
   function onMouseDown(e) {
     if (e.button !== 0) return;
     e.preventDefault();
@@ -477,7 +477,7 @@ export function useDrawingTools({
     }
   }
 
-  // ── Selection clipboard ────────────────────────────────────────────────────
+  // Selection clipboard
   function copySelection() {
     const sel = selectionRef.current;
     if (!sel) return;
@@ -598,7 +598,7 @@ export function useDrawingTools({
     setCanvasH(sh);
   }
 
-  // ── Transform ──────────────────────────────────────────────────────────────
+  // Transform
   function flipH() {
     const w = canvasW,
       h = canvasH,

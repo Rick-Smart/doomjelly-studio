@@ -1,4 +1,4 @@
-// ── Shared constants & factory functions ─────────────────────────────────────
+﻿// Shared constants & factory functions
 
 export const MAX_HISTORY = 50;
 export const MAX_COLOUR_HISTORY = 10;

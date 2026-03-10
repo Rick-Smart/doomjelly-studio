@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback, useState } from "react";
+﻿import { useEffect, useRef, useCallback, useState } from "react";
 import { useProject } from "../../../contexts/ProjectContext";
 import { useTheme } from "../../../contexts/ThemeContext";
 import "./SheetViewerCanvas.css";
@@ -28,7 +28,7 @@ export function SheetViewerCanvas({ imageUrl }) {
   const [dragStartCell, setDragStartCell] = useState(null);
   const [dragCell, setDragCell] = useState(null);
 
-  // ── Zoom / pan state ──────────────────────────────────────
+  // Zoom / pan state
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const panRef = useRef({
@@ -41,7 +41,7 @@ export function SheetViewerCanvas({ imageUrl }) {
   const spaceRef = useRef(false);
 
   // Load / reload the image whenever the URL changes
-  // ── Zoom: scroll wheel ────────────────────────────────────
+  // Zoom: scroll wheel
   const handleWheel = useCallback(
     (e) => {
       if (!imageUrl) return;
@@ -62,7 +62,7 @@ export function SheetViewerCanvas({ imageUrl }) {
     return () => el.removeEventListener("wheel", handleWheel);
   }, [handleWheel]);
 
-  // ── Pan: Space+LMB or Middle-click drag ───────────────────
+  // Pan: Space+LMB or Middle-click drag
   useEffect(() => {
     function onKeyDown(e) {
       if (
@@ -514,7 +514,7 @@ export function SheetViewerCanvas({ imageUrl }) {
   );
 }
 
-// ── Grid drawing ─────────────────────────────────────────
+// Grid drawing
 
 function drawGrid(
   ctx,

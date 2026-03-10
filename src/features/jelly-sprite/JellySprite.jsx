@@ -1,4 +1,4 @@
-import { useRef, useEffect, useLayoutEffect } from "react";
+﻿import { useRef, useEffect, useLayoutEffect } from "react";
 import JSZip from "jszip";
 import { GIFEncoder, quantize, applyPalette } from "gifenc";
 import { useProject } from "../../contexts/ProjectContext";
@@ -18,13 +18,13 @@ import {
   deserializeJellySprite,
 } from "./engine/jellySpritePersistence";
 
-// ── Custom cursor ─────────────────────────────────────────────────────────────
+// Custom cursor
 // Thin precision crosshair: white outline + dark inner line, 4px center gap.
 // Defined once at module level so it's never recomputed per render.
 const _cursorSvg = `<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24'><line x1='0' y1='12' x2='10' y2='12' stroke='white' stroke-width='2'/><line x1='14' y1='12' x2='24' y2='12' stroke='white' stroke-width='2'/><line x1='12' y1='0' x2='12' y2='10' stroke='white' stroke-width='2'/><line x1='12' y1='14' x2='12' y2='24' stroke='white' stroke-width='2'/><line x1='0' y1='12' x2='10' y2='12' stroke='%23222' stroke-width='1'/><line x1='14' y1='12' x2='24' y2='12' stroke='%23222' stroke-width='1'/><line x1='12' y1='0' x2='12' y2='10' stroke='%23222' stroke-width='1'/><line x1='12' y1='14' x2='12' y2='24' stroke='%23222' stroke-width='1'/></svg>`;
 const CURSOR_PRECISION = `url("data:image/svg+xml,${_cursorSvg}") 12 12, crosshair`;
 
-// ── Outer component — just provides the store context ─────────────────────────
+// Outer component — just provides the store context
 // onRegisterCollector: optional callback — receives a () => serializedState
 // function so the workspace can pull the full state before saving.
 export function JellySprite({ onSwitchToAnimator, onRegisterCollector }) {
@@ -38,12 +38,12 @@ export function JellySprite({ onSwitchToAnimator, onRegisterCollector }) {
   );
 }
 
-// ── Inner component — all logic runs inside JellySpriteProvider ───────────────
+// Inner component — all logic runs inside JellySpriteProvider
 function JellySpriteBody({ onSwitchToAnimator, onRegisterCollector }) {
   const { state, dispatch } = useProject();
   const { refs, state: ss, dispatch: sd } = useJellySpriteStore();
 
-  // ── Store state (M4) ───────────────────────────────────────────────────────
+  // Store state (M4)
   const {
     canvasW,
     canvasH,
@@ -171,7 +171,7 @@ function JellySpriteBody({ onSwitchToAnimator, onRegisterCollector }) {
   const tileCanvasRef = useRef(null);
   const tileUpdateRef = useRef(null);
 
-  // ── Bridge refs (M5) ───────────────────────────────────────────────────────
+  // Bridge refs (M5)
   // Stable refs — synced every render so closures never go stale
   const layersRef = useRef(ss.layers);
   const activeLayerIdRef = useRef(ss.activeLayerId);
@@ -199,12 +199,12 @@ function JellySpriteBody({ onSwitchToAnimator, onRegisterCollector }) {
   // isDrawing: true while a pointer is held down (used for cursor style).
   const isDrawing = useRef(false);
 
-  // ── Stub refs — break circular hook dependencies ───────────────────────────
+  // Stub refs — break circular hook dependencies
   const pushHistoryEntryStubRef = useRef(() => {});
   const redrawStubRef = useRef(() => {});
   const saveToProjectStubRef = useRef(() => {});
 
-  // ── Restore refs — used by the two-phase full-state restore ───────────────
+  // Restore refs — used by the two-phase full-state restore
   // pendingRestoreRef: decoded restore payload from jellySpritePersistence,
   //   set in the mount effect and consumed by the [canvasW, canvasH] effect.
   const pendingRestoreRef = useRef(null);
@@ -213,7 +213,7 @@ function JellySpriteBody({ onSwitchToAnimator, onRegisterCollector }) {
   //   the zero-fill and just resize appropriately.
   const justRestoredRef = useRef(false);
 
-  // ── useCanvas (M2 store-based) ─────────────────────────────────────────────
+  // useCanvas (M2 store-based)
   const { canvasRef } = useCanvas();
 
   // redrawRef + redraw: delegate to refs.redraw (the new store renderer).
@@ -223,7 +223,7 @@ function JellySpriteBody({ onSwitchToAnimator, onRegisterCollector }) {
   redrawRef.current = () => refs.redraw?.();
   const redraw = () => refs.redraw?.();
 
-  // ── Frame snapshot store (M6) ──────────────────────────────────────────────
+  // Frame snapshot store (M6)
   // refs.frameSnapshots: { [frameId]: { layers, activeLayerId, pixelBuffers, maskBuffers } }
   // Initialised lazily the first time a frame is saved or switched away from.
   // We alias frameDataRef → refs.frameSnapshots so export helpers keep working.
@@ -236,7 +236,7 @@ function JellySpriteBody({ onSwitchToAnimator, onRegisterCollector }) {
     },
   };
 
-  // ── Frame helpers ──────────────────────────────────────────────────────────
+  // Frame helpers
   function saveCurrentFrameToSnapshot() {
     const frameId = framesRef.current[activeFrameIdxRef.current]?.id;
     if (!frameId) return;
@@ -329,7 +329,7 @@ function JellySpriteBody({ onSwitchToAnimator, onRegisterCollector }) {
       sd({ type: A.UPDATE_THUMBNAIL, payload: { frameId, dataUrl } });
   }
 
-  // ── Frame operations ───────────────────────────────────────────────────────
+  // Frame operations
   function switchToFrame(newIdx) {
     if (newIdx === activeFrameIdxRef.current) return;
     saveCurrentFrameToSnapshot();
@@ -485,10 +485,10 @@ function JellySpriteBody({ onSwitchToAnimator, onRegisterCollector }) {
     sd({ type: A.RENAME_FRAME, payload: { frameId, name } });
   }
 
-  // ── useDrawingTools removed (Phase G) ────────────────────────────────────
+  // useDrawingTools removed (Phase G)
   // All pointer handling now routes through refs.drawingEngine exclusively.
 
-  // ── Patch stubs every render ───────────────────────────────────────────────
+  // Patch stubs every render
   function saveToProject() {
     const c = canvasRef.current;
     if (!c) return;
@@ -513,7 +513,7 @@ function JellySpriteBody({ onSwitchToAnimator, onRegisterCollector }) {
   redrawStubRef.current = redraw;
   saveToProjectStubRef.current = saveToProject;
 
-  // ── Persistence: save-data collector ──────────────────────────────────────
+  // Persistence: save-data collector
   // collectSaveData() snapshots current pixel state, serialises everything,
   // and generates a thumbnail of the active frame.
   // JellySpriteWorkspace calls this right before writing to storage.
@@ -543,7 +543,7 @@ function JellySpriteBody({ onSwitchToAnimator, onRegisterCollector }) {
     return () => clearTimeout(t);
   }, [fps]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Layer actions (M5: dispatch + mutate pixel buffers directly) ──────────
+  // Layer actions (M5: dispatch + mutate pixel buffers directly)
   function addLayer() {
     const newLayer = makeLayer(`Layer ${ss.layers.length + 1}`);
     refs.pixelBuffers[newLayer.id] = new Uint8ClampedArray(
@@ -691,7 +691,7 @@ function JellySpriteBody({ onSwitchToAnimator, onRegisterCollector }) {
     };
   }); // no deps — runs every render so values stay current
 
-  // ── Undo / Redo ────────────────────────────────────────────────────────────
+  // Undo / Redo
   function doUndo() {
     refs.undoHistory?.();
   }
@@ -720,7 +720,7 @@ function JellySpriteBody({ onSwitchToAnimator, onRegisterCollector }) {
     updateThumbnailForActiveFrame();
   }
 
-  // ── Mouse handlers ─────────────────────────────────────────────────────────
+  // Mouse handlers
   function onMouseDown(e) {
     isDrawing.current = true;
     const hex = refs.drawingEngine?.onPointerDown(e);
@@ -739,12 +739,12 @@ function JellySpriteBody({ onSwitchToAnimator, onRegisterCollector }) {
     refs.drawingEngine?.onPointerLeave(e);
   }
 
-  // ── Colour helpers ─────────────────────────────────────────────────────────
+  // Colour helpers
   function pickColor(hex) {
     sd({ type: A.PICK_COLOR, payload: hex });
   }
 
-  // ── Phase-1 restore: decode saved state before the init effect runs ───────
+  // Phase-1 restore: decode saved state before the init effect runs
   // Runs once on mount. If the project has a full jellySprite save payload,
   // decode the base64 pixel/mask data into refs and stash the decoded
   // result so the init/resize effect can consume it synchronously.
@@ -757,13 +757,13 @@ function JellySpriteBody({ onSwitchToAnimator, onRegisterCollector }) {
     if (restored) pendingRestoreRef.current = restored;
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Initialise / resize ────────────────────────────────────────────────────
+  // Initialise / resize
   useEffect(() => {
     const w = canvasW,
       h = canvasH,
       size = w * h * 4;
 
-    // ── Phase-2 restore: consume the decoded state from the mount effect ────
+    // Phase-2 restore: consume the decoded state from the mount effect
     const restore = pendingRestoreRef.current;
     if (restore) {
       pendingRestoreRef.current = null;
@@ -835,7 +835,7 @@ function JellySpriteBody({ onSwitchToAnimator, onRegisterCollector }) {
       return; // skip normal zero-fill path
     }
 
-    // ── Dimension-change after a restore: skip zero-fill ───────────────────
+    // Dimension-change after a restore: skip zero-fill
     // When LOAD_JELLY_STATE changes canvasW/canvasH this effect re-fires.
     // The refs are already correct — just resize the offscreen canvas and redraw.
     if (justRestoredRef.current) {
@@ -859,7 +859,7 @@ function JellySpriteBody({ onSwitchToAnimator, onRegisterCollector }) {
       return;
     }
 
-    // ── Normal init / user-triggered resize ───────────────────────────────
+    // Normal init / user-triggered resize
     // Re-allocate pixel buffers for all current layers (M5: goes into refs directly)
     const freshBuffers = {};
     for (const l of ss.layers) {
@@ -1008,7 +1008,7 @@ function JellySpriteBody({ onSwitchToAnimator, onRegisterCollector }) {
     if (tileVisible) redrawRef.current?.();
   }, [tileVisible, tileCount]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Keyboard shortcuts ─────────────────────────────────────────────────────
+  // Keyboard shortcuts
   const actionsRef = useRef({});
   actionsRef.current = {
     doUndo,
@@ -1112,7 +1112,7 @@ function JellySpriteBody({ onSwitchToAnimator, onRegisterCollector }) {
     return () => window.removeEventListener("keydown", onKey);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Reference image ────────────────────────────────────────────────────────
+  // Reference image
   function loadRefImage(file) {
     if (!file || !file.type.startsWith("image/")) return;
     const reader = new FileReader();
@@ -1136,7 +1136,7 @@ function JellySpriteBody({ onSwitchToAnimator, onRegisterCollector }) {
     redrawRef.current?.();
   }
 
-  // ── Canvas resize ──────────────────────────────────────────────────────────
+  // Canvas resize
   function changeSize(nw, nh) {
     if (nw === canvasW && nh === canvasH) return;
     const hasContent =
@@ -1247,7 +1247,7 @@ function JellySpriteBody({ onSwitchToAnimator, onRegisterCollector }) {
     sd({ type: A.SET_CANVAS_SIZE, payload: { w: nw, h: nh } });
   }
 
-  // ── Crop to selection ──────────────────────────────────────────────────────
+  // Crop to selection
   function cropToSelectionImpl() {
     // Prefer drawing engine selection (refs.selection), fall back to legacy path
     const sel = refs.selection;
@@ -1294,7 +1294,7 @@ function JellySpriteBody({ onSwitchToAnimator, onRegisterCollector }) {
     sd({ type: A.SET_CANVAS_SIZE, payload: { w: sw, h: sh } });
   }
 
-  // ── Animator integration ───────────────────────────────────────────────────
+  // Animator integration
   function useInAnimator() {
     const c = canvasRef.current;
     if (!c) return;
@@ -1349,7 +1349,7 @@ function JellySpriteBody({ onSwitchToAnimator, onRegisterCollector }) {
     loadImg.src = src;
   }
 
-  // ── Export helpers ─────────────────────────────────────────────────────────
+  // Export helpers
   function compositeFrameToCanvas(frameId) {
     const w = canvasW,
       h = canvasH;
@@ -1493,7 +1493,7 @@ function JellySpriteBody({ onSwitchToAnimator, onRegisterCollector }) {
     );
   }
 
-  // ── Palette management ─────────────────────────────────────────────────────
+  // Palette management
   function paletteAddColor(hex) {
     sd({ type: A.PALETTE_ADD_COLOR, payload: hex });
   }
@@ -1517,7 +1517,7 @@ function JellySpriteBody({ onSwitchToAnimator, onRegisterCollector }) {
     sd({ type: A.PALETTE_RENAME, payload: { oldName, newName } });
   }
 
-  // ── Tile preview ───────────────────────────────────────────────────────────
+  // Tile preview
   tileUpdateRef.current = () => {
     const tc = tileCanvasRef.current,
       off2 = refs.offscreenEl;
@@ -1533,7 +1533,7 @@ function JellySpriteBody({ onSwitchToAnimator, onRegisterCollector }) {
         tCtx.drawImage(off2, col * canvasW, row * canvasH);
   };
 
-  // ── Cursor style ───────────────────────────────────────────────────────────
+  // Cursor style
   const cursorStyle =
     tool === "move"
       ? isDrawing.current
@@ -1541,7 +1541,7 @@ function JellySpriteBody({ onSwitchToAnimator, onRegisterCollector }) {
         : "grab"
       : CURSOR_PRECISION;
 
-  // ── Context object ─────────────────────────────────────────────────────────
+  // Context object
   const ctx = {
     canvasW,
     canvasH,

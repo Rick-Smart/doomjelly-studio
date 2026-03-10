@@ -1,7 +1,7 @@
-import { useRef, useEffect, useState, useCallback } from "react";
+﻿import { useRef, useEffect, useState, useCallback } from "react";
 import "./ColorPicker.css";
 
-// ── Colour math helpers ───────────────────────────────────────────────────────
+// Colour math helpers
 
 function hsvToRgb(h, s, v) {
   const f = (n) => {
@@ -70,7 +70,7 @@ function clamp(v, lo, hi) {
   return Math.max(lo, Math.min(hi, v));
 }
 
-// ── SV gradient square ────────────────────────────────────────────────────────
+// SV gradient square
 
 function SVPad({ hue, sv, onChange }) {
   const canvasRef = useRef(null);
@@ -145,7 +145,7 @@ function SVPad({ hue, sv, onChange }) {
   );
 }
 
-// ── Hue slider ────────────────────────────────────────────────────────────────
+// Hue slider
 
 function HueSlider({ hue, onChange }) {
   const dragging = useRef(false);
@@ -182,7 +182,7 @@ function HueSlider({ hue, onChange }) {
   );
 }
 
-// ── Alpha slider ──────────────────────────────────────────────────────────────
+// Alpha slider
 
 function AlphaSlider({ alpha, rgb, onChange }) {
   const dragging = useRef(false);
@@ -218,7 +218,7 @@ function AlphaSlider({ alpha, rgb, onChange }) {
   );
 }
 
-// ── Main ColorPicker ──────────────────────────────────────────────────────────
+// Main ColorPicker
 
 /**
  * props:

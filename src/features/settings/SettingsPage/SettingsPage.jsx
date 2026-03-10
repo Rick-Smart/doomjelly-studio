@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+﻿import { useState, useRef } from "react";
 import {
   useTheme,
   THEMES,
@@ -14,7 +14,7 @@ import "./SettingsPage.css";
 const PREFS_KEY = "dj-prefs";
 const DEFAULT_PREFS = { frameW: 32, frameH: 32, exportFormat: "generic" };
 
-// ── Custom theme editor ───────────────────────────────────
+// Custom theme editor
 
 function CustomThemeEditor() {
   const {
