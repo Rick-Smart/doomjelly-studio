@@ -11,18 +11,22 @@
 
 **Target stack:** Supabase (Postgres + Storage)
 
-| What                       | Details                                                                                                |
-| -------------------------- | ------------------------------------------------------------------------------------------------------ |
-| Project bodies             | Supabase Postgres via `projectService.js` — only the `idbPut/idbGet/idbDelete` internals need swapping |
-| Thumbnails                 | Store alongside index row in Postgres (small base64 PNG)                                               |
-| Sprite sheets / pixel data | Supabase Storage bucket                                                                                |
-| Auth                       | Already stubbed — `VITE_AUTH_BYPASS=true` for dev; Supabase Auth when ready                            |
+| What                       | Status | Details                                                                                    |
+| -------------------------- | ------ | ------------------------------------------------------------------------------------------ |
+| `@supabase/supabase-js`    | ✅     | Installed                                                                                  |
+| `src/services/supabase.js` | ✅     | Client singleton; null when env vars absent (keeps IDB fallback working)                   |
+| SQL migration              | ✅     | `supabase/migrations/001_create_projects.sql` — projects table + RLS                       |
+| `projectService.js`        | ✅     | Routes through Supabase when `isSupabaseEnabled`; falls back to IDB+localStorage otherwise |
+| `AuthContext.jsx`          | ✅     | `signInWithPassword`, `signOut`, `onAuthStateChange` wired; bypass mode preserved          |
+| `.env.example`             | ✅     | Documents `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_AUTH_BYPASS`                |
+| Supabase project created   | ✅     | Project live, SQL migration run, `.env.development.local` configured, login verified       |
+| Sprite sheets / pixel data | ⬜     | Future: move pixel buffers to Supabase Storage bucket (JSONB body works for now)           |
 
-**Scope of change:** Only `src/services/projectService.js` internals. The rest of the app calls `saveProjectToStorage`, `loadProjectFromStorage`, `deleteProjectFromStorage` and never cares what's underneath.
+**Status: ACTIVE** — Supabase auth and project storage are live. Use `.env.development.local` (highest Vite priority) to override the dev bypass.
 
 ---
 
-## 🔵 Next — Planned Refactors
+## ✅ Complete — Planned Refactors
 
 ### PR-1 — Extract selection logic out of `drawingEngine.js`
 

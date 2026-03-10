@@ -169,10 +169,12 @@ export function ProjectsPage() {
   function confirmNew(e) {
     e.preventDefault();
     const name = newName.trim() || "Untitled Project";
-    dispatch({ type: "RESET_PROJECT" });
-    dispatch({ type: "SET_PROJECT_NAME", payload: name });
+    dispatch({
+      type: "LOAD_PROJECT",
+      payload: { id: crypto.randomUUID(), name, type: "jelly-sprite" },
+    });
     setNewNameMode(false);
-    navigate("/forge");
+    navigate("/jelly-sprite");
   }
 
   const fmt = (iso) =>

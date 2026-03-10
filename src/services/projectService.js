@@ -15,11 +15,91 @@
  *   v1 files load cleanly (jellySpriteState will be absent/null).
  */
 
+import { supabase, isSupabaseEnabled } from "./supabase.js";
+
 const SCHEMA_VERSION = 2;
 const INDEX_KEY = "dj-projects-index";
 const IDB_NAME = "doomjelly-studio";
 const IDB_STORE = "projects";
 const IDB_VERSION = 1;
+
+// ── Supabase helpers (only used when isSupabaseEnabled) ───────────────────────
+
+async function sbList() {
+  const { data, error } = await supabase
+    .from("projects")
+    .select("id, name, saved_at, anim_count, frame_count, thumbnail")
+    .order("saved_at", { ascending: false });
+  if (error) throw error;
+  return data.map((r) => ({
+    id: r.id,
+    name: r.name,
+    savedAt: r.saved_at,
+    animCount: r.anim_count,
+    frameCount: r.frame_count,
+    thumbnail: r.thumbnail,
+  }));
+}
+
+async function sbSave(data, thumbnail) {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  // Preserve existing thumbnail when caller passes undefined
+  let thumb = thumbnail;
+  if (thumbnail === undefined) {
+    const { data: existing } = await supabase
+      .from("projects")
+      .select("thumbnail")
+      .eq("id", data.id)
+      .maybeSingle();
+    thumb = existing?.thumbnail ?? null;
+  }
+
+  const animCount = Array.isArray(data.animations) ? data.animations.length : 0;
+  const frameCount = Array.isArray(data.animations)
+    ? data.animations.reduce((s, a) => s + (a.frames?.length ?? 0), 0)
+    : 0;
+
+  const row = {
+    id: data.id,
+    user_id: user.id,
+    name: data.name,
+    saved_at: data.savedAt,
+    anim_count: animCount,
+    frame_count: frameCount,
+    thumbnail: thumb,
+    body: data,
+  };
+
+  const { error } = await supabase.from("projects").upsert(row);
+  if (error) throw error;
+
+  return {
+    id: row.id,
+    name: row.name,
+    savedAt: row.saved_at,
+    animCount: row.anim_count,
+    frameCount: row.frame_count,
+    thumbnail: row.thumbnail,
+  };
+}
+
+async function sbLoad(id) {
+  const { data, error } = await supabase
+    .from("projects")
+    .select("body")
+    .eq("id", id)
+    .single();
+  if (error) throw error;
+  return data.body;
+}
+
+async function sbDelete(id) {
+  const { error } = await supabase.from("projects").delete().eq("id", id);
+  if (error) throw error;
+}
 
 // ── IndexedDB helpers ─────────────────────────────────────────────────────────
 
@@ -179,8 +259,9 @@ export function pickAndLoadProject() {
 
 // ── localStorage project list ─────────────────────────────────────────────────
 
-/** Returns the index array of { id, name, savedAt } entries. */
+/** Returns the index array of { id, name, savedAt, animCount, frameCount, thumbnail } entries. */
 export async function listProjects() {
+  if (isSupabaseEnabled) return sbList();
   return readIndex();
 }
 
@@ -194,6 +275,8 @@ export async function listProjects() {
  *   existing thumbnail (e.g. when the sprite sheet isn't loaded this session).
  */
 export async function saveProjectToStorage(data, thumbnail = undefined) {
+  if (isSupabaseEnabled) return sbSave(data, thumbnail);
+
   const index = readIndex();
   const existing = index.find((p) => p.id === data.id);
   const animCount = Array.isArray(data.animations) ? data.animations.length : 0;
@@ -220,15 +303,17 @@ export async function saveProjectToStorage(data, thumbnail = undefined) {
   return entry;
 }
 
-/** Loads a full project from IndexedDB by id. */
+/** Loads a full project by id. */
 export async function loadProjectFromStorage(id) {
+  if (isSupabaseEnabled) return sbLoad(id);
   const data = await idbGet(id);
   if (!data) throw new Error(`Project "${id}" not found in storage`);
   return data;
 }
 
-/** Deletes a project from IndexedDB and the index. */
+/** Deletes a project from storage. */
 export async function deleteProjectFromStorage(id) {
+  if (isSupabaseEnabled) return sbDelete(id);
   writeIndex(readIndex().filter((p) => p.id !== id));
   await idbDelete(id);
 }

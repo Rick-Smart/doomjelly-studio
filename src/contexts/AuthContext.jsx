@@ -1,11 +1,13 @@
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
+import { supabase, isSupabaseEnabled } from "../services/supabase.js";
 
 /**
- * Auth context with dev bypass support.
+ * Auth context.
  *
- * Set VITE_AUTH_BYPASS=true in .env.development to skip login during dev.
- * When wiring a real provider (e.g. Supabase), replace only the internals
- * of login() and logout() — the context shape stays the same.
+ * Three modes (controlled by env vars):
+ *  1. VITE_AUTH_BYPASS=true  → instant "dev user", no real auth (local dev / IDB mode)
+ *  2. isSupabaseEnabled=true → Supabase email/password auth with session persistence
+ *  3. Neither               → login form exists but backend is absent (shouldn't be shipped)
  */
 
 const DEV_USER = {
@@ -14,22 +16,61 @@ const DEV_USER = {
   name: "Dev User",
 };
 
+function sessionToUser(session) {
+  if (!session?.user) return null;
+  const u = session.user;
+  return {
+    id: u.id,
+    email: u.email,
+    name: u.user_metadata?.name ?? u.email.split("@")[0],
+  };
+}
+
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const bypass = import.meta.env.VITE_AUTH_BYPASS === "true";
+
   const [user, setUser] = useState(bypass ? DEV_USER : null);
-  const [loading, setLoading] = useState(false);
+  // Start in loading state when Supabase is active so we restore the session
+  // before rendering protected routes.
+  const [loading, setLoading] = useState(isSupabaseEnabled && !bypass);
   const [error, setError] = useState(null);
+
+  // Restore existing Supabase session on mount and listen for auth changes.
+  useEffect(() => {
+    if (!isSupabaseEnabled || bypass) return;
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(sessionToUser(session));
+      setLoading(false);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(sessionToUser(session));
+    });
+
+    return () => subscription.unsubscribe();
+  }, [bypass]);
 
   async function login(email, password) {
     setLoading(true);
     setError(null);
     try {
-      // TODO: replace with supabase.auth.signInWithPassword({ email, password })
-      if (!email || !password)
-        throw new Error("Email and password are required");
-      setUser({ id: "user-stub", email, name: email.split("@")[0] });
+      if (isSupabaseEnabled) {
+        const { error: sbError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        if (sbError) throw sbError;
+        // user state is updated via onAuthStateChange
+      } else {
+        if (!email || !password)
+          throw new Error("Email and password are required");
+        setUser({ id: "user-stub", email, name: email.split("@")[0] });
+      }
     } catch (err) {
       setError(err.message);
       throw err;
@@ -39,8 +80,12 @@ export function AuthProvider({ children }) {
   }
 
   async function logout() {
-    // TODO: replace with supabase.auth.signOut()
-    setUser(null);
+    if (isSupabaseEnabled) {
+      await supabase.auth.signOut();
+      // user state cleared via onAuthStateChange
+    } else {
+      setUser(null);
+    }
   }
 
   return (
