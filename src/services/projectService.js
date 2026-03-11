@@ -304,7 +304,14 @@ export async function loadSprite(id) {
 
 export async function saveSprite(sprite, thumbnail) {
   if (thumbnail !== undefined) sprite = { ...sprite, thumbnail };
-  if (isSupabaseEnabled) return sbSaveSprite(sprite);
+  // Supabase requires a project_id — fall through to IDB when there's no
+  // project context (e.g. EditorPage saves before the user picks a project).
+  if (isSupabaseEnabled && sprite.projectId) return sbSaveSprite(sprite);
+  if (isSupabaseEnabled && !sprite.projectId) {
+    console.warn(
+      "saveSprite: no projectId — saving to local IDB instead of Supabase",
+    );
+  }
   const now = new Date().toISOString();
   const record = { ...sprite, updatedAt: now };
   await idbPut(SPRITES_STORE, record);
@@ -411,14 +418,14 @@ export async function deleteProjectFromStorage(id) {
 export function serialiseProject(state, jellySpriteState) {
   return serialiseSprite(jellySpriteState, {
     id: state.id,
-    projectId: null,
+    projectId: state.projectId ?? null,
     name: state.name,
   });
 }
 export function downloadProject(state) {
   return downloadSpriteJson(null, {
     id: state.id,
-    projectId: null,
+    projectId: state.projectId ?? null,
     name: state.name,
   });
 }

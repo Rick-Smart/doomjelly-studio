@@ -102,7 +102,7 @@ export function JellySpriteWorkspace() {
         id,
         body: data,
         thumbnail,
-        projectId: state.projectId ?? data.projectId ?? "default",
+        projectId: state.projectId ?? data.projectId ?? null,
       });
       setSaved(true);
       showToast("Sprite saved.", "success", 2500);
