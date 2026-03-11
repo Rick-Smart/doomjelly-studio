@@ -1,11 +1,12 @@
-import { useState, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useRef, useEffect } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { useProject } from "../../contexts/ProjectContext";
 import { useNotification } from "../../contexts/NotificationContext";
 import { Page } from "../../ui/Page";
 import {
-  serialiseProject,
-  saveProjectToStorage,
+  loadSprite,
+  saveSprite,
+  serialiseSprite,
 } from "../../services/projectService";
 import { JellySprite } from "./JellySprite";
 import { ErrorBoundary } from "../../ui/ErrorBoundary/ErrorBoundary";
@@ -60,13 +61,28 @@ export function JellySpriteWorkspace() {
   const { state, dispatch } = useProject();
   const { showToast } = useNotification();
   const navigate = useNavigate();
+  const { spriteId } = useParams();
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  // Collector registered by JellySprite on mount — returns the full serialized
-  // JellySprite state when called.  We call it right before saving so the
-  // snapshot is always current.
   const jellySpriteCollectorRef = useRef(null);
+
+  // Load sprite from URL param on mount (or when URL changes)
+  useEffect(() => {
+    if (!spriteId) return;
+    // Don't reload if context already has this sprite loaded
+    if (state.id === spriteId) return;
+    loadSprite(spriteId)
+      .then((data) => {
+        dispatch({ type: "LOAD_PROJECT", payload: { ...data, id: spriteId } });
+      })
+      .catch((err) => {
+        console.error("Failed to load sprite:", err);
+        showToast("Failed to load sprite.", "error");
+        navigate("/projects");
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [spriteId]);
 
   async function handleSave() {
     setSaving(true);
@@ -74,15 +90,26 @@ export function JellySpriteWorkspace() {
       const collected = jellySpriteCollectorRef.current?.() ?? null;
       const jellySpriteState = collected?.data ?? null;
       const thumbnail = collected?.thumbnail ?? undefined;
-      const data = serialiseProject(state, jellySpriteState, "jelly-sprite");
-      if (!state.id) dispatch({ type: "SET_PROJECT_ID", payload: data.id });
-      await saveProjectToStorage(data, thumbnail);
+      const data = serialiseSprite(
+        { ...state, id: spriteId ?? state.id },
+        jellySpriteState,
+      );
+      const id = data.id;
+      if (!state.id) dispatch({ type: "SET_PROJECT_ID", payload: id });
+      await saveSprite(
+        {
+          ...data,
+          id,
+          projectId: state.projectId ?? data.projectId ?? "default",
+        },
+        thumbnail,
+      );
       setSaved(true);
-      showToast("Project saved.", "success", 2500);
+      showToast("Sprite saved.", "success", 2500);
       setTimeout(() => setSaved(false), 2000);
     } catch (err) {
-      console.error("Failed to save project:", err);
-      showToast("Failed to save project.", "error");
+      console.error("Failed to save sprite:", err);
+      showToast("Failed to save sprite.", "error");
     } finally {
       setSaving(false);
     }

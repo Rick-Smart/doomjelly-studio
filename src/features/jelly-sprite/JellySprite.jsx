@@ -493,7 +493,7 @@ function JellySpriteBody({ onSwitchToAnimator, onRegisterCollector }) {
     const c = canvasRef.current;
     if (!c) return;
     dispatch({
-      type: "SET_SPRITE_FORGE_DATA",
+      type: "SET_JELLY_SPRITE_DATA",
       payload: c.toDataURL("image/png"),
     });
   }
@@ -1299,7 +1299,7 @@ function JellySpriteBody({ onSwitchToAnimator, onRegisterCollector }) {
     const c = canvasRef.current;
     if (!c) return;
     const dataUrl = c.toDataURL("image/png");
-    dispatch({ type: "SET_SPRITE_FORGE_DATA", payload: dataUrl });
+    dispatch({ type: "SET_JELLY_SPRITE_DATA", payload: dataUrl });
     dispatch({
       type: "SET_SPRITE_SHEET",
       payload: {

@@ -12,6 +12,8 @@ const STORAGE_KEY = "dj-project";
 
 const initialState = {
   id: null,
+  projectId: null,
+  spriteId: null,
   name: "Untitled Project",
   spriteSheet: null,
   jellySpriteDataUrl: null,
@@ -106,8 +108,11 @@ function reducer(state, action) {
     case "SET_PROJECT_ID":
       return { ...state, id: action.payload };
 
-    case "SET_SPRITE_FORGE_DATA":
+    case "SET_JELLY_SPRITE_DATA":
       return { ...state, jellySpriteDataUrl: action.payload };
+
+    case "SET_SPRITE_ID":
+      return { ...state, spriteId: action.payload };
 
     case "RESTORE_SNAPSHOT":
       return { ...state, ...action.payload };

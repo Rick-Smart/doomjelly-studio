@@ -297,7 +297,7 @@ export function EditorPage() {
     }
   }
 
-  async function handleEditInForge() {
+  async function handleEditInJellySprite() {
     const sh = state.spriteSheet;
     if (sh?.objectUrl) {
       let src = sh.objectUrl;
@@ -318,9 +318,9 @@ export function EditorPage() {
           src = null;
         }
       }
-      if (src) dispatch({ type: "SET_SPRITE_FORGE_DATA", payload: src });
+      if (src) dispatch({ type: "SET_JELLY_SPRITE_DATA", payload: src });
     }
-    navigate("/forge");
+    navigate("/jelly-sprite");
   }
 
   return (
@@ -371,10 +371,10 @@ export function EditorPage() {
               <span className="editor-toolbar__sep" />
               <button
                 className="editor-toolbar__btn"
-                onClick={handleEditInForge}
-                title="Open this sprite sheet in Sprite Forge to edit"
+                onClick={handleEditInJellySprite}
+                title="Open this sprite sheet in JellySprite to edit"
               >
-                Edit in Forge ↗
+                Edit in JellySprite ↗
               </button>
             </>
           )}

@@ -25,6 +25,362 @@
   border-color: var(--accent);
 }
 
+/* ── Inline rename input ── */
+.projects-rename-input {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--surface3);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  padding: 2px 8px;
+  outline: none;
+  width: 200px;
+}
+
+.projects-rename-input--inline {
+  font-size: 14px;
+}
+
+/* ── Empty state ── */
+.projects-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex: 1;
+  padding: 40px 20px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.projects-empty__icon {
+  font-size: 40px;
+  margin: 0;
+}
+
+.projects-empty__title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
+}
+
+.projects-empty__hint {
+  font-size: 13px;
+  margin: 0;
+}
+
+/* ── Accordion ── */
+.projects-accordion {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.projects-accordion__item {
+  border-bottom: 1px solid var(--border);
+}
+
+.projects-accordion__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px 0 0;
+  min-height: 44px;
+}
+
+.projects-accordion__toggle {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: none;
+  border: none;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  min-width: 0;
+}
+
+.projects-accordion__toggle:hover {
+  background: var(--surface2);
+}
+
+.projects-accordion__arrow {
+  font-size: 12px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  width: 14px;
+}
+
+.projects-accordion__name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.projects-accordion__count {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-left: 4px;
+  flex-shrink: 0;
+}
+
+.projects-accordion__actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.projects-accordion__body {
+  background: var(--surface2);
+  border-top: 1px solid var(--border);
+  padding: 8px 12px 12px 36px;
+}
+
+.projects-accordion__loading {
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 8px 0;
+  margin: 0;
+}
+
+/* ── Sprite list inside accordion ── */
+.projects-sprites {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.projects-sprite-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  transition: background 0.1s;
+}
+
+.projects-sprite-card:hover {
+  background: var(--surface3);
+}
+
+.projects-sprite-card__thumb {
+  width: 36px;
+  height: 36px;
+  object-fit: cover;
+  border-radius: 4px;
+  image-rendering: pixelated;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+}
+
+.projects-sprite-card__info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.projects-sprite-card__name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.projects-sprite-card__stats {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.projects-sprite-card__date {
+  font-size: 11px;
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+
+.projects-sprite-card__actions {
+  display: flex;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+/* ── Add Sprite button ── */
+.projects-btn--add-sprite {
+  margin-top: 4px;
+  font-size: 12px;
+  padding: 5px 14px;
+  border-style: dashed;
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+.projects-btn--add-sprite:hover {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  border-color: var(--accent);
+}
+
+/* ── Buttons ── */
+.projects-btn {
+  font-size: 12px;
+  padding: 4px 12px;
+  background: var(--surface3);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.projects-btn:hover {
+  background: var(--surface2);
+}
+
+.projects-btn--sm {
+  font-size: 11px;
+  padding: 3px 9px;
+}
+
+.projects-btn--primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.projects-btn--primary:hover {
+  opacity: 0.85;
+}
+
+.projects-btn--danger {
+  border-color: color-mix(in srgb, var(--danger) 50%, transparent);
+  color: var(--danger);
+}
+
+.projects-btn--danger:hover {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+}
+
+/* ── Add Sprite modal ── */
+.projects-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.projects-modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 24px;
+  width: 420px;
+  max-width: 90vw;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.projects-modal__title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0;
+}
+
+.projects-modal__desc {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.projects-modal__options {
+  display: flex;
+  gap: 12px;
+}
+
+.projects-modal__option {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 16px 12px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+  text-align: center;
+}
+
+.projects-modal__option:hover {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 6%, var(--surface2));
+}
+
+.projects-modal__option-icon {
+  font-size: 24px;
+}
+
+.projects-modal__option-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.projects-modal__option-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.projects-new-form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.projects-new-input {
+  flex: 1;
+  max-width: 280px;
+  font-size: 13px;
+  padding: 5px 10px;
+  background: var(--surface3);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+}
+
+.projects-new-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
 /* ── Per-card inline rename input ── */
 .projects-rename-input {
   font-size: 14px;
