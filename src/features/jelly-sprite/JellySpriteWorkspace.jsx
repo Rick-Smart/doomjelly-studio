@@ -90,20 +90,20 @@ export function JellySpriteWorkspace() {
       const collected = jellySpriteCollectorRef.current?.() ?? null;
       const jellySpriteState = collected?.data ?? null;
       const thumbnail = collected?.thumbnail ?? undefined;
-      const data = serialiseSprite(
-        { ...state, id: spriteId ?? state.id },
-        jellySpriteState,
-      );
+      const data = serialiseSprite(jellySpriteState, {
+        id: spriteId ?? state.id,
+        projectId: state.projectId,
+        name: state.name,
+      });
       const id = data.id;
       if (!state.id) dispatch({ type: "SET_PROJECT_ID", payload: id });
-      await saveSprite(
-        {
-          ...data,
-          id,
-          projectId: state.projectId ?? data.projectId ?? "default",
-        },
+      await saveSprite({
+        ...data,
+        id,
+        body: data,
         thumbnail,
-      );
+        projectId: state.projectId ?? data.projectId ?? "default",
+      });
       setSaved(true);
       showToast("Sprite saved.", "success", 2500);
       setTimeout(() => setSaved(false), 2000);

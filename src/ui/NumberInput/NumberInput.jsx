@@ -48,8 +48,7 @@ export function NumberInput({
   }
 
   return (
-    <label className={
-um-input${className ? ` ${className}` : ""}`}>
+    <label className={`num-input${className ? ` ${className}` : ""}`}>
       <span className="num-input__label">{label}</span>
       <div className="num-input__row">
         <input

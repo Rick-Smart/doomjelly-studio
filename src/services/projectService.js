@@ -1,5 +1,4 @@
-﻿import JSZip from "jszip";
-import { supabase, isSupabaseEnabled } from "./supabase.js";
+﻿import { supabase, isSupabaseEnabled } from "./supabase.js";
 
 const SCHEMA_VERSION = 2;
 const IDB_NAME = "doomjelly-studio";
@@ -74,12 +73,15 @@ async function sbSaveSprite(sprite) {
     data: { user },
   } = await supabase.auth.getUser();
   const now = new Date().toISOString();
+  // body column stores the full serialised sprite for later restoration;
+  // fall back to the sprite itself if no explicit body was set
+  const body = sprite.body ?? sprite;
   const row = {
     id: sprite.id,
     project_id: sprite.projectId,
     user_id: user.id,
     name: sprite.name,
-    body: sprite.body,
+    body,
     thumbnail: sprite.thumbnail ?? null,
     frame_count: sprite.frameCount ?? 0,
     anim_count: sprite.animCount ?? 0,
@@ -103,7 +105,9 @@ async function sbLoadSprite(id) {
     .eq("id", id)
     .single();
   if (error) throw error;
-  return { ...sbSpriteRow(data), body: data.body };
+  // Spread body first so jellySpriteState is at top level, then override
+  // with authoritative metadata from the DB row columns
+  return { ...(data.body ?? {}), ...sbSpriteRow(data) };
 }
 
 async function sbDeleteSprite(id) {
@@ -298,7 +302,8 @@ export async function loadSprite(id) {
   return data;
 }
 
-export async function saveSprite(sprite) {
+export async function saveSprite(sprite, thumbnail) {
+  if (thumbnail !== undefined) sprite = { ...sprite, thumbnail };
   if (isSupabaseEnabled) return sbSaveSprite(sprite);
   const now = new Date().toISOString();
   const record = { ...sprite, updatedAt: now };
@@ -391,6 +396,9 @@ export function pickAndLoadSpriteFile() {
 }
 
 // Legacy shims — keep existing callers working
+export function pickAndLoadProject() {
+  return pickAndLoadSpriteFile();
+}
 export async function loadProjectFromStorage(id) {
   return loadSprite(id);
 }
