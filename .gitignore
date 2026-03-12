@@ -27,3 +27,4 @@ JELLYSPRITE_ARCHITECTURE.md
 *.njsproj
 *.sln
 *.sw?
+src/features/projects/ProjectsPage.jsx.tmp
