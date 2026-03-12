@@ -171,7 +171,7 @@ function TrackRow({
   );
 }
 
-export function TracksPanel() {
+export function TracksPanel({ pinnedTrackIds = [] }) {
   const { state, dispatch } = useProject();
   const { animations, activeAnimationId, spriteSheet, frameConfig } = state;
   const {
@@ -182,6 +182,11 @@ export function TracksPanel() {
     togglePreviewAnim,
   } = usePlayback();
   const src = spriteSheet?.objectUrl ?? null;
+
+  // Only show animations the user has explicitly pinned to the tracks panel
+  const pinnedAnimations = animations.filter((a) =>
+    pinnedTrackIds.includes(a.id),
+  );
 
   // isInPreview: when no composite is active, the active anim eye shows as lit
   function isInPreview(animId) {
@@ -216,13 +221,7 @@ export function TracksPanel() {
     });
   }
 
-  if (animations.length === 0) {
-    return (
-      <div className="tracks-panel tracks-panel--empty">
-        <span>No animations yet — create one in the Animations panel</span>
-      </div>
-    );
-  }
+  if (pinnedAnimations.length === 0) return null;
 
   return (
     <div className="tracks-panel">
@@ -230,7 +229,7 @@ export function TracksPanel() {
         <span className="tracks-panel__title">Tracks</span>
       </div>
       <div className="tracks-panel__body">
-        {animations.map((anim) => (
+        {pinnedAnimations.map((anim) => (
           <TrackRow
             key={anim.id}
             anim={anim}

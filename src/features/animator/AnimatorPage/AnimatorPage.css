@@ -120,6 +120,10 @@
   border-color: var(--accent);
   color: var(--accent);
 }
+
+/* ── Shared panel heading ────────────────────────────────
+   Used by SpriteImporter, FrameConfigPanel, etc.           */
+.panel-heading {
   font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
@@ -134,7 +138,8 @@
 .editor-body {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  flex: 1;
+  min-height: 0;
   overflow: hidden;
 }
 
@@ -234,7 +239,11 @@
   flex-shrink: 0;
   overflow: hidden;
   border-top: 1px solid var(--border);
-  background: var(--surface);
+  background: var(
+    --surface
+  ); /* Height is driven entirely by content (one row per pinned track) */
+  max-height: 50vh;
+  overflow-y: auto;
 }
 
 /* ── Resize handles ─────────────────────────────────────── */

@@ -200,10 +200,13 @@ export function AnimatorPage() {
     "dj-panel-preview",
     300,
   );
-  const [tracksHeight, setTracksHeight] = useLocalStorage(
-    "dj-tracks-height",
-    120,
-  );
+  const [pinnedTrackIds, setPinnedTrackIds] = useState([]);
+
+  function togglePinnedTrack(id) {
+    setPinnedTrackIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  }
 
   // Stable refs so unmount cleanup can access latest state without stale closure.
   const stateRef = useRef(state);
@@ -325,23 +328,6 @@ export function AnimatorPage() {
     }
     function onUp() {
       setDragging(false);
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
-    }
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
-  }
-
-  function startTracksResize(e) {
-    e.preventDefault();
-    const startY = e.clientY;
-    const startH = tracksHeight;
-    function onMove(e) {
-      setTracksHeight(
-        Math.min(400, Math.max(60, startH + (startY - e.clientY))),
-      );
-    }
-    function onUp() {
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
     }
@@ -581,18 +567,19 @@ export function AnimatorPage() {
                   />
                 </>
               )}
-              <AnimationSidebar />
+              <AnimationSidebar
+                pinnedTrackIds={pinnedTrackIds}
+                onTogglePinnedTrack={togglePinnedTrack}
+              />
               <div className="editor__right-divider" />
               <SequenceBuilder />
             </aside>
           </div>
-          <div
-            className="editor__resize-handle editor__resize-handle--v"
-            onMouseDown={startTracksResize}
-          />
-          <div className="editor__tracks" style={{ height: tracksHeight }}>
-            <TracksPanel />
-          </div>
+          {pinnedTrackIds.length > 0 && (
+            <div className="editor__tracks">
+              <TracksPanel pinnedTrackIds={pinnedTrackIds} />
+            </div>
+          )}
         </div>
         {/* editor-body */}
       </PlaybackProvider>

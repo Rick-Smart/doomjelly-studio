@@ -36,6 +36,8 @@
 .page__body {
   flex: 1;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .page__body--scroll {

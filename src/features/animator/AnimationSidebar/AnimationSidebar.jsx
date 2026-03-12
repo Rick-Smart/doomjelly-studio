@@ -5,7 +5,10 @@ import { IconButton } from "../../../ui/IconButton";
 import { ConfirmDialog } from "../../../ui/ConfirmDialog";
 import "./AnimationSidebar.css";
 
-export function AnimationSidebar() {
+export function AnimationSidebar({
+  pinnedTrackIds = [],
+  onTogglePinnedTrack,
+} = {}) {
   const { state, dispatch } = useProject();
   const { animations, activeAnimationId } = state;
 
@@ -98,6 +101,20 @@ export function AnimationSidebar() {
                 </span>
               )}
               <span className="anim-sidebar__meta">{anim.frames.length}f</span>
+              <IconButton
+                icon={pinnedTrackIds.includes(anim.id) ? "📌" : "📍"}
+                title={
+                  pinnedTrackIds.includes(anim.id)
+                    ? "Remove from tracks"
+                    : "Pin to tracks panel"
+                }
+                variant="ghost"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onTogglePinnedTrack?.(anim.id);
+                }}
+              />
               <IconButton
                 icon="⎘"
                 title="Duplicate animation"
