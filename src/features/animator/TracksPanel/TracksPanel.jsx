@@ -62,6 +62,9 @@ function TrackRow({
   src,
   frameConfig,
   onSelectFrame,
+  onSelectTrack,
+  onTogglePreview,
+  isInPreview,
   onReorder,
 }) {
   const { frameW, frameH, offsetX, offsetY, gutterX, gutterY } = frameConfig;
@@ -83,11 +86,31 @@ function TrackRow({
 
   return (
     <div className={`track-row${isActive ? " track-row--active" : ""}`}>
-      <div className="track-row__label" style={{ width: LABEL_W }}>
+      <div
+        className={`track-row__label${isActive ? " track-row__label--active" : ""}`}
+        style={{ width: LABEL_W }}
+        onClick={onSelectTrack}
+        title="Click to select this animation"
+      >
         <span className="track-row__name" title={anim.name}>
           {anim.name}
         </span>
         <span className="track-row__count">{frames.length}f</span>
+        <button
+          type="button"
+          className={`track-row__eye${isInPreview ? " track-row__eye--on" : ""}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            onTogglePreview();
+          }}
+          title={
+            isInPreview
+              ? "Remove from composite preview"
+              : "Add to composite preview"
+          }
+        >
+          {isInPreview ? "◉" : "◎"}
+        </button>
       </div>
       <div className="track-row__scroll">
         <div className="track-row__strip" style={{ width: totalW || "100%" }}>
@@ -151,8 +174,26 @@ function TrackRow({
 export function TracksPanel() {
   const { state, dispatch } = useProject();
   const { animations, activeAnimationId, spriteSheet, frameConfig } = state;
-  const { frameIndex, seekTo, pausePlayback } = usePlayback();
+  const {
+    frameIndex,
+    seekTo,
+    pausePlayback,
+    previewAnimIds,
+    togglePreviewAnim,
+  } = usePlayback();
   const src = spriteSheet?.objectUrl ?? null;
+
+  // isInPreview: when no composite is active, the active anim eye shows as lit
+  function isInPreview(animId) {
+    if (previewAnimIds.length === 0) return animId === activeAnimationId;
+    return previewAnimIds.includes(animId);
+  }
+
+  function handleSelectTrack(animId) {
+    pausePlayback();
+    dispatch({ type: "SET_ACTIVE_ANIMATION", payload: animId });
+    seekTo(0);
+  }
 
   function handleSelectFrame(animId, frameIdx) {
     pausePlayback();
@@ -198,6 +239,11 @@ export function TracksPanel() {
             src={src}
             frameConfig={frameConfig}
             onSelectFrame={handleSelectFrame}
+            onSelectTrack={() => handleSelectTrack(anim.id)}
+            onTogglePreview={() =>
+              togglePreviewAnim(anim.id, activeAnimationId)
+            }
+            isInPreview={isInPreview(anim.id)}
             onReorder={handleReorder}
           />
         ))}

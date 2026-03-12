@@ -15,6 +15,8 @@ const PlaybackContext = createContext({
   playPlayback: () => {},
   seekTo: () => {},
   pausePlayback: () => {},
+  previewAnimIds: [],
+  togglePreviewAnim: () => {},
 });
 
 export function PlaybackProvider({ children }) {
@@ -35,6 +37,22 @@ export function PlaybackProvider({ children }) {
   const seekTo = useCallback((i) => seekRef.current?.(i), []);
   const pausePlayback = useCallback(() => pauseRef.current?.(), []);
 
+  const [previewAnimIds, setPreviewAnimIds] = useState([]);
+  // togglePreviewAnim: clicking an eye when nothing is selected enters composite
+  // mode (adds active anim + clicked anim); subsequent clicks toggle in/out.
+  const togglePreviewAnim = useCallback((id, activeId) => {
+    setPreviewAnimIds((prev) => {
+      if (prev.length === 0) {
+        // Entering composite mode for the first time
+        return activeId && activeId !== id ? [activeId, id] : [id];
+      }
+      if (prev.includes(id)) {
+        return prev.filter((x) => x !== id); // empty = back to solo-active mode
+      }
+      return [...prev, id];
+    });
+  }, []);
+
   return (
     <PlaybackContext.Provider
       value={{
@@ -46,6 +64,8 @@ export function PlaybackProvider({ children }) {
         playPlayback,
         seekTo,
         pausePlayback,
+        previewAnimIds,
+        togglePreviewAnim,
       }}
     >
       {children}

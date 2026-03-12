@@ -64,6 +64,7 @@ export function PreviewCanvas() {
     setFrameIndex,
     setIsPlaying: setIsPlayingCtx,
     registerControls,
+    previewAnimIds,
   } = usePlayback();
   useEffect(() => {
     setFrameIndex(frameIndex);
@@ -149,7 +150,7 @@ export function PreviewCanvas() {
 
     if (!imgRef.current) return;
 
-    // Onion skin: ghost of the previous frame at 30% opacity.
+    // Onion skin: ghost of previous frame at 30% opacity (active animation only).
     if (onionSkin && frameIndex > 0) {
       const prev = frames[frameIndex - 1];
       if (prev) {
@@ -171,31 +172,62 @@ export function PreviewCanvas() {
       }
     }
 
-    const frame = frames[frameIndex];
-    if (!frame) return;
+    // Composite: draw each selected animation layer bottom-to-top.
+    // When no composite is active, fall back to just the active animation.
+    const toRender =
+      previewAnimIds.length > 0
+        ? animations.filter((a) => previewAnimIds.includes(a.id))
+        : activeAnim
+          ? [activeAnim]
+          : [];
 
-    const srcX = offsetX + frame.col * (frameW + gutterX) + (frame.dx ?? 0);
-    const srcY = offsetY + frame.row * (frameH + gutterY) + (frame.dy ?? 0);
-    ctx.drawImage(
-      imgRef.current,
-      srcX,
-      srcY,
-      frameW,
-      frameH,
-      0,
-      0,
-      canvas.width,
-      canvas.height,
-    );
+    for (const anim of toRender) {
+      const af = anim.frames;
+      if (!af.length) continue;
+      // Each layer loops independently at the same playhead position.
+      const frame = af[frameIndex % af.length];
+      if (!frame) continue;
+      const srcX = offsetX + frame.col * (frameW + gutterX) + (frame.dx ?? 0);
+      const srcY = offsetY + frame.row * (frameH + gutterY) + (frame.dy ?? 0);
+      ctx.drawImage(
+        imgRef.current,
+        srcX,
+        srcY,
+        frameW,
+        frameH,
+        0,
+        0,
+        canvas.width,
+        canvas.height,
+      );
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [frameIndex, bg, customColor, frameConfig, frames, imgVer, onionSkin]);
+  }, [
+    frameIndex,
+    bg,
+    customColor,
+    frameConfig,
+    frames,
+    imgVer,
+    onionSkin,
+    previewAnimIds,
+    animations,
+    activeAnim,
+  ]);
 
   const hasFrames = frames.length > 0;
+  // Show canvas when any composite layer has frames, not just the active anim.
+  const hasAnyPreviewFrames =
+    hasFrames ||
+    (previewAnimIds.length > 0 &&
+      animations.some(
+        (a) => previewAnimIds.includes(a.id) && a.frames.length > 0,
+      ));
 
   return (
     <div className="preview-canvas">
       <div className="preview-canvas__viewport" ref={viewportRef}>
-        {hasFrames && src ? (
+        {hasAnyPreviewFrames && src ? (
           <canvas
             ref={canvasRef}
             className="preview-canvas__canvas"
