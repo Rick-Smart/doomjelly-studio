@@ -9,10 +9,10 @@ export function CanvasArea() {
     canvasH,
     zoom,
     canvasRef,
-    onMouseDown,
-    onMouseMove,
-    onMouseUp,
-    onMouseLeave,
+    onPointerDown,
+    onPointerMove,
+    onPointerUp,
+    onPointerLeave,
     cursorStyle,
     isPlaying,
     fps,
@@ -52,10 +52,10 @@ export function CanvasArea() {
           className="jelly-sprite__canvas"
           width={canvasW * zoom}
           height={canvasH * zoom}
-          onMouseDown={onMouseDown}
-          onMouseMove={onMouseMove}
-          onMouseUp={onMouseUp}
-          onMouseLeave={onMouseLeave}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+          onPointerLeave={onPointerLeave}
           style={{ cursor: cursorStyle }}
         />
       </div>

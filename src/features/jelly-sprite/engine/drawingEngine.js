@@ -26,12 +26,19 @@ import * as selOps from "./tools/selectionOps.js";
 
 // Internal helpers
 
-function canvasCoords(e, canvasEl, zoom, w, h) {
+// clamp=true: clamps result to canvas pixel bounds (correct for drawing tools).
+// clamp=false: raw fractional pixel coords (needed for move-tool offset deltas
+//   so the selection can be dragged partially off-canvas without snapping).
+function canvasCoords(e, canvasEl, zoom, w, h, clamp = true) {
   const rect = canvasEl.getBoundingClientRect();
-  return {
-    x: Math.max(0, Math.min(w - 1, Math.floor((e.clientX - rect.left) / zoom))),
-    y: Math.max(0, Math.min(h - 1, Math.floor((e.clientY - rect.top) / zoom))),
-  };
+  const fx = Math.floor((e.clientX - rect.left) / zoom);
+  const fy = Math.floor((e.clientY - rect.top) / zoom);
+  return clamp
+    ? {
+        x: Math.max(0, Math.min(w - 1, fx)),
+        y: Math.max(0, Math.min(h - 1, fy)),
+      }
+    : { x: fx, y: fy };
 }
 
 // Brush context
@@ -77,6 +84,10 @@ export function createDrawingEngine(refs) {
   let lastPx = null; // { x, y } — last seen pixel (for interpolation)
   let moveOrigin = null; // { x, y, selX, selY } — for selection move
   let selMode = "replace"; // "replace" | "add" | "subtract" — set on pointer-down
+  // wasOutside: true once the cursor has left the canvas during a stroke.
+  // Used to paint exactly one final segment to the edge on fast strokes,
+  // then skip subsequent events while the cursor remains outside.
+  let wasOutside = false;
   // Lasso drag state (typed-buffer, zero hot-path allocation).
   // Preallocated once; resized only when canvas is larger than previous alloc.
   let lassoXY = new Int16Array(0); // interleaved Int16 [x0,y0, x1,y1, ...]
@@ -199,6 +210,12 @@ export function createDrawingEngine(refs) {
   function onPointerDown(e) {
     if (e.button !== 0) return null;
     e.preventDefault();
+    // Capture the pointer so pointermove / pointerup keep firing on this element
+    // even after the cursor leaves the canvas bounds.  This prevents strokes and
+    // selection drags from being cut short when the user moves the mouse quickly
+    // off the canvas edge.  pointerleave is also suppressed while capture is
+    // active, so the leave-handler only fires after the pointer is truly gone.
+    refs.canvasEl?.setPointerCapture(e.pointerId);
 
     const st = refs.stateRef.current;
     const { canvasW: w, canvasH: h, zoom, tool } = st;
@@ -206,6 +223,7 @@ export function createDrawingEngine(refs) {
 
     selMode = e.shiftKey ? "add" : e.altKey ? "subtract" : "replace";
     isDrawing = true;
+    wasOutside = false;
     startPx = { x, y };
     lastPx = { x, y };
 
@@ -356,7 +374,16 @@ export function createDrawingEngine(refs) {
 
     const st = refs.stateRef.current;
     const { canvasW: w, canvasH: h, zoom, tool } = st;
-    const { x, y } = canvasCoords(e, refs.canvasEl, zoom, w, h);
+    // Move tool needs unclamped coords so the selection delta is correct even
+    // when the cursor is outside the canvas.  All other tools clamp to bounds.
+    const { x, y } = canvasCoords(
+      e,
+      refs.canvasEl,
+      zoom,
+      w,
+      h,
+      tool !== "move",
+    );
 
     // Move
     if (tool === "move" && moveOrigin) {
@@ -414,18 +441,35 @@ export function createDrawingEngine(refs) {
       previewShape(startPx.x, startPx.y, x, y);
       refs.redraw?.();
     } else if (lastPx && (lastPx.x !== x || lastPx.y !== y)) {
-      // Interpolate between lastPx and current to avoid gaps
-      const ddx = x - lastPx.x,
-        ddy = y - lastPx.y;
-      const steps = Math.max(Math.abs(ddx), Math.abs(ddy));
-      for (let i = 0; i <= steps; i++) {
-        const pickedHex = applyFreehand(
-          Math.round(lastPx.x + (ddx * i) / steps),
-          Math.round(lastPx.y + (ddy * i) / steps),
-        );
-        if (pickedHex) return pickedHex;
+      // Determine whether the cursor is currently outside the canvas.
+      // setPointerCapture keeps events flowing after the cursor leaves, so we
+      // gate painting carefully:
+      //   - cursor inside  → paint normally
+      //   - cursor JUST crossed outside (wasOutside=false) → paint final
+      //     segment to the clamped edge so fast strokes reach the boundary
+      //   - cursor still outside (wasOutside=true) → skip to avoid stamping
+      //     along the edge while the cursor drifts further away
+      const rect = refs.canvasEl?.getBoundingClientRect();
+      const rawX = rect ? Math.floor((e.clientX - rect.left) / zoom) : x;
+      const rawY = rect ? Math.floor((e.clientY - rect.top) / zoom) : y;
+      const outsideCanvas = rawX < 0 || rawX >= w || rawY < 0 || rawY >= h;
+
+      if (!outsideCanvas || !wasOutside) {
+        // Interpolate between lastPx and current (x/y already clamped, so when
+        // outsideCanvas this segment ends right at the canvas edge).
+        const ddx = x - lastPx.x,
+          ddy = y - lastPx.y;
+        const steps = Math.max(Math.abs(ddx), Math.abs(ddy));
+        for (let i = 0; i <= steps; i++) {
+          const pickedHex = applyFreehand(
+            Math.round(lastPx.x + (ddx * i) / steps),
+            Math.round(lastPx.y + (ddy * i) / steps),
+          );
+          if (pickedHex) return pickedHex;
+        }
+        refs.redraw?.();
       }
-      refs.redraw?.();
+      wasOutside = outsideCanvas;
     }
 
     lastPx = { x, y };
@@ -439,7 +483,16 @@ export function createDrawingEngine(refs) {
 
     const st = refs.stateRef.current;
     const { canvasW: w, canvasH: h, zoom, tool } = st;
-    const { x, y } = canvasCoords(e, refs.canvasEl, zoom, w, h);
+    // Move tool: unclamped so the finalised selection position matches where the
+    // user released (even if partially off-canvas).  Other tools: clamped.
+    const { x, y } = canvasCoords(
+      e,
+      refs.canvasEl,
+      zoom,
+      w,
+      h,
+      tool !== "move",
+    );
 
     // Move finalise
     if (tool === "move" && moveOrigin) {
@@ -589,6 +642,7 @@ export function createDrawingEngine(refs) {
       refs.redraw?.();
     }
     isDrawing = false;
+    wasOutside = false;
     lastPx = null;
     startPx = null;
     const tool = st.tool;

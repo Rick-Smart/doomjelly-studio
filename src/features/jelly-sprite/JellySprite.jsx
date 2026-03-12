@@ -741,21 +741,22 @@ function JellySpriteBody({ onRegisterCollector }) {
     updateThumbnailForActiveFrame();
   }
 
-  // Mouse handlers
-  function onMouseDown(e) {
+  // Pointer handlers (pointer events used instead of mouse events so
+  // setPointerCapture can keep events flowing when the cursor leaves the canvas)
+  function onPointerDown(e) {
     isDrawing.current = true;
     const hex = refs.drawingEngine?.onPointerDown(e);
     if (hex) pickColor(hex);
   }
-  function onMouseMove(e) {
+  function onPointerMove(e) {
     const hex = refs.drawingEngine?.onPointerMove(e);
     if (hex) pickColor(hex);
   }
-  function onMouseUp(e) {
+  function onPointerUp(e) {
     isDrawing.current = false;
     refs.drawingEngine?.onPointerUp(e);
   }
-  function onMouseLeave(e) {
+  function onPointerLeave(e) {
     isDrawing.current = false;
     refs.drawingEngine?.onPointerLeave(e);
   }
@@ -1370,10 +1371,10 @@ function JellySpriteBody({ onRegisterCollector }) {
     zoom,
     setZoom,
     canvasRef,
-    onMouseDown,
-    onMouseMove,
-    onMouseUp,
-    onMouseLeave,
+    onPointerDown,
+    onPointerMove,
+    onPointerUp,
+    onPointerLeave,
     cursorStyle,
     tool,
     setTool,
