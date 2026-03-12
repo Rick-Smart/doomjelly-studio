@@ -58,11 +58,11 @@ export function rgbToHex(r, g, b) {
   );
 }
 
-function hexToHsv(hex) {
+export function hexToHsv(hex) {
   return rgbToHsv(...hexToRgb(hex));
 }
 
-function hsvToHex(h, s, v) {
+export function hsvToHex(h, s, v) {
   return rgbToHex(...hsvToRgb(h, s, v));
 }
 
@@ -72,7 +72,7 @@ function clamp(v, lo, hi) {
 
 // SV gradient square
 
-function SVPad({ hue, sv, onChange }) {
+function SVPad({ hue, sv, onChange, onCommit }) {
   const canvasRef = useRef(null);
   const dragging = useRef(false);
 
@@ -127,8 +127,9 @@ function SVPad({ hue, sv, onChange }) {
         onMouseMove={(e) => {
           if (dragging.current) pick(e);
         }}
-        onMouseUp={() => {
+        onMouseUp={(e) => {
           dragging.current = false;
+          onCommit?.(getCoords(e));
         }}
         onMouseLeave={() => {
           dragging.current = false;
@@ -147,7 +148,7 @@ function SVPad({ hue, sv, onChange }) {
 
 // Hue slider
 
-function HueSlider({ hue, onChange }) {
+function HueSlider({ hue, onChange, onCommit }) {
   const dragging = useRef(false);
 
   function getHue(e) {
@@ -166,8 +167,9 @@ function HueSlider({ hue, onChange }) {
         onMouseMove={(e) => {
           if (dragging.current) onChange(getHue(e));
         }}
-        onMouseUp={() => {
+        onMouseUp={(e) => {
           dragging.current = false;
+          onCommit?.(getHue(e));
         }}
         onMouseLeave={() => {
           dragging.current = false;
@@ -184,7 +186,7 @@ function HueSlider({ hue, onChange }) {
 
 // Alpha slider
 
-function AlphaSlider({ alpha, rgb, onChange }) {
+function AlphaSlider({ alpha, rgb, onChange, onCommit }) {
   const dragging = useRef(false);
   const [r, g, b] = rgb;
 
@@ -205,8 +207,9 @@ function AlphaSlider({ alpha, rgb, onChange }) {
         onMouseMove={(e) => {
           if (dragging.current) onChange(getAlpha(e));
         }}
-        onMouseUp={() => {
+        onMouseUp={(e) => {
           dragging.current = false;
+          onCommit?.(getAlpha(e));
         }}
         onMouseLeave={() => {
           dragging.current = false;
@@ -224,9 +227,10 @@ function AlphaSlider({ alpha, rgb, onChange }) {
  * props:
  *   hex      – "#rrggbb" string (alpha ignored in hex; use alpha prop)
  *   alpha    – 0–1 (default 1)
- *   onChange – (hex, alpha) => void — called on every change
+ *   onChange – (hex, alpha) => void — called on every drag movement (preview only)
+ *   onCommit – (hex, alpha) => void — called once on mouseUp (commit to history)
  */
-export function ColorPicker({ hex, alpha = 1, onChange }) {
+export function ColorPicker({ hex, alpha = 1, onChange, onCommit }) {
   const [h, s, v] = hexToHsv(hex || "#000000");
   const [hue, setHue] = useState(h);
   const [sv, setSv] = useState([s, v]);
@@ -287,6 +291,19 @@ export function ColorPicker({ hex, alpha = 1, onChange }) {
     emit(hue, sv[0], sv[1], na);
   }
 
+  // Called by sub-components on mouseUp with their final committed value.
+  // The other two HSV variables are currently settled in state (they weren't
+  // changed by this drag) so the closure captures the correct values.
+  function commitSv([ns, nv]) {
+    onCommit?.(hsvToHex(hue, ns, nv), al);
+  }
+  function commitHue(nh) {
+    onCommit?.(hsvToHex(nh, sv[0], sv[1]), al);
+  }
+  function commitAlpha(na) {
+    onCommit?.(hsvToHex(hue, sv[0], sv[1]), na);
+  }
+
   function onHexInput(raw) {
     setHexInput(raw);
     const clean = raw.replace(/[^0-9a-f]/gi, "");
@@ -296,6 +313,7 @@ export function ColorPicker({ hex, alpha = 1, onChange }) {
       setHue(nh);
       setSv([ns, nv]);
       onChange(fullHex, al);
+      onCommit?.(fullHex, al);
       const [r, g, b] = hexToRgb(fullHex);
       setRInput(r.toString());
       setGInput(g.toString());
@@ -316,6 +334,7 @@ export function ColorPicker({ hex, alpha = 1, onChange }) {
       setHue(nh);
       setSv([ns, nv]);
       onChange(fullHex, al);
+      onCommit?.(fullHex, al);
       setHexInput(fullHex.replace("#", ""));
     }
   }
@@ -324,9 +343,14 @@ export function ColorPicker({ hex, alpha = 1, onChange }) {
 
   return (
     <div className="cp">
-      <SVPad hue={hue} sv={sv} onChange={onSvChange} />
-      <HueSlider hue={hue} onChange={onHueChange} />
-      <AlphaSlider alpha={al} rgb={rgb} onChange={onAlphaChange} />
+      <SVPad hue={hue} sv={sv} onChange={onSvChange} onCommit={commitSv} />
+      <HueSlider hue={hue} onChange={onHueChange} onCommit={commitHue} />
+      <AlphaSlider
+        alpha={al}
+        rgb={rgb}
+        onChange={onAlphaChange}
+        onCommit={commitAlpha}
+      />
 
       <div className="cp-preview-row">
         <div

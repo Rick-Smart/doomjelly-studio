@@ -209,6 +209,8 @@ export function createDrawingEngine(refs) {
   // Pointer down
   function onPointerDown(e) {
     if (e.button !== 0) return null;
+    // Block all drawing while the animation preview is playing.
+    if (refs.isPlaying) return null;
     e.preventDefault();
     // Capture the pointer so pointermove / pointerup keep firing on this element
     // even after the cursor leaves the canvas bounds.  This prevents strokes and

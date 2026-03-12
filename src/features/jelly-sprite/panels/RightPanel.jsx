@@ -1,5 +1,5 @@
 ﻿import { useState, useRef, useEffect, useCallback } from "react";
-import { ColorPicker } from "../../../ui/ColorPicker";
+import { ColorPicker, hexToHsv, hsvToHex } from "../../../ui/ColorPicker";
 import { PaletteManager } from "../../../ui/PaletteManager";
 import { useJellySprite } from "../JellySpriteContext";
 import {
@@ -10,14 +10,40 @@ import {
 } from "../jellySprite.constants";
 import { BrushThumb } from "../BrushThumb";
 
+// Generate a symmetric shade ramp around the selected color.
+// Returns an array with the selected color FIRST (index 0) so the reducer
+// correctly identifies it via incoming[0]. The remaining 8 tones are the
+// ramp (4 darker, 4 lighter). For display, sort by HSV value to render dark→light.
+function relatedTones(hex) {
+  const [h, s, v] = hexToHsv(hex);
+  const clampV = (x) => Math.max(0.03, Math.min(0.98, x));
+  const clampS = (x) => Math.max(0, Math.min(1, x));
+  const darkStep = v / 4.5;
+  const lightStep = (1 - v) / 4.5;
+  const tones = [];
+  for (let i = 4; i >= 1; i--) {
+    tones.push(hsvToHex(h, clampS(s + 0.04 * i), clampV(v - darkStep * i)));
+  }
+  for (let i = 1; i <= 4; i++) {
+    tones.push(hsvToHex(h, clampS(s - 0.06 * i), clampV(v + lightStep * i)));
+  }
+  // Deduplicate neighbours that collapse near black/white
+  const unique = [...new Map(tones.map((c) => [c, c])).values()];
+  // selected hex FIRST so reducer's incoming[0] is always the chosen colour
+  return [hex, ...unique.filter((c) => c !== hex)];
+}
+
 // Right panel container
 export function RightPanel() {
   const {
     fgColor,
     fgAlpha,
+    setFgColor,
     setFgAlpha,
     colorHistory,
+    relatedColors,
     pickColor,
+    commitColor,
     panelTab,
     setPanelTab,
     selection,
@@ -40,16 +66,40 @@ export function RightPanel() {
             hex={fgColor}
             alpha={fgAlpha}
             onChange={(hex, alpha) => {
-              pickColor(hex);
+              // Preview only — updates fgColor without touching history
+              setFgColor(hex);
+              setFgAlpha(alpha);
+            }}
+            onCommit={(hex, alpha) => {
+              // Commit: add selected color + related shade ramp to history
+              commitColor(relatedTones(hex));
               setFgAlpha(alpha);
             }}
           />
         </div>
 
+        {relatedColors.length > 0 && (
+          <div className="jelly-sprite__color-swatches">
+            {[...relatedColors]
+              .sort((a, b) => hexToHsv(a)[2] - hexToHsv(b)[2])
+              .map((c, i) => (
+                <button
+                  key={i}
+                  className={`jelly-sprite__history-cell${fgColor === c ? " jelly-sprite__palette-cell--active" : ""}`}
+                  style={{ background: c }}
+                  title={c}
+                  onClick={() => pickColor(c)}
+                />
+              ))}
+          </div>
+        )}
+
         {colorHistory.length > 0 && (
-          <div className="jelly-sprite__section">
-            <div className="jelly-sprite__section-label">Recent</div>
-            <div className="jelly-sprite__history">
+          <>
+            {relatedColors.length > 0 && (
+              <div className="jelly-sprite__swatch-divider" />
+            )}
+            <div className="jelly-sprite__color-swatches">
               {colorHistory.map((c, i) => (
                 <button
                   key={i}
@@ -60,7 +110,7 @@ export function RightPanel() {
                 />
               ))}
             </div>
-          </div>
+          </>
         )}
       </div>
 

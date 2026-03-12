@@ -1,1 +1,7 @@
-export { ColorPicker, hexToRgb, rgbToHex } from "./ColorPicker";
+export {
+  ColorPicker,
+  hexToRgb,
+  rgbToHex,
+  hexToHsv,
+  hsvToHex,
+} from "./ColorPicker";

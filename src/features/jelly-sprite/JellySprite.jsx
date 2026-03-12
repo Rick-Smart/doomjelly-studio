@@ -63,6 +63,7 @@ function JellySpriteBody({ onRegisterCollector }) {
     bgColor,
     fgAlpha,
     colorHistory,
+    relatedColors,
     palettes,
     activePalette,
     panelTab,
@@ -122,6 +123,10 @@ function JellySpriteBody({ onRegisterCollector }) {
   const setFgColor = (v) => sd({ type: A.SET_FG_COLOR, payload: v });
   const setBgColor = (v) => sd({ type: A.SET_BG_COLOR, payload: v });
   const setFgAlpha = (v) => sd({ type: A.SET_FG_ALPHA, payload: v });
+  // commitColor: called on mouseUp from ColorPicker; tones is string[] with
+  // the selected color first followed by related shades. Adds the group to
+  // history without flooding it on every drag event.
+  const commitColor = (tones) => sd({ type: A.COMMIT_COLOR, payload: tones });
   const setActivePalette = (v) =>
     sd({ type: A.SET_ACTIVE_PALETTE, payload: v });
   const setPanelTab = (v) => sd({ type: A.SET_PANEL_TAB, payload: v });
@@ -1418,7 +1423,9 @@ function JellySpriteBody({ onRegisterCollector }) {
     fgAlpha,
     setFgAlpha,
     colorHistory,
+    relatedColors,
     pickColor,
+    commitColor,
     // selection from store (ss.selection) is the source of truth
     selection: ss.selection,
     copySelection: () => refs.drawingEngine?.copySelection(),

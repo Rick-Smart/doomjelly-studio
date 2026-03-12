@@ -59,6 +59,24 @@ export function jellySpriteReducer(state, action) {
       return { ...state, fgColor: hex, colorHistory: history };
     }
 
+    case A.COMMIT_COLOR: {
+      // payload: string[] — selected color first, then related tones.
+      // relatedColors: all tones (shown as the top swatch group).
+      // colorHistory: just the selected color (the bottom "recent" group).
+      const incoming = Array.isArray(payload) ? payload : [payload];
+      const selected = incoming[0] ?? state.fgColor;
+      const history = [
+        selected,
+        ...state.colorHistory.filter((c) => c !== selected),
+      ].slice(0, MAX_COLOUR_HISTORY);
+      return {
+        ...state,
+        fgColor: selected,
+        relatedColors: incoming,
+        colorHistory: history,
+      };
+    }
+
     // Palette
     case A.SET_ACTIVE_PALETTE:
       return { ...state, activePalette: payload };

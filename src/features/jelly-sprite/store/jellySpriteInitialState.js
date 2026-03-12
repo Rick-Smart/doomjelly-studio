@@ -45,7 +45,8 @@ export const jellySpriteInitialState = {
   fgColor: "#000000",
   bgColor: "#ffffff",
   fgAlpha: 1, // 0–1, separate from brushOpacity
-  colorHistory: [], // last MAX_COLOUR_HISTORY used colors
+  relatedColors: [], // tones from the last committed color pick
+  colorHistory: [], // last MAX_COLOUR_HISTORY individually selected colors
 
   // Palettes
   palettes: { ...BUILTIN_PALETTES },

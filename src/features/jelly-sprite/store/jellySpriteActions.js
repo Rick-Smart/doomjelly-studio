@@ -22,6 +22,7 @@ export const SET_BG_COLOR = "SET_BG_COLOR"; // hex string
 export const SET_FG_ALPHA = "SET_FG_ALPHA"; // number 0–1
 export const SWAP_COLORS = "SWAP_COLORS"; // no payload
 export const PICK_COLOR = "PICK_COLOR"; // hex string — sets fgColor + history
+export const COMMIT_COLOR = "COMMIT_COLOR"; // string[] — [selected, ...related tones]
 
 // Palette
 export const SET_ACTIVE_PALETTE = "SET_ACTIVE_PALETTE"; // palette name string

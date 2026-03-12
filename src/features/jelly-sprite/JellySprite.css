@@ -118,7 +118,10 @@
   border-radius: 5px;
   color: var(--danger);
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    color 0.15s;
   flex-shrink: 0;
 }
 
@@ -275,7 +278,21 @@
   border-color: var(--text-muted);
 }
 
-/* Recent colour history */
+/* Colour swatches (related + recent) */
+.jelly-sprite__color-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  padding: 4px 0;
+}
+
+.jelly-sprite__swatch-divider {
+  height: 1px;
+  background: var(--border-color, rgba(255, 255, 255, 0.1));
+  margin: 2px 0;
+}
+
+/* Keep legacy .jelly-sprite__history as an alias */
 .jelly-sprite__history {
   display: flex;
   flex-wrap: wrap;

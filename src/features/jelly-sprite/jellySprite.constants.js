@@ -1,7 +1,7 @@
 ﻿// Shared constants & factory functions
 
 export const MAX_HISTORY = 50;
-export const MAX_COLOUR_HISTORY = 10;
+export const MAX_COLOUR_HISTORY = 20;
 export const MAX_ZOOM = 64;
 
 // Common pixel-art sprite sizes, roughly ordered smallest → largest.
