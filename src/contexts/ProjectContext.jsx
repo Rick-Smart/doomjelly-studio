@@ -20,6 +20,9 @@ const initialState = {
   // Full JellySprite editor state from jellySpritePersistence (v2 saves).
   // null for new projects and v1 saves.
   jellySpriteState: null,
+  // Animator state: { spriteSheet: { dataUrl, width, height, frameW, frameH, cols, rows } }
+  // pre-populated from JellySprite save so the Animator can open immediately.
+  animatorState: null,
   frameConfig: {
     frameW: 32,
     frameH: 32,

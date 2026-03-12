@@ -198,6 +198,57 @@ export function EditorPage() {
     "dj-panel-preview",
     220,
   );
+
+  // When a sprite is opened from Projects via "Animator ↗", state.animatorState
+  // is pre-populated with the assembled sprite sheet from JellySprite.
+  // Restore it so the user doesn't need to re-import the image.
+  useEffect(() => {
+    const as = state.animatorState;
+    if (!as?.spriteSheet?.dataUrl) return;
+    // Only restore if there's no sheet already loaded in context
+    if (state.spriteSheet?.objectUrl) return;
+    const { dataUrl, width, height, frameW, frameH } = as.spriteSheet;
+    // Convert the stored data URL to a blob URL so SpriteImporter behaves
+    // identically to a freshly imported file
+    fetch(dataUrl)
+      .then((r) => r.blob())
+      .then((blob) => {
+        const objectUrl = URL.createObjectURL(blob);
+        dispatch({
+          type: "SET_SPRITE_SHEET",
+          payload: {
+            objectUrl,
+            filename: `${state.name}.png`,
+            width,
+            height,
+          },
+        });
+        // Pre-fill frame config from the sprite sheet dimensions
+        if (frameW && frameH) {
+          dispatch({
+            type: "SET_FRAME_CONFIG",
+            payload: {
+              frameW,
+              frameH,
+              scale: 2,
+              offsetX: 0,
+              offsetY: 0,
+              gutterX: 0,
+              gutterY: 0,
+            },
+          });
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to restore animator sprite sheet:", err);
+        showToast(
+          "Could not restore sprite sheet — please re-import.",
+          "error",
+        );
+      });
+    // Run once on mount only
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [saving, setSaving] = useState(false);
 
   function startLeftResize(e) {

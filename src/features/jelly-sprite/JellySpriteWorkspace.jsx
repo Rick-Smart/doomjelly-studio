@@ -90,6 +90,7 @@ export function JellySpriteWorkspace() {
       const collected = jellySpriteCollectorRef.current?.() ?? null;
       const jellySpriteState = collected?.data ?? null;
       const thumbnail = collected?.thumbnail ?? undefined;
+      const spriteSheet = collected?.spriteSheet ?? null;
       const data = serialiseSprite(jellySpriteState, {
         id: spriteId ?? state.id,
         projectId: state.projectId,
@@ -100,6 +101,11 @@ export function JellySpriteWorkspace() {
       await saveSprite({
         ...data,
         id,
+        // jelly_body: full pixel/layer state (for re-editing in JellySprite)
+        jellyBody: jellySpriteState,
+        // animator_body: flat sprite sheet (for opening in the Animator)
+        animatorBody: spriteSheet ? { spriteSheet } : null,
+        // legacy body column kept during transition
         body: data,
         thumbnail,
         projectId: state.projectId ?? data.projectId ?? null,

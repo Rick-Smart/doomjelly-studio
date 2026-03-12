@@ -82,17 +82,6 @@ export function ProjectsPage() {
     }
   }
 
-  async function handleOpenInAnimator(spriteId) {
-    try {
-      const data = await loadSprite(spriteId);
-      dispatch({ type: "LOAD_PROJECT", payload: { ...data, id: spriteId } });
-      navigate("/editor");
-    } catch (err) {
-      console.error(err);
-      showToast("Failed to open sprite in Animator.", "error");
-    }
-  }
-
   async function handleDeleteProject(id) {
     try {
       await deleteProject(id);
@@ -441,21 +430,12 @@ export function ProjectsPage() {
                                       Delete
                                     </button>
                                     <button
-                                      className="projects-btn projects-btn--sm"
-                                      onClick={() =>
-                                        handleOpenInAnimator(sprite.id)
-                                      }
-                                      title="Open sprite sheet in Animator"
-                                    >
-                                      Animator ↗
-                                    </button>
-                                    <button
                                       className="projects-btn projects-btn--sm projects-btn--primary"
                                       onClick={() =>
                                         handleOpenSprite(sprite.id)
                                       }
                                     >
-                                      Edit ✏️
+                                      Open
                                     </button>
                                   </div>
                                 </li>

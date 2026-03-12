@@ -73,20 +73,26 @@ async function sbSaveSprite(sprite) {
     data: { user },
   } = await supabase.auth.getUser();
   const now = new Date().toISOString();
-  // body column stores the full serialised sprite for later restoration;
-  // fall back to the sprite itself if no explicit body was set
-  const body = sprite.body ?? sprite;
+  // Derive metadata from jelly_body when not supplied directly
+  const jellyBody = sprite.jellyBody ?? null;
+  const animatorBody = sprite.animatorBody ?? null;
+  const frameCount = sprite.frameCount ?? jellyBody?.frames?.length ?? 0;
+  const animCount = sprite.animCount ?? 0;
+  const canvasW = sprite.canvasW ?? jellyBody?.canvasW ?? 32;
+  const canvasH = sprite.canvasH ?? jellyBody?.canvasH ?? 32;
   const row = {
     id: sprite.id,
     project_id: sprite.projectId,
     user_id: user.id,
     name: sprite.name,
-    body,
+    body: sprite.body ?? {},
+    jelly_body: jellyBody,
+    animator_body: animatorBody,
     thumbnail: sprite.thumbnail ?? null,
-    frame_count: sprite.frameCount ?? 0,
-    anim_count: sprite.animCount ?? 0,
-    canvas_w: sprite.canvasW ?? 32,
-    canvas_h: sprite.canvasH ?? 32,
+    frame_count: frameCount,
+    anim_count: animCount,
+    canvas_w: canvasW,
+    canvas_h: canvasH,
     updated_at: now,
   };
   const { error } = await supabase.from("sprites").upsert(row);
@@ -105,9 +111,17 @@ async function sbLoadSprite(id) {
     .eq("id", id)
     .single();
   if (error) throw error;
-  // Spread body first so jellySpriteState is at top level, then override
-  // with authoritative metadata from the DB row columns
-  return { ...(data.body ?? {}), ...sbSpriteRow(data) };
+  const meta = sbSpriteRow(data);
+  // Prefer the dedicated jelly_body column; fall back to legacy body for
+  // sprites saved before migration 003.
+  const jellyBody =
+    data.jelly_body ??
+    (data.body?.frames ? data.body : (data.body?.jellySpriteState ?? null));
+  return {
+    ...meta,
+    jellySpriteState: jellyBody,
+    animatorState: data.animator_body ?? null,
+  };
 }
 
 async function sbDeleteSprite(id) {
@@ -299,7 +313,16 @@ export async function listSprites(projectId) {
 export async function loadSprite(id) {
   if (isSupabaseEnabled) return sbLoadSprite(id);
   const data = await idbGet(SPRITES_STORE, id);
-  return data;
+  if (!data) return null;
+  // Normalise IDB records to the same shape as Supabase returns
+  const jellySpriteState =
+    data.jellyBody ??
+    (data.body?.frames ? data.body : (data.body?.jellySpriteState ?? null));
+  return {
+    ...data,
+    jellySpriteState,
+    animatorState: data.animatorBody ?? null,
+  };
 }
 
 export async function saveSprite(sprite, thumbnail) {
@@ -313,11 +336,15 @@ export async function saveSprite(sprite, thumbnail) {
     );
   }
   const now = new Date().toISOString();
-  const record = { ...sprite, updatedAt: now };
+  const frameCount = sprite.frameCount ?? sprite.jellyBody?.frames?.length ?? 0;
+  const canvasW = sprite.canvasW ?? sprite.jellyBody?.canvasW ?? 32;
+  const canvasH = sprite.canvasH ?? sprite.jellyBody?.canvasH ?? 32;
+  const record = { ...sprite, frameCount, canvasW, canvasH, updatedAt: now };
   await idbPut(SPRITES_STORE, record);
 
   const index = readSpritesIndex();
-  const { body: _body, ...meta } = record;
+  // Strip large binary blobs from the index — only keep metadata
+  const { body: _b, jellyBody: _jb, animatorBody: _ab, ...meta } = record;
   const i = index.findIndex((s) => s.id === sprite.id);
   if (i >= 0) {
     index[i] = { ...index[i], ...meta };

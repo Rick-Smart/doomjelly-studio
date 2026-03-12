@@ -515,16 +515,57 @@ function JellySpriteBody({ onSwitchToAnimator, onRegisterCollector }) {
 
   // Persistence: save-data collector
   // collectSaveData() snapshots current pixel state, serialises everything,
-  // and generates a thumbnail of the active frame.
-  // JellySpriteWorkspace calls this right before writing to storage.
+  // generates per-frame flat images (composited PNG data URLs), assembles a
+  // sprite sheet from those flats, and returns the thumbnail of the active
+  // frame. JellySpriteWorkspace calls this right before writing to storage.
   function collectSaveData() {
     saveCurrentFrameToSnapshot();
     const data = serializeJellySprite(refs, ss, framesRef.current);
-    const thumbFrameId = framesRef.current[activeFrameIdxRef.current]?.id;
+
+    // Inject a flatImage (composited PNG data URL) into every serialised frame.
+    // The Animator uses these as its source; they also let us reconstruct the
+    // sprite sheet without unpacking pixel buffers on load.
+    const frames = framesRef.current;
+    data.frames = data.frames.map((sf) => ({
+      ...sf,
+      flatImage: generateFrameThumbnail(sf.id) ?? null,
+    }));
+
+    // Assemble a horizontal sprite sheet from the per-frame flat images.
+    // Layout: all frames in a single row (cols = frameCount, rows = 1).
+    const w = ss.canvasW;
+    const h = ss.canvasH;
+    const cols = data.frames.length;
+    let spriteSheet = null;
+    if (cols > 0 && w > 0 && h > 0) {
+      const sheetCanvas = document.createElement("canvas");
+      sheetCanvas.width = w * cols;
+      sheetCanvas.height = h;
+      const sheetCtx = sheetCanvas.getContext("2d");
+      data.frames.forEach((sf, i) => {
+        if (!sf.flatImage) return;
+        const img = new Image();
+        img.src = sf.flatImage;
+        // Images are already decoded synchronously (data URLs from toDataURL)
+        sheetCtx.drawImage(img, i * w, 0, w, h);
+      });
+      spriteSheet = {
+        dataUrl: sheetCanvas.toDataURL("image/png"),
+        width: w * cols,
+        height: h,
+        frameW: w,
+        frameH: h,
+        cols,
+        rows: 1,
+        frameCount: cols,
+      };
+    }
+
+    const thumbFrameId = frames[activeFrameIdxRef.current]?.id;
     const thumbnail = thumbFrameId
       ? generateFrameThumbnail(thumbFrameId)
       : null;
-    return { data, thumbnail };
+    return { data, thumbnail, spriteSheet };
   }
 
   // Register the collector with the workspace on mount (and clean up on
