@@ -21,6 +21,7 @@ import {
 } from "../../../services/projectService";
 import { ExportPanel } from "../../export/ExportPanel";
 import { KeyboardHelp } from "../KeyboardHelp";
+import { TracksPanel } from "../TracksPanel";
 import { generateThumbnail } from "../../../services/imageExportService";
 import "./AnimatorPage.css";
 
@@ -186,7 +187,8 @@ function EditableTitle({ value, onChange }) {
 }
 
 export function AnimatorPage() {
-  const { state, dispatch, undo, redo, canUndo, canRedo } = useProject();
+  const { state, dispatch, undo, redo, canUndo, canRedo, isDirty, markSaved } =
+    useProject();
   const { showToast } = useNotification();
   const navigate = useNavigate();
   const imageUrl = state.spriteSheet?.objectUrl ?? null;
@@ -196,8 +198,18 @@ export function AnimatorPage() {
   const [dragging, setDragging] = useState(false);
   const [previewHeight, setPreviewHeight] = useLocalStorage(
     "dj-panel-preview",
-    220,
+    300,
   );
+  const [tracksHeight, setTracksHeight] = useLocalStorage(
+    "dj-tracks-height",
+    120,
+  );
+
+  // Stable refs so unmount cleanup can access latest state without stale closure.
+  const stateRef = useRef(state);
+  stateRef.current = state;
+  const isDirtyRef = useRef(isDirty);
+  isDirtyRef.current = isDirty;
 
   // When a sprite is opened from Projects via "Animator ↗", state.animatorState
   // is pre-populated with the assembled sprite sheet from JellySprite.
@@ -249,6 +261,20 @@ export function AnimatorPage() {
     // Run once on mount only
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Auto-save to storage when navigating away so no work is lost.
+  useEffect(() => {
+    return () => {
+      if (isDirtyRef.current) {
+        saveProjectToStorage(serialiseProject(stateRef.current)).catch(
+          console.error,
+        );
+      }
+    };
+    // empty deps — only runs on unmount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const [saving, setSaving] = useState(false);
 
   function startLeftResize(e) {
@@ -294,11 +320,28 @@ export function AnimatorPage() {
     setDragging(true);
     function onMove(e) {
       setPreviewHeight(
-        Math.min(480, Math.max(100, startH + (e.clientY - startY))),
+        Math.min(560, Math.max(160, startH + (e.clientY - startY))),
       );
     }
     function onUp() {
       setDragging(false);
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    }
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  }
+
+  function startTracksResize(e) {
+    e.preventDefault();
+    const startY = e.clientY;
+    const startH = tracksHeight;
+    function onMove(e) {
+      setTracksHeight(
+        Math.min(400, Math.max(60, startH + (startY - e.clientY))),
+      );
+    }
+    function onUp() {
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
     }
@@ -324,6 +367,7 @@ export function AnimatorPage() {
           ).catch(() => undefined)
         : undefined;
       await saveProjectToStorage(data, thumbnail);
+      markSaved();
       setSaved(true);
       showToast("Project saved.", "success", 2500);
       setTimeout(() => setSaved(false), 2000);
@@ -434,10 +478,15 @@ export function AnimatorPage() {
             className="editor-toolbar__btn editor-toolbar__btn--primary"
             onClick={handleSave}
             disabled={saving}
-            title="Save project"
+            title="Save project (Ctrl+S)"
           >
             {saving ? "Saving…" : saved ? "Saved ✓" : "Save"}
           </button>
+          {isDirty && !saving && !saved && (
+            <span className="editor-toolbar__dirty" title="Unsaved changes">
+              ●
+            </span>
+          )}
         </>
       }
       scrollable={false}
@@ -446,69 +495,81 @@ export function AnimatorPage() {
       {/* Full-screen drag overlay prevents canvas stealing pointer events */}
       {dragging && <div className="editor__drag-overlay" />}
 
-      <div className="editor">
-        {/* ── Left panel: importer + frame config ── */}
-        <aside
-          className={`editor__left${leftOpen ? "" : " editor__left--collapsed"}`}
-          style={leftOpen ? { width: leftWidth } : undefined}
-        >
-          <button
-            className="editor__collapse-btn"
-            onClick={() => setLeftOpen((o) => !o)}
-            title={leftOpen ? "Collapse panel" : "Expand panel"}
-            aria-label={leftOpen ? "Collapse left panel" : "Expand left panel"}
-          >
-            {leftOpen ? "‹" : "›"}
-          </button>
-
-          {leftOpen && (
-            <div className="editor__left-inner">
-              <SpriteImporter />
-              <div className="editor__divider" />
-              <FrameConfigPanel />
-            </div>
-          )}
-        </aside>
-
-        {/* ── Resize handle: left ↔ canvas ── */}
-        {leftOpen && (
-          <div
-            className="editor__resize-handle"
-            onMouseDown={startLeftResize}
-          />
-        )}
-
-        {/* ── Main: sheet viewer canvas ── */}
-        <div className="editor__canvas-area">
-          <SheetViewerCanvas imageUrl={imageUrl} />
-        </div>
-
-        {/* ── Resize handle: canvas ↔ right ── */}
-        <div className="editor__resize-handle" onMouseDown={startRightResize} />
-
-        {/* ── Right panel: preview + animations + sequence ── */}
-        <aside className="editor__right" style={{ width: rightWidth }}>
-          <PlaybackProvider>
-            <KeyboardHandler
-              onSave={handleSave}
-              onHelp={() => setHelpOpen(true)}
-            />
-            <div
-              className="editor__preview-wrap"
-              style={{ height: previewHeight }}
+      <PlaybackProvider>
+        <KeyboardHandler onSave={handleSave} onHelp={() => setHelpOpen(true)} />
+        <div className="editor-body">
+          <div className="editor">
+            {/* ── Left panel: importer + frame config ── */}
+            <aside
+              className={`editor__left${leftOpen ? "" : " editor__left--collapsed"}`}
+              style={leftOpen ? { width: leftWidth } : undefined}
             >
-              <PreviewCanvas />
+              <button
+                className="editor__collapse-btn"
+                onClick={() => setLeftOpen((o) => !o)}
+                title={leftOpen ? "Collapse panel" : "Expand panel"}
+                aria-label={
+                  leftOpen ? "Collapse left panel" : "Expand left panel"
+                }
+              >
+                {leftOpen ? "‹" : "›"}
+              </button>
+
+              {leftOpen && (
+                <div className="editor__left-inner">
+                  <SpriteImporter />
+                  <div className="editor__divider" />
+                  <FrameConfigPanel />
+                </div>
+              )}
+            </aside>
+
+            {/* ── Resize handle: left ↔ canvas ── */}
+            {leftOpen && (
+              <div
+                className="editor__resize-handle"
+                onMouseDown={startLeftResize}
+              />
+            )}
+
+            {/* ── Main: sheet viewer canvas ── */}
+            <div className="editor__canvas-area">
+              <SheetViewerCanvas imageUrl={imageUrl} />
             </div>
+
+            {/* ── Resize handle: canvas ↔ right ── */}
             <div
-              className="editor__resize-handle editor__resize-handle--v"
-              onMouseDown={startPreviewResize}
+              className="editor__resize-handle"
+              onMouseDown={startRightResize}
             />
-            <AnimationSidebar />
-            <div className="editor__right-divider" />
-            <SequenceBuilder />
-          </PlaybackProvider>
-        </aside>
-      </div>
+
+            {/* ── Right panel: preview + animations + sequence ── */}
+            <aside className="editor__right" style={{ width: rightWidth }}>
+              <div
+                className="editor__preview-wrap"
+                style={{ height: previewHeight }}
+              >
+                <PreviewCanvas />
+              </div>
+              <div
+                className="editor__resize-handle editor__resize-handle--v"
+                onMouseDown={startPreviewResize}
+              />
+              <AnimationSidebar />
+              <div className="editor__right-divider" />
+              <SequenceBuilder />
+            </aside>
+          </div>
+          <div
+            className="editor__resize-handle editor__resize-handle--v"
+            onMouseDown={startTracksResize}
+          />
+          <div className="editor__tracks" style={{ height: tracksHeight }}>
+            <TracksPanel />
+          </div>
+        </div>
+        {/* editor-body */}
+      </PlaybackProvider>
       <ExportPanel isOpen={exportOpen} onClose={() => setExportOpen(false)} />
       <KeyboardHelp isOpen={helpOpen} onClose={() => setHelpOpen(false)} />
     </Page>

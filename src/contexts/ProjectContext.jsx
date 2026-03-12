@@ -168,6 +168,7 @@ export function ProjectProvider({ children }) {
   const histRef = useRef({ past: [], future: [] });
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
 
   const dispatch = useCallback((action) => {
     if (UNDOABLE_ACTIONS.has(action.type)) {
@@ -178,6 +179,7 @@ export function ProjectProvider({ children }) {
       };
       setCanUndo(true);
       setCanRedo(false);
+      setIsDirty(true);
     } else if (
       action.type === "LOAD_PROJECT" ||
       action.type === "RESET_PROJECT"
@@ -185,9 +187,17 @@ export function ProjectProvider({ children }) {
       histRef.current = { past: [], future: [] };
       setCanUndo(false);
       setCanRedo(false);
+      setIsDirty(false);
+    } else if (
+      action.type === "SET_SPRITE_SHEET" ||
+      action.type === "SET_PROJECT_NAME"
+    ) {
+      setIsDirty(true);
     }
     rawDispatch(action);
   }, []);
+
+  const markSaved = useCallback(() => setIsDirty(false), []);
 
   const undo = useCallback(() => {
     const h = histRef.current;
@@ -234,7 +244,16 @@ export function ProjectProvider({ children }) {
 
   return (
     <ProjectContext.Provider
-      value={{ state, dispatch, undo, redo, canUndo, canRedo }}
+      value={{
+        state,
+        dispatch,
+        undo,
+        redo,
+        canUndo,
+        canRedo,
+        isDirty,
+        markSaved,
+      }}
     >
       {children}
     </ProjectContext.Provider>

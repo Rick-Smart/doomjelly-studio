@@ -49,6 +49,15 @@
   cursor: not-allowed;
 }
 
+.editor-toolbar__dirty {
+  font-size: 10px;
+  color: var(--accent);
+  line-height: 1;
+  margin-left: -6px;
+  pointer-events: none;
+  user-select: none;
+}
+
 .editor-toolbar__sep {
   width: 1px;
   height: 18px;
@@ -97,11 +106,18 @@
 
 /* ── Editor 3-column layout ────────────────────────────── */
 
+/* Vertical flex wrapper: 3-col editor row + tracks strip */
+.editor-body {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
 .editor {
   display: flex;
   flex: 1;
   overflow: hidden;
-  height: 100%;
   min-height: 0;
 }
 
@@ -186,6 +202,15 @@
   height: 1px;
   background: var(--border);
   flex-shrink: 0;
+}
+
+/* ── Tracks strip (full-width, below 3-col area) ────────── */
+
+.editor__tracks {
+  flex-shrink: 0;
+  overflow: hidden;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
 }
 
 /* ── Resize handles ─────────────────────────────────────── */

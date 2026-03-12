@@ -86,3 +86,18 @@
   line-height: 1;
   opacity: 0.6;
 }
+
+/* ── Drag-to-reorder ──────────────────────────────────── */
+.tl-cell {
+  cursor: grab;
+}
+
+.tl-cell--dragging {
+  opacity: 0.35;
+  cursor: grabbing;
+}
+
+.tl-cell--drop-target {
+  border-left: 2px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}

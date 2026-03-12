@@ -14,13 +14,6 @@ const MODE_OPTIONS = [
   { value: "once", label: "Once" },
 ];
 
-const SCALE_OPTIONS = [
-  { value: "1", label: "1×" },
-  { value: "2", label: "2×" },
-  { value: "4", label: "4×" },
-  { value: "8", label: "8×" },
-];
-
 const BG_OPTIONS = [
   { value: "checker", label: "Checker" },
   { value: "#000000", label: "Black" },
@@ -46,7 +39,6 @@ export function PreviewCanvas() {
 
   const [mode, setMode] = useState("loop");
   const [speed, setSpeed] = useState(1);
-  const [scale, setScale] = useState("2");
   const [bg, setBg] = useLocalStorage("dj-preview-bg", "checker");
   const [customColor, setCustomColor] = useLocalStorage(
     "dj-preview-custom-color",
@@ -54,8 +46,13 @@ export function PreviewCanvas() {
   );
   const [onionSkin, setOnionSkin] = useState(false);
   const colorInputRef = useRef(null);
-  // Bumped when the source image finishes loading so the draw effect re-runs.
   const [imgVer, setImgVer] = useState(0);
+  // Refs for canvas element and loaded sprite sheet image
+  const canvasRef = useRef(null);
+  const imgRef = useRef(null);
+  // Auto-fit: computed display dimensions from the viewport container
+  const viewportRef = useRef(null);
+  const [displaySize, setDisplaySize] = useState({ w: 0, h: 0 });
 
   const { frameIndex, isPlaying, play, pause, seek } = useAnimationLoop(
     frames,
@@ -78,8 +75,39 @@ export function PreviewCanvas() {
     registerControls(play, pause, seek);
   }, [play, pause, seek, registerControls]);
 
-  const canvasRef = useRef(null);
-  const imgRef = useRef(null);
+  // Observe viewport size and compute largest contain-fit for the canvas.
+  useEffect(() => {
+    const el = viewportRef.current;
+    if (!el) return;
+    const { frameW, frameH } = frameConfig;
+    function compute(width, height) {
+      if (!frameW || !frameH) return;
+      const pad = 16;
+      const aw = width - pad;
+      const ah = height - pad;
+      const aspect = frameW / frameH;
+      let w = aw;
+      let h = w / aspect;
+      if (h > ah) {
+        h = ah;
+        w = h * aspect;
+      }
+      setDisplaySize({
+        w: Math.max(1, Math.floor(w)),
+        h: Math.max(1, Math.floor(h)),
+      });
+    }
+    const ro = new ResizeObserver(([entry]) => {
+      const { width, height } = entry.contentRect;
+      compute(width, height);
+    });
+    ro.observe(el);
+    // Also compute immediately on mount
+    compute(el.clientWidth, el.clientHeight);
+    return () => ro.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [frameConfig.frameW, frameConfig.frameH]);
+
   const src = spriteSheet?.objectUrl ?? null;
 
   // Load / reload source image whenever objectUrl changes.
@@ -101,10 +129,10 @@ export function PreviewCanvas() {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const scaleN = Number(scale);
     const { frameW, frameH, offsetX, offsetY, gutterX, gutterY } = frameConfig;
-    canvas.width = frameW * scaleN;
-    canvas.height = frameH * scaleN;
+    // Canvas resolution = native frame size (CSS scales it to fill the viewport)
+    canvas.width = frameW || 1;
+    canvas.height = frameH || 1;
 
     const ctx = canvas.getContext("2d");
     ctx.imageSmoothingEnabled = false;
@@ -160,24 +188,23 @@ export function PreviewCanvas() {
       canvas.height,
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    frameIndex,
-    bg,
-    customColor,
-    scale,
-    frameConfig,
-    frames,
-    imgVer,
-    onionSkin,
-  ]);
+  }, [frameIndex, bg, customColor, frameConfig, frames, imgVer, onionSkin]);
 
   const hasFrames = frames.length > 0;
 
   return (
     <div className="preview-canvas">
-      <div className="preview-canvas__viewport">
+      <div className="preview-canvas__viewport" ref={viewportRef}>
         {hasFrames && src ? (
-          <canvas ref={canvasRef} className="preview-canvas__canvas" />
+          <canvas
+            ref={canvasRef}
+            className="preview-canvas__canvas"
+            style={
+              displaySize.w > 0
+                ? { width: displaySize.w, height: displaySize.h }
+                : undefined
+            }
+          />
         ) : (
           <div className="preview-canvas__empty">
             {!src ? "No sheet loaded" : "No frames in animation"}
@@ -222,14 +249,8 @@ export function PreviewCanvas() {
           />
         )}
 
-        {/* Scale + background + onion skin row */}
+        {/* Background + onion skin row */}
         <div className="preview-canvas__row">
-          <Select
-            value={scale}
-            onChange={setScale}
-            options={SCALE_OPTIONS}
-            className="preview-canvas__compact-select"
-          />
           <Select
             value={bg}
             onChange={setBg}

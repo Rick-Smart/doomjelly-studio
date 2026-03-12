@@ -1,0 +1,178 @@
+/* ── Tracks panel container ───────────────────────────── */
+.tracks-panel {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.tracks-panel--empty {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: var(--text-muted);
+  background: var(--surface);
+}
+
+.tracks-panel__header {
+  display: flex;
+  align-items: center;
+  padding: 3px 10px;
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.tracks-panel__title {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+}
+
+.tracks-panel__body {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+/* ── Track row ────────────────────────────────────────── */
+.track-row {
+  display: flex;
+  align-items: stretch;
+  border-bottom: 1px solid var(--border);
+  min-height: 60px;
+  flex-shrink: 0;
+}
+
+.track-row--active {
+  background: color-mix(in srgb, var(--accent) 5%, transparent);
+}
+
+.track-row__label {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 4px 10px;
+  border-right: 2px solid var(--border);
+  background: var(--surface2);
+  gap: 3px;
+  overflow: hidden;
+}
+
+.track-row--active .track-row__label {
+  border-right-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface2));
+}
+
+.track-row__name {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.track-row--active .track-row__name {
+  color: var(--accent);
+}
+
+.track-row__count {
+  font-size: 9px;
+  color: var(--text-muted);
+}
+
+.track-row__scroll {
+  flex: 1;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.track-row__strip {
+  display: flex;
+  height: 100%;
+  min-height: 58px;
+  position: relative;
+}
+
+.track-row__empty {
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* ── Frame cell ───────────────────────────────────────── */
+.tracks-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 4px 2px 3px;
+  border-right: 1px solid var(--border);
+  cursor: grab;
+  flex-shrink: 0;
+  position: relative;
+  transition: background 0.08s;
+  user-select: none;
+}
+
+.tracks-cell:hover {
+  background: var(--surface2);
+}
+
+.tracks-cell--active {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+.tracks-cell--dragging {
+  opacity: 0.35;
+  cursor: grabbing;
+}
+
+.tracks-cell--drop-target {
+  border-left: 2px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+/* ── Thumbnail ────────────────────────────────────────── */
+.tracks-cell__thumb {
+  display: block;
+  image-rendering: pixelated;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+}
+
+/* ── Frame index (top-left) ───────────────────────────── */
+.tracks-cell__index {
+  position: absolute;
+  top: 2px;
+  left: 3px;
+  font-size: 8px;
+  color: var(--text-muted);
+  line-height: 1;
+  opacity: 0.7;
+}
+
+/* ── Tick badge ───────────────────────────────────────── */
+.tracks-cell__ticks {
+  font-size: 9px;
+  color: var(--text-muted);
+  line-height: 1;
+}

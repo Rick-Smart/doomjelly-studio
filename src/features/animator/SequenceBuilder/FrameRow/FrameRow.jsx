@@ -87,6 +87,7 @@ export function FrameRow({
   onDragOver,
   onDrop,
   onDragEnd,
+  onSelect,
 }) {
   const hasOffset = (frame.dx ?? 0) !== 0 || (frame.dy ?? 0) !== 0;
   let cls = "seq-frame";
@@ -100,6 +101,10 @@ export function FrameRow({
       ref={innerRef}
       className={cls}
       draggable
+      onClick={(e) => {
+        if (e.target.closest("input, button")) return;
+        onSelect?.();
+      }}
       onDragStart={onDragStart}
       onDragOver={onDragOver}
       onDrop={onDrop}

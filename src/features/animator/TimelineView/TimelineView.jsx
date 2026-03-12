@@ -1,4 +1,4 @@
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import { useProject } from "../../../contexts/ProjectContext";
 import { usePlayback } from "../../../contexts/PlaybackContext";
 import "./TimelineView.css";
@@ -55,7 +55,7 @@ function TimelineThumb({
  * Click a cell to seek playback to that frame.
  */
 export function TimelineView() {
-  const { state } = useProject();
+  const { state, dispatch } = useProject();
   const { animations, activeAnimationId, spriteSheet, frameConfig } = state;
   const activeAnim = animations.find((a) => a.id === activeAnimationId) ?? null;
   const frames = activeAnim?.frames ?? [];
@@ -63,6 +63,8 @@ export function TimelineView() {
   const { frameIndex, seekTo, pausePlayback } = usePlayback();
 
   const activeRef = useRef(null);
+  const [dragIdx, setDragIdx] = useState(null);
+  const [dropIdx, setDropIdx] = useState(null);
 
   // Auto-scroll to keep the active cell in view.
   useEffect(() => {
@@ -87,6 +89,17 @@ export function TimelineView() {
     seekTo(i);
   }
 
+  function reorderFrames(from, to) {
+    if (from === null || to === null || from === to) return;
+    const updated = [...frames];
+    const [moved] = updated.splice(from, 1);
+    updated.splice(to, 0, moved);
+    dispatch({
+      type: "UPDATE_ANIMATION",
+      payload: { id: activeAnim.id, frames: updated },
+    });
+  }
+
   return (
     <div className="tl">
       <div className="tl__scroll">
@@ -100,14 +113,37 @@ export function TimelineView() {
           {frames.map((frame, i) => {
             const w = cellWidths[i];
             const isActive = i === frameIndex;
+            const isDragging = dragIdx === i;
+            const isDropTarget = dropIdx === i && dragIdx !== i;
             return (
               <div
                 key={i}
                 ref={isActive ? activeRef : null}
-                className={`tl-cell${isActive ? " tl-cell--active" : ""}`}
+                draggable
+                className={`tl-cell${
+                  isActive ? " tl-cell--active" : ""
+                }${isDragging ? " tl-cell--dragging" : ""}${
+                  isDropTarget ? " tl-cell--drop-target" : ""
+                }`}
                 style={{ width: w }}
                 onClick={() => handleClick(i)}
-                title={`Frame ${i + 1} — ${frame.ticks} tick${frame.ticks !== 1 ? "s" : ""}`}
+                onDragStart={() => setDragIdx(i)}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setDropIdx(i);
+                }}
+                onDrop={() => {
+                  reorderFrames(dragIdx, i);
+                  setDragIdx(null);
+                  setDropIdx(null);
+                }}
+                onDragEnd={() => {
+                  setDragIdx(null);
+                  setDropIdx(null);
+                }}
+                title={`Frame ${i + 1} — ${frame.ticks} tick${
+                  frame.ticks !== 1 ? "s" : ""
+                } — drag to reorder`}
               >
                 <span className="tl-cell__index">{i + 1}</span>
                 <TimelineThumb

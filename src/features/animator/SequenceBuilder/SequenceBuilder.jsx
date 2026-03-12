@@ -5,7 +5,6 @@ import { EmptyState } from "../../../ui/EmptyState";
 import { IconButton } from "../../../ui/IconButton";
 import { NumberInput } from "../../../ui/NumberInput";
 import { FrameRow } from "./FrameRow";
-import { TimelineView } from "../TimelineView";
 import "./SequenceBuilder.css";
 
 export function SequenceBuilder() {
@@ -13,10 +12,9 @@ export function SequenceBuilder() {
   const { animations, activeAnimationId, spriteSheet, frameConfig } = state;
   const activeAnim = animations.find((a) => a.id === activeAnimationId) ?? null;
   const frames = activeAnim?.frames ?? [];
-  const { frameIndex: playbackIdx } = usePlayback();
+  const { frameIndex: playbackIdx, pausePlayback, seekTo } = usePlayback();
 
   const [bulkTicks, setBulkTicks] = useState(6);
-  const [viewMode, setViewMode] = useState("list"); // 'list' | 'timeline'
   const [dragIdx, setDragIdx] = useState(null);
   const [dropIdx, setDropIdx] = useState(null);
 
@@ -97,22 +95,6 @@ export function SequenceBuilder() {
             {totalTicks}t · {totalMs}ms
           </span>
         )}
-        <div className="seq-builder__view-toggle">
-          <button
-            className={`seq-builder__view-btn${viewMode === "list" ? " seq-builder__view-btn--active" : ""}`}
-            onClick={() => setViewMode("list")}
-            title="List view"
-          >
-            List
-          </button>
-          <button
-            className={`seq-builder__view-btn${viewMode === "timeline" ? " seq-builder__view-btn--active" : ""}`}
-            onClick={() => setViewMode("timeline")}
-            title="Timeline view"
-          >
-            Timeline
-          </button>
-        </div>
       </div>
 
       {frames.length === 0 ? (
@@ -121,8 +103,6 @@ export function SequenceBuilder() {
           title="No frames yet"
           hint="Click cells on the sheet to add"
         />
-      ) : viewMode === "timeline" ? (
-        <TimelineView />
       ) : (
         <>
           <div className="seq-builder__col-headers" aria-hidden="true">
@@ -159,6 +139,10 @@ export function SequenceBuilder() {
                 gutterX={gutterX}
                 gutterY={gutterY}
                 onUpdate={(patch) => updateFrame(i, patch)}
+                onSelect={() => {
+                  pausePlayback();
+                  seekTo(i);
+                }}
                 onDelete={() => deleteFrame(i)}
                 onMoveUp={() => moveFrame(i, -1)}
                 onMoveDown={() => moveFrame(i, 1)}
