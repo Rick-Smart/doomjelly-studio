@@ -10,9 +10,13 @@ const SPRITES_INDEX_KEY = "dj-sprites-index-v2";
 // Supabase — projects (containers)
 
 async function sbListProjects() {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   const { data, error } = await supabase
     .from("projects_v2")
     .select("id, name, created_at, updated_at")
+    .eq("user_id", user.id)
     .order("updated_at", { ascending: false });
   if (error) throw error;
   return data.map((r) => ({
@@ -42,27 +46,42 @@ async function sbCreateProject(name) {
 }
 
 async function sbRenameProject(id, name) {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   const { error } = await supabase
     .from("projects_v2")
     .update({ name, updated_at: new Date().toISOString() })
-    .eq("id", id);
+    .eq("id", id)
+    .eq("user_id", user.id);
   if (error) throw error;
 }
 
 async function sbDeleteProject(id) {
-  const { error } = await supabase.from("projects_v2").delete().eq("id", id);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { error } = await supabase
+    .from("projects_v2")
+    .delete()
+    .eq("id", id)
+    .eq("user_id", user.id);
   if (error) throw error;
 }
 
 // Supabase — sprites
 
 async function sbListSprites(projectId) {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   const { data, error } = await supabase
     .from("sprites")
     .select(
       "id, project_id, name, thumbnail, frame_count, anim_count, canvas_w, canvas_h, created_at, updated_at",
     )
     .eq("project_id", projectId)
+    .eq("user_id", user.id)
     .order("updated_at", { ascending: false });
   if (error) throw error;
   return data.map(sbSpriteRow);
@@ -105,10 +124,14 @@ async function sbSaveSprite(sprite) {
 }
 
 async function sbLoadSprite(id) {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   const { data, error } = await supabase
     .from("sprites")
     .select("*")
     .eq("id", id)
+    .eq("user_id", user.id)
     .single();
   if (error) throw error;
   const meta = sbSpriteRow(data);
@@ -125,7 +148,14 @@ async function sbLoadSprite(id) {
 }
 
 async function sbDeleteSprite(id) {
-  const { error } = await supabase.from("sprites").delete().eq("id", id);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { error } = await supabase
+    .from("sprites")
+    .delete()
+    .eq("id", id)
+    .eq("user_id", user.id);
   if (error) throw error;
 }
 
