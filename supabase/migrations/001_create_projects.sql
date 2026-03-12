@@ -36,3 +36,6 @@ create policy "delete own projects"
 -- ── Indexes ───────────────────────────────────────────────────────────────────
 create index if not exists projects_user_saved
   on public.projects (user_id, saved_at desc);
+
+
+SuperAdmin

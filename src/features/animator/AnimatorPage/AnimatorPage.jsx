@@ -22,7 +22,7 @@ import {
 import { ExportPanel } from "../../export/ExportPanel";
 import { KeyboardHelp } from "../KeyboardHelp";
 import { generateThumbnail } from "../../../services/imageExportService";
-import "./EditorPage.css";
+import "./AnimatorPage.css";
 
 /**
  * Keyboard shortcuts — lives inside PlaybackProvider so it can access both
@@ -185,7 +185,7 @@ function EditableTitle({ value, onChange }) {
   );
 }
 
-export function EditorPage() {
+export function AnimatorPage() {
   const { state, dispatch, undo, redo, canUndo, canRedo } = useProject();
   const { showToast } = useNotification();
   const navigate = useNavigate();

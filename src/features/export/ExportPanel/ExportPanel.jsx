@@ -30,7 +30,7 @@ function pickSelected(animations, target, activeAnimationId) {
 }
 
 /**
- * Export modal — triggered from the Editor toolbar.
+ * Export modal — triggered from the Animator toolbar.
  * Props: isOpen bool, onClose fn
  */
 export function ExportPanel({ isOpen, onClose }) {

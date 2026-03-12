@@ -1,19 +1,25 @@
-import { Outlet, NavLink } from "react-router-dom";
+import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useTheme } from "../contexts/ThemeContext";
 import { THEMES } from "../contexts/ThemeContext";
+import { useProject } from "../contexts/ProjectContext";
 import "./AppShell.css";
-
-const NAV_ITEMS = [
-  { to: "/jelly-sprite", label: "Jelly Sprite" },
-  { to: "/editor", label: "Animator" },
-  { to: "/projects", label: "Projects" },
-  { to: "/settings", label: "Settings" },
-];
 
 export function AppShell() {
   const { user, logout } = useAuth();
   const { theme, setTheme, themes } = useTheme();
+  const { state } = useProject();
+
+  const NAV_ITEMS = [
+    {
+      to: state.id ? `/jelly-sprite/${state.id}` : "/jelly-sprite",
+      label: "Jelly Sprite",
+      base: "/jelly-sprite",
+    },
+    { to: "/animator", label: "Animator", base: "/animator" },
+    { to: "/projects", label: "Projects", base: "/projects" },
+    { to: "/settings", label: "Settings", base: "/settings" },
+  ];
 
   return (
     <div className="shell">
@@ -30,9 +36,9 @@ export function AppShell() {
         </NavLink>
 
         <nav className="shell-nav" aria-label="Main navigation">
-          {NAV_ITEMS.map(({ to, label }) => (
+          {NAV_ITEMS.map(({ to, label, base }) => (
             <NavLink
-              key={to}
+              key={base}
               to={to}
               className={({ isActive }) =>
                 `shell-nav-link${isActive ? " active" : ""}`

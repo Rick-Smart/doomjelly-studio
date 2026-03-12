@@ -1,7 +1,7 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import { ProtectedRoute } from "./ProtectedRoute";
 import { AppShell } from "../layout/AppShell";
-import { EditorPage } from "../features/editor/EditorPage";
+import { AnimatorPage } from "../features/animator/AnimatorPage";
 import { ProjectsPage } from "../features/projects/ProjectsPage";
 import { LoginPage } from "../features/auth/LoginPage";
 import { SettingsPage } from "../features/settings/SettingsPage";
@@ -20,7 +20,7 @@ export function AppRoutes() {
         }
       >
         <Route index element={<Navigate to="/projects" replace />} />
-        <Route path="editor" element={<EditorPage />} />
+        <Route path="animator" element={<AnimatorPage />} />
         <Route path="jelly-sprite" element={<JellySpriteWorkspace />} />
         <Route
           path="jelly-sprite/:spriteId"

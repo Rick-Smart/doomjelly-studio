@@ -145,7 +145,7 @@ export function JellySpriteWorkspace() {
       padding={false}
     >
       <ErrorBoundary>
-        {state.id === spriteId ? (
+        {state.id === spriteId || (!spriteId && state.id) ? (
           <JellySprite
             onRegisterCollector={(fn) => {
               jellySpriteCollectorRef.current = fn;

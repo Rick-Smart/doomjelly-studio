@@ -108,7 +108,7 @@ export function ProjectsPage() {
     try {
       const data = await loadSprite(spriteId);
       dispatch({ type: "LOAD_PROJECT", payload: { ...data, id: spriteId } });
-      navigate("/editor");
+      navigate("/animator");
     } catch (err) {
       console.error(err);
       showToast("Failed to open sprite in Animator.", "error");
@@ -399,7 +399,7 @@ export function ProjectsPage() {
           },
         });
         closeUploadModal();
-        navigate("/editor");
+        navigate("/animator");
       }
     } catch (err) {
       console.error(err);
