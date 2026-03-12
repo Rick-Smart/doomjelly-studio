@@ -93,9 +93,33 @@
   line-height: 1.4;
 }
 
-/* ── Shared panel heading ────────────────────────────────
-   Used by SpriteImporter, FrameConfigPanel, etc.           */
-.panel-heading {
+/* ── Preview expanded banner (shown in right panel when preview is in canvas area) ── */
+.editor__preview-expanded-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface2));
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.editor__preview-collapse-btn {
+  font-size: 11px;
+  padding: 2px 8px;
+  background: var(--surface3);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.editor__preview-collapse-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
   font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;

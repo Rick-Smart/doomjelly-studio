@@ -48,7 +48,7 @@ function resolveFrameFromTicks(frames, elapsedTicks) {
   return frames[frames.length - 1];
 }
 
-export function PreviewCanvas() {
+export function PreviewCanvas({ expanded = false, onToggleExpand } = {}) {
   const { state } = useProject();
   const { animations, activeAnimationId, spriteSheet, frameConfig } = state;
   const activeAnim = animations.find((a) => a.id === activeAnimationId) ?? null;
@@ -250,7 +250,9 @@ export function PreviewCanvas() {
       ));
 
   return (
-    <div className="preview-canvas">
+    <div
+      className={`preview-canvas${expanded ? " preview-canvas--expanded" : ""}`}
+    >
       <div className="preview-canvas__viewport" ref={viewportRef}>
         {hasAnyPreviewFrames && src ? (
           <canvas
@@ -289,6 +291,18 @@ export function PreviewCanvas() {
             options={MODE_OPTIONS}
             className="preview-canvas__compact-select"
           />
+          {onToggleExpand && (
+            <button
+              type="button"
+              className="preview-canvas__expand-btn"
+              onClick={onToggleExpand}
+              title={
+                expanded ? "Collapse preview" : "Expand preview to canvas area"
+              }
+            >
+              {expanded ? "⊠" : "⛶"}
+            </button>
+          )}
         </div>
 
         {/* Scrub slider */}

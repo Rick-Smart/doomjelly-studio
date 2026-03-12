@@ -352,6 +352,7 @@ export function AnimatorPage() {
   const [saved, setSaved] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [expandPreview, setExpandPreview] = useState(false);
 
   async function handleSave() {
     setSaving(true);
@@ -532,9 +533,16 @@ export function AnimatorPage() {
               />
             )}
 
-            {/* ── Main: sheet viewer canvas ── */}
+            {/* ── Main: sheet viewer OR expanded preview ── */}
             <div className="editor__canvas-area">
-              <SheetViewerCanvas imageUrl={imageUrl} />
+              {expandPreview ? (
+                <PreviewCanvas
+                  expanded
+                  onToggleExpand={() => setExpandPreview(false)}
+                />
+              ) : (
+                <SheetViewerCanvas imageUrl={imageUrl} />
+              )}
             </div>
 
             {/* ── Resize handle: canvas ↔ right ── */}
@@ -545,16 +553,34 @@ export function AnimatorPage() {
 
             {/* ── Right panel: preview + animations + sequence ── */}
             <aside className="editor__right" style={{ width: rightWidth }}>
-              <div
-                className="editor__preview-wrap"
-                style={{ height: previewHeight }}
-              >
-                <PreviewCanvas />
-              </div>
-              <div
-                className="editor__resize-handle editor__resize-handle--v"
-                onMouseDown={startPreviewResize}
-              />
+              {expandPreview ? (
+                <div className="editor__preview-expanded-banner">
+                  <span>Preview expanded ↙</span>
+                  <button
+                    type="button"
+                    className="editor__preview-collapse-btn"
+                    onClick={() => setExpandPreview(false)}
+                    title="Collapse preview back to panel"
+                  >
+                    ⊠ Collapse
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div
+                    className="editor__preview-wrap"
+                    style={{ height: previewHeight }}
+                  >
+                    <PreviewCanvas
+                      onToggleExpand={() => setExpandPreview(true)}
+                    />
+                  </div>
+                  <div
+                    className="editor__resize-handle editor__resize-handle--v"
+                    onMouseDown={startPreviewResize}
+                  />
+                </>
+              )}
               <AnimationSidebar />
               <div className="editor__right-divider" />
               <SequenceBuilder />

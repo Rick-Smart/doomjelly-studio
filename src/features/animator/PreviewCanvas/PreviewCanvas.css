@@ -116,3 +116,34 @@
 .preview-canvas__color-swatch:hover {
   border-color: var(--accent);
 }
+
+/* Expand/collapse toggle button in playbar */
+.preview-canvas__expand-btn {
+  height: 26px;
+  width: 26px;
+  padding: 0;
+  flex-shrink: 0;
+  background: var(--surface3);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    border-color 0.15s,
+    color 0.15s;
+}
+
+.preview-canvas__expand-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* When expanded, the component fills its container (the canvas area) */
+.preview-canvas--expanded {
+  border-bottom: none;
+}
