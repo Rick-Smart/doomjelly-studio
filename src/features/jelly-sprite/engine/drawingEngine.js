@@ -165,6 +165,17 @@ export function createDrawingEngine(refs) {
     return null;
   }
 
+  // Constrain end point to make a square bounding box (for Shift+rect/ellipse).
+  function constrainSquare(x0, y0, x1, y1) {
+    const dx = x1 - x0;
+    const dy = y1 - y0;
+    const side = Math.min(Math.abs(dx), Math.abs(dy));
+    return {
+      x1: x0 + Math.sign(dx) * side,
+      y1: y0 + Math.sign(dy) * side,
+    };
+  }
+
   // Shape preview helper
   function previewShape(x0, y0, x1, y1) {
     if (!state.previewSnap) return;
@@ -440,7 +451,12 @@ export function createDrawingEngine(refs) {
 
     // Shape preview
     if (["line", "rect", "ellipse", "select-rect"].includes(tool)) {
-      previewShape(startPx.x, startPx.y, x, y);
+      let ex = x,
+        ey = y;
+      if (e.shiftKey && (tool === "rect" || tool === "ellipse")) {
+        ({ x1: ex, y1: ey } = constrainSquare(startPx.x, startPx.y, x, y));
+      }
+      previewShape(startPx.x, startPx.y, ex, ey);
       refs.redraw?.();
     } else if (lastPx && (lastPx.x !== x || lastPx.y !== y)) {
       // Determine whether the cursor is currently outside the canvas.
@@ -622,7 +638,12 @@ export function createDrawingEngine(refs) {
 
     // Shape finalise
     if (["line", "rect", "ellipse"].includes(tool)) {
-      previewShape(startPx.x, startPx.y, x, y);
+      let ex = x,
+        ey = y;
+      if (e.shiftKey && (tool === "rect" || tool === "ellipse")) {
+        ({ x1: ex, y1: ey } = constrainSquare(startPx.x, startPx.y, x, y));
+      }
+      previewShape(startPx.x, startPx.y, ex, ey);
       state.previewSnap = null;
       refs.redraw?.();
     }

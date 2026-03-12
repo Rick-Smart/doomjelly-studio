@@ -1079,6 +1079,12 @@ function JellySpriteBody({ onRegisterCollector }) {
     togglePlay: () => {
       isPlayingRef.current ? stopPlayback() : startPlayback();
     },
+    defaultColors: () => setFgColor("#000000"),
+    adjustBrushSize: (delta) => {
+      const current = refs.stateRef.current.brushSize ?? 1;
+      setBrushSize(Math.max(1, Math.min(32, current + delta)));
+    },
+    flipCanvasH: () => refs.drawingEngine?.flipSelH?.(),
   };
 
   useEffect(() => {
@@ -1116,19 +1122,28 @@ function JellySpriteBody({ onRegisterCollector }) {
       ) {
         e.preventDefault();
         a.deleteSelection();
-      } else if (e.key === "p") a.setTool("pencil");
-      else if (e.key === "e") a.setTool("eraser");
-      else if (e.key === "f") a.setTool("fill");
-      else if (e.key === "l") a.setTool("line");
-      else if (e.key === "r") a.setTool("rect");
-      else if (e.key === "o") a.setTool("ellipse");
-      else if (e.key === "i") a.setTool("picker");
-      else if (e.key === "m") a.setTool("select-rect");
-      else if (e.key === "w") a.setTool("select-wand");
-      else if (e.key === "v") a.setTool("move");
-      else if (e.key === "a") a.setTool("spray");
-      else if (e.key === "x") a.swapColors();
-      else if (e.key === "Escape") a.deselectAll();
+      } else if (e.key === "b" || e.key === "B") a.setTool("pencil");
+      else if (e.key === "e" || e.key === "E") a.setTool("eraser");
+      else if (e.key === "g" || e.key === "G") a.setTool("fill");
+      else if (e.key === "l" || e.key === "L") a.setTool("line");
+      else if (e.key === "r" || e.key === "R") a.setTool("rect");
+      else if (e.key === "o" || e.key === "O") a.setTool("ellipse");
+      else if (e.key === "i" || e.key === "I") a.setTool("picker");
+      else if (e.key === "m" || e.key === "M") a.setTool("select-rect");
+      else if (e.key === "w" || e.key === "W") a.setTool("select-wand");
+      else if (e.key === "v" || e.key === "V") a.setTool("move");
+      else if (e.key === "a" || e.key === "A") a.setTool("spray");
+      else if (e.key === "x" || e.key === "X") a.swapColors();
+      else if ((e.key === "d" || e.key === "D") && !e.ctrlKey && !e.metaKey)
+        a.defaultColors();
+      else if (e.key === "h" || e.key === "H") a.flipCanvasH();
+      else if (e.key === "[") {
+        e.preventDefault();
+        a.adjustBrushSize(-1);
+      } else if (e.key === "]") {
+        e.preventDefault();
+        a.adjustBrushSize(1);
+      } else if (e.key === "Escape") a.deselectAll();
       else if (e.key === " ") {
         e.preventDefault();
         a.togglePlay();
