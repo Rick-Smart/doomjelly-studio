@@ -8,18 +8,12 @@ import {
   usePlayback,
 } from "../../../contexts/PlaybackContext";
 import { Page } from "../../../ui/Page";
-import { SpriteImporter } from "../SpriteImporter";
 import { FrameConfigPanel } from "../FrameConfigPanel";
 import { SheetViewerCanvas } from "../SheetViewerCanvas";
 import { AnimationSidebar } from "../AnimationSidebar";
 import { SequenceBuilder } from "../SequenceBuilder";
 import { PreviewCanvas } from "../PreviewCanvas";
-import {
-  serialiseProject,
-  pickAndLoadProject,
-  saveProjectToStorage,
-} from "../../../services/projectService";
-import { ExportPanel } from "../../export/ExportPanel";
+import { saveSprite } from "../../../services/projectService";
 import { KeyboardHelp } from "../KeyboardHelp";
 import { TracksPanel } from "../TracksPanel";
 import { generateThumbnail } from "../../../services/imageExportService";
@@ -186,6 +180,228 @@ function EditableTitle({ value, onChange }) {
   );
 }
 
+// ── Read-only sheet list ──────────────────────────────────────────────────────
+// Sheets are managed from the Projects page. This just shows what's loaded.
+
+function SheetList() {
+  const { state, dispatch } = useProject();
+  const navigate = useNavigate();
+  const { sheets, activeSheetId, frameConfig } = state;
+
+  if (!sheets.length) {
+    return (
+      <div className="sheet-list">
+        <div className="panel-heading">Sprite Sheets</div>
+        <p className="sheet-list__empty">
+          No sheets loaded.{" "}
+          <button
+            className="sheet-list__link"
+            onClick={() => navigate("/projects")}
+          >
+            Open a sprite from Projects ↗
+          </button>
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="sheet-list">
+      <div className="panel-heading">Sprite Sheets</div>
+      <ul className="sheet-list__items">
+        {sheets.map((sheet) => {
+          const isActive = sheet.id === activeSheetId;
+          const cfg = sheet.frameConfig ?? frameConfig;
+          const cols = cfg.frameW
+            ? Math.max(
+                0,
+                Math.floor(
+                  (sheet.width - cfg.offsetX + cfg.gutterX) /
+                    (cfg.frameW + cfg.gutterX),
+                ),
+              )
+            : 0;
+          const rows = cfg.frameH
+            ? Math.max(
+                0,
+                Math.floor(
+                  (sheet.height - cfg.offsetY + cfg.gutterY) /
+                    (cfg.frameH + cfg.gutterY),
+                ),
+              )
+            : 0;
+          return (
+            <li
+              key={sheet.id}
+              className={`sheet-list__row${isActive ? " sheet-list__row--active" : ""}`}
+              onClick={() =>
+                !isActive &&
+                dispatch({ type: "SET_ACTIVE_SHEET", payload: sheet.id })
+              }
+              title={isActive ? undefined : "Switch to this sheet"}
+            >
+              <div className="sheet-list__thumb-wrap">
+                {sheet.objectUrl ? (
+                  <img
+                    className="sheet-list__thumb"
+                    src={sheet.objectUrl}
+                    alt=""
+                    aria-hidden
+                  />
+                ) : (
+                  <span className="sheet-list__thumb-placeholder" aria-hidden>
+                    ?
+                  </span>
+                )}
+              </div>
+              <div className="sheet-list__info">
+                <span className="sheet-list__name" title={sheet.filename}>
+                  {sheet.filename}
+                </span>
+                <span className="sheet-list__dims">
+                  {sheet.width} × {sheet.height} px
+                  {cols && rows ? ` · ${cols * rows} cells` : ""}
+                </span>
+                {!sheet.objectUrl && (
+                  <span className="sheet-list__stale">
+                    re-open from Projects to reload
+                  </span>
+                )}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+// ── Sprite sheet persistence helpers ─────────────────────────────────────────
+
+function blobToDataUrl(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => resolve(e.target.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function sheetToDataUrl(sheet) {
+  if (sheet.objectUrl) {
+    try {
+      const blob = await fetch(sheet.objectUrl).then((r) => r.blob());
+      return blobToDataUrl(blob);
+    } catch {}
+  }
+  return sheet.dataUrl ?? null;
+}
+
+// Build the full animator body to persist. Async because we convert
+// volatile objectUrls → dataUrls for all sheets.
+async function buildAnimatorBody(st) {
+  if (!st.sheets.length) return null;
+  const sheetsWithData = await Promise.all(
+    st.sheets.map(async (sheet) => {
+      const dataUrl = await sheetToDataUrl(sheet);
+      const { objectUrl: _o, ...rest } = sheet;
+      return { ...rest, dataUrl };
+    }),
+  );
+  if (!sheetsWithData.some((s) => s.dataUrl)) return null;
+  const primary =
+    sheetsWithData.find((s) => s.id === st.activeSheetId) ?? sheetsWithData[0];
+  return {
+    sheets: sheetsWithData,
+    activeSheetId: st.activeSheetId,
+    // Legacy field — kept so older loads can still read a single spriteSheet
+    spriteSheet: primary?.dataUrl
+      ? {
+          dataUrl: primary.dataUrl,
+          filename: primary.filename,
+          width: primary.width,
+          height: primary.height,
+          frameW: st.frameConfig.frameW,
+          frameH: st.frameConfig.frameH,
+        }
+      : undefined,
+    animations: st.animations,
+    frameConfig: st.frameConfig,
+  };
+}
+
+function SplitSaveButton({ onSave, saving, saved, isDirty, menuItems }) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onOutsideClick(e) {
+      if (!wrapRef.current?.contains(e.target)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onOutsideClick);
+    return () => document.removeEventListener("mousedown", onOutsideClick);
+  }, [open]);
+
+  const label = saving ? "Saving…" : saved ? "Saved ✓" : "Save";
+
+  return (
+    <div className="split-save" ref={wrapRef}>
+      <button
+        className="split-save__main"
+        onClick={onSave}
+        disabled={saving}
+        title="Save project (Ctrl+S)"
+      >
+        {label}
+        {isDirty && !saving && !saved && (
+          <span className="split-save__dot" aria-hidden="true" />
+        )}
+      </button>
+      <button
+        className="split-save__chevron"
+        onClick={() => setOpen((o) => !o)}
+        disabled={saving}
+        aria-label="More save options"
+        aria-expanded={open}
+        title="More save options"
+      >
+        ▾
+      </button>
+      {open && (
+        <div className="split-save__menu" role="menu">
+          {menuItems.map((item) =>
+            item.separator ? (
+              <div key={item.id} className="split-save__sep" role="separator" />
+            ) : (
+              <button
+                key={item.id}
+                className="split-save__item"
+                role="menuitem"
+                disabled={item.disabled}
+                onClick={() => {
+                  if (!item.disabled) {
+                    item.action();
+                    setOpen(false);
+                  }
+                }}
+              >
+                <span className="split-save__item-label">{item.label}</span>
+                {item.hint && (
+                  <span className="split-save__item-hint">{item.hint}</span>
+                )}
+                {item.soon && (
+                  <span className="split-save__item-badge">soon</span>
+                )}
+              </button>
+            ),
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function AnimatorPage() {
   const { state, dispatch, undo, redo, canUndo, canRedo, isDirty, markSaved } =
     useProject();
@@ -214,67 +430,57 @@ export function AnimatorPage() {
   const isDirtyRef = useRef(isDirty);
   isDirtyRef.current = isDirty;
 
-  // When a sprite is opened from Projects via "Animator ↗", state.animatorState
-  // is pre-populated with the assembled sprite sheet from JellySprite.
-  // Restore it so the user doesn't need to re-import the image.
+  // Restore volatile objectUrls for all sheets that have a saved dataUrl.
+  // frameConfig and animations are already hydrated by the LOAD_PROJECT reducer.
   useEffect(() => {
-    const as = state.animatorState;
-    if (!as?.spriteSheet?.dataUrl) return;
-    // Only restore if there's no sheet already loaded in context
-    if (state.spriteSheet?.objectUrl) return;
-    const { dataUrl, width, height, frameW, frameH } = as.spriteSheet;
-    // Convert the stored data URL to a blob URL so SpriteImporter behaves
-    // identically to a freshly imported file
-    fetch(dataUrl)
-      .then((r) => r.blob())
-      .then((blob) => {
-        const objectUrl = URL.createObjectURL(blob);
-        dispatch({
-          type: "SET_SPRITE_SHEET",
-          payload: {
-            objectUrl,
-            filename: `${state.name}.png`,
-            width,
-            height,
-          },
-        });
-        // Pre-fill frame config from the sprite sheet dimensions
-        if (frameW && frameH) {
-          dispatch({
-            type: "SET_FRAME_CONFIG",
-            payload: {
-              frameW,
-              frameH,
-              scale: 2,
-              offsetX: 0,
-              offsetY: 0,
-              gutterX: 0,
-              gutterY: 0,
-            },
-          });
-        }
-      })
+    const toRestore = state.sheets.filter((s) => !s.objectUrl && s.dataUrl);
+    if (!toRestore.length) return;
+    Promise.all(
+      toRestore.map(async (sheet) => {
+        const blob = await fetch(sheet.dataUrl).then((r) => r.blob());
+        return { id: sheet.id, objectUrl: URL.createObjectURL(blob) };
+      }),
+    )
+      .then((restorations) =>
+        dispatch({ type: "RESTORE_SHEET_URLS", payload: restorations }),
+      )
       .catch((err) => {
-        console.error("Failed to restore animator sprite sheet:", err);
+        console.error("Failed to restore sprite sheets:", err);
         showToast(
-          "Could not restore sprite sheet — please re-import.",
+          "Could not restore sprite sheets — please re-import.",
           "error",
         );
       });
-    // Run once on mount only
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Auto-save to storage when navigating away so no work is lost.
   useEffect(() => {
     return () => {
-      if (isDirtyRef.current) {
-        saveProjectToStorage(serialiseProject(stateRef.current)).catch(
-          console.error,
-        );
-      }
+      if (!isDirtyRef.current) return;
+      const st = stateRef.current;
+      getSheetDataUrl(st)
+        .then((dataUrl) => {
+          const animatorBody = buildAnimatorBody(dataUrl, st);
+          return saveSprite({
+            id: st.id ?? crypto.randomUUID(),
+            projectId: st.projectId ?? null,
+            name: st.name,
+            animatorBody,
+            animCount: st.animations.length,
+            frameCount: st.animations.reduce((s, a) => s + a.frames.length, 0),
+            canvasW:
+              st.spriteSheet?.width ??
+              st.animatorState?.spriteSheet?.width ??
+              32,
+            canvasH:
+              st.spriteSheet?.height ??
+              st.animatorState?.spriteSheet?.height ??
+              32,
+          });
+        })
+        .catch(console.error);
     };
-    // empty deps — only runs on unmount
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -336,16 +542,15 @@ export function AnimatorPage() {
   }
 
   const [saved, setSaved] = useState(false);
-  const [exportOpen, setExportOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [expandPreview, setExpandPreview] = useState(false);
 
   async function handleSave() {
     setSaving(true);
     try {
-      const data = serialiseProject(state);
-      if (!state.id) dispatch({ type: "SET_PROJECT_ID", payload: data.id });
-      const imageUrl = state.spriteSheet?.objectUrl ?? null;
+      const spriteId = state.id ?? crypto.randomUUID();
+      if (!state.id) dispatch({ type: "SET_PROJECT_ID", payload: spriteId });
+      const animatorBody = await buildAnimatorBody(state);
       const thumbnail = imageUrl
         ? await generateThumbnail(
             imageUrl,
@@ -353,7 +558,25 @@ export function AnimatorPage() {
             state.animations,
           ).catch(() => undefined)
         : undefined;
-      await saveProjectToStorage(data, thumbnail);
+      await saveSprite(
+        {
+          id: spriteId,
+          projectId: state.projectId ?? null,
+          name: state.name,
+          animatorBody,
+          animCount: state.animations.length,
+          frameCount: state.animations.reduce((s, a) => s + a.frames.length, 0),
+          canvasW:
+            state.spriteSheet?.width ??
+            state.animatorState?.spriteSheet?.width ??
+            32,
+          canvasH:
+            state.spriteSheet?.height ??
+            state.animatorState?.spriteSheet?.height ??
+            32,
+        },
+        thumbnail,
+      );
       markSaved();
       setSaved(true);
       showToast("Project saved.", "success", 2500);
@@ -363,19 +586,6 @@ export function AnimatorPage() {
       showToast("Failed to save project.", "error");
     } finally {
       setSaving(false);
-    }
-  }
-
-  async function handleOpen() {
-    try {
-      const data = await pickAndLoadProject();
-      await saveProjectToStorage(data);
-      dispatch({ type: "LOAD_PROJECT", payload: data });
-    } catch (err) {
-      if (err.message !== "No file selected") {
-        console.error("Failed to load project:", err);
-        showToast("Failed to load project file.", "error");
-      }
     }
   }
 
@@ -405,6 +615,24 @@ export function AnimatorPage() {
     navigate("/jelly-sprite");
   }
 
+  const saveMenuItems = [
+    {
+      id: "save",
+      label: "Save Project",
+      hint: "Ctrl+S",
+      action: handleSave,
+    },
+    { id: "sep1", separator: true },
+    {
+      id: "pack",
+      label: "Pack Animations → Sprite Sheet",
+      hint: "Save to project",
+      soon: true,
+      disabled: true,
+      action: () => {},
+    },
+  ];
+
   return (
     <Page
       title={
@@ -433,21 +661,6 @@ export function AnimatorPage() {
           >
             ↪
           </button>
-          <span className="editor-toolbar__sep" />
-          <button
-            className="editor-toolbar__btn"
-            onClick={handleOpen}
-            title="Open .doomjelly.json file"
-          >
-            Open
-          </button>
-          <button
-            className="editor-toolbar__btn"
-            onClick={() => setExportOpen(true)}
-            title="Export animations as JSON"
-          >
-            Export
-          </button>
           {state.spriteSheet && (
             <>
               <span className="editor-toolbar__sep" />
@@ -461,19 +674,13 @@ export function AnimatorPage() {
             </>
           )}
           <span className="editor-toolbar__sep" />
-          <button
-            className="editor-toolbar__btn editor-toolbar__btn--primary"
-            onClick={handleSave}
-            disabled={saving}
-            title="Save project (Ctrl+S)"
-          >
-            {saving ? "Saving…" : saved ? "Saved ✓" : "Save"}
-          </button>
-          {isDirty && !saving && !saved && (
-            <span className="editor-toolbar__dirty" title="Unsaved changes">
-              ●
-            </span>
-          )}
+          <SplitSaveButton
+            onSave={handleSave}
+            saving={saving}
+            saved={saved}
+            isDirty={isDirty}
+            menuItems={saveMenuItems}
+          />
         </>
       }
       scrollable={false}
@@ -504,7 +711,7 @@ export function AnimatorPage() {
 
               {leftOpen && (
                 <div className="editor__left-inner">
-                  <SpriteImporter />
+                  <SheetList />
                   <div className="editor__divider" />
                   <FrameConfigPanel />
                 </div>
@@ -583,7 +790,6 @@ export function AnimatorPage() {
         </div>
         {/* editor-body */}
       </PlaybackProvider>
-      <ExportPanel isOpen={exportOpen} onClose={() => setExportOpen(false)} />
       <KeyboardHelp isOpen={helpOpen} onClose={() => setHelpOpen(false)} />
     </Page>
   );

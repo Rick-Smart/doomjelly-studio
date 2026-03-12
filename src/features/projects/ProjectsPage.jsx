@@ -25,7 +25,7 @@ import {
 import "./ProjectsPage.css";
 
 export function ProjectsPage() {
-  const { dispatch } = useProject();
+  const { state, dispatch } = useProject();
   const { showToast } = useNotification();
   const navigate = useNavigate();
 
@@ -112,6 +112,51 @@ export function ProjectsPage() {
     } catch (err) {
       console.error(err);
       showToast("Failed to open sprite in Animator.", "error");
+    }
+  }
+
+  async function handleAddSheetToAnimator(sprite) {
+    if (!state.id) {
+      showToast(
+        "Open a sprite in the Animator first, then add more sheets.",
+        "info",
+      );
+      return;
+    }
+    try {
+      const data = await loadSprite(sprite.id);
+      const as = data.animatorState;
+      // Prefer first entry from multi-sheet format, then legacy single-sheet
+      const sheetEntry = as?.sheets?.[0] ?? null;
+      const dataUrl = sheetEntry?.dataUrl ?? as?.spriteSheet?.dataUrl ?? null;
+      if (!dataUrl) {
+        showToast(
+          `"${sprite.name}" has no sheet image. Open it in the Animator and save it first.`,
+          "error",
+        );
+        return;
+      }
+      const width = sheetEntry?.width ?? as?.spriteSheet?.width;
+      const height = sheetEntry?.height ?? as?.spriteSheet?.height;
+      const filename = sheetEntry?.filename ?? sprite.name + ".png";
+      // Convert dataUrl → live objectUrl
+      const blob = await fetch(dataUrl).then((r) => r.blob());
+      const objectUrl = URL.createObjectURL(blob);
+      dispatch({
+        type: "ADD_SHEET",
+        payload: {
+          id: crypto.randomUUID(),
+          filename,
+          objectUrl,
+          dataUrl,
+          width,
+          height,
+        },
+      });
+      navigate("/animator");
+    } catch (err) {
+      console.error(err);
+      showToast("Failed to add sheet to Animator.", "error");
     }
   }
 
@@ -635,9 +680,23 @@ export function ProjectsPage() {
                                       onClick={() =>
                                         handleOpenInAnimator(sprite.id)
                                       }
-                                      title="Open sprite sheet in Animator"
+                                      title="Open sprite sheet in Animator (replaces current session)"
                                     >
                                       Animator ↗
+                                    </button>
+                                    <button
+                                      className="projects-btn projects-btn--sm"
+                                      disabled={!state.id}
+                                      onClick={() =>
+                                        handleAddSheetToAnimator(sprite)
+                                      }
+                                      title={
+                                        state.id
+                                          ? "Add this sprite's sheet to the current Animator session"
+                                          : "Open a sprite in the Animator first"
+                                      }
+                                    >
+                                      + Sheet
                                     </button>
                                     <button
                                       className="projects-btn projects-btn--sm projects-btn--primary"

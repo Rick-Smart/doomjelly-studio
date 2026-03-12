@@ -17,7 +17,8 @@ const ZOOM_STEP = 0.15;
 export function SheetViewerCanvas({ imageUrl }) {
   const { state, dispatch } = useProject();
   const { theme } = useTheme();
-  const { frameConfig, animations, activeAnimationId } = state;
+  const { frameConfig, animations, activeAnimationId, activeSheetId, sheets } =
+    state;
   const { frameW, frameH, scale, offsetX, offsetY, gutterX, gutterY } =
     frameConfig;
 
@@ -223,16 +224,21 @@ export function SheetViewerCanvas({ imageUrl }) {
     );
 
     // Build usage map: "col,row" → { count, firstIndex }
+    // Only highlight frames that belong to the currently displayed sheet.
+    const primarySheetId = sheets[0]?.id ?? activeSheetId;
     const activeAnim = animations.find((a) => a.id === activeAnimationId);
+    const activeSheetFrames = activeAnim
+      ? activeAnim.frames.filter(
+          (f) => (f.sheetId ?? primarySheetId) === activeSheetId,
+        )
+      : [];
     const usageMap = new Map();
-    if (activeAnim) {
-      activeAnim.frames.forEach((f, i) => {
-        const key = `${f.col},${f.row}`;
-        if (!usageMap.has(key))
-          usageMap.set(key, { count: 0, firstIndex: i + 1 });
-        usageMap.get(key).count++;
-      });
-    }
+    activeSheetFrames.forEach((f, i) => {
+      const key = `${f.col},${f.row}`;
+      if (!usageMap.has(key))
+        usageMap.set(key, { count: 0, firstIndex: i + 1 });
+      usageMap.get(key).count++;
+    });
 
     // Draw used-cell highlights + badges
     usageMap.forEach(({ count, firstIndex }, key) => {
@@ -390,7 +396,14 @@ export function SheetViewerCanvas({ imageUrl }) {
     const newFrames = [];
     for (let row = minRow; row <= maxRow; row++) {
       for (let col = minCol; col <= maxCol; col++) {
-        newFrames.push({ col, row, ticks: 6, dx: 0, dy: 0 });
+        newFrames.push({
+          col,
+          row,
+          ticks: 6,
+          dx: 0,
+          dy: 0,
+          sheetId: activeSheetId ?? undefined,
+        });
       }
     }
     if (newFrames.length === 0) return;

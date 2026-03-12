@@ -15,6 +15,8 @@ const initialState = {
   projectId: null,
   spriteId: null,
   name: "Untitled Project",
+  sheets: [],
+  activeSheetId: null,
   spriteSheet: null,
   jellySpriteDataUrl: null,
   // Full JellySprite editor state from jellySpritePersistence (v2 saves).
@@ -38,17 +40,181 @@ const initialState = {
 
 function reducer(state, action) {
   switch (action.type) {
-    case "LOAD_PROJECT":
-      return { ...initialState, ...action.payload };
+    case "LOAD_PROJECT": {
+      const as = action.payload.animatorState;
 
-    case "SET_SPRITE_SHEET":
-      return { ...state, spriteSheet: action.payload };
+      // Hydrate sheets array from saved animatorState
+      let sheets = action.payload.sheets ?? [];
+      let activeSheetId = action.payload.activeSheetId ?? null;
+      if (sheets.length === 0 && as) {
+        if (as.sheets?.length) {
+          // New multi-sheet format — objectUrl is volatile, clear it
+          sheets = as.sheets.map((s) => ({ ...s, objectUrl: null }));
+        } else if (as.spriteSheet?.dataUrl) {
+          // Legacy single-sheet format
+          sheets = [
+            {
+              id: `${action.payload.id ?? "sheet"}-0`,
+              filename: as.spriteSheet.filename ?? "sheet.png",
+              objectUrl: null,
+              dataUrl: as.spriteSheet.dataUrl,
+              width: as.spriteSheet.width,
+              height: as.spriteSheet.height,
+              frameConfig: as.frameConfig ?? null,
+            },
+          ];
+        }
+      }
+      if (!activeSheetId && sheets.length > 0) activeSheetId = sheets[0].id;
 
-    case "SET_FRAME_CONFIG":
+      const activeSheet = sheets.find((s) => s.id === activeSheetId) ?? null;
+      const frameConfig =
+        action.payload.frameConfig ??
+        activeSheet?.frameConfig ??
+        as?.frameConfig ??
+        (as?.spriteSheet?.frameW && as?.spriteSheet?.frameH
+          ? {
+              ...initialState.frameConfig,
+              frameW: as.spriteSheet.frameW,
+              frameH: as.spriteSheet.frameH,
+            }
+          : initialState.frameConfig);
+
+      return {
+        ...initialState,
+        ...action.payload,
+        sheets,
+        activeSheetId,
+        animations:
+          action.payload.animations ??
+          as?.animations ??
+          initialState.animations,
+        frameConfig,
+      };
+    }
+
+    case "SET_SPRITE_SHEET": {
+      const payload = action.payload;
+      if (state.activeSheetId) {
+        // Update the active sheet's image metadata
+        const sheets = state.sheets.map((s) =>
+          s.id === state.activeSheetId
+            ? {
+                ...s,
+                objectUrl: payload.objectUrl,
+                filename: payload.filename,
+                width: payload.width,
+                height: payload.height,
+              }
+            : s,
+        );
+        return { ...state, spriteSheet: payload, sheets };
+      }
+      // First sheet ever — auto-create an entry
+      const newId = crypto.randomUUID();
+      const newSheet = {
+        id: newId,
+        ...payload,
+        frameConfig: state.frameConfig,
+      };
       return {
         ...state,
-        frameConfig: { ...state.frameConfig, ...action.payload },
+        spriteSheet: payload,
+        sheets: [newSheet],
+        activeSheetId: newId,
       };
+    }
+
+    case "SET_FRAME_CONFIG": {
+      const updatedConfig = { ...state.frameConfig, ...action.payload };
+      const sheets = state.activeSheetId
+        ? state.sheets.map((s) =>
+            s.id === state.activeSheetId
+              ? { ...s, frameConfig: updatedConfig }
+              : s,
+          )
+        : state.sheets;
+      return { ...state, frameConfig: updatedConfig, sheets };
+    }
+
+    case "ADD_SHEET": {
+      const { id, filename, objectUrl, dataUrl, width, height } =
+        action.payload;
+      const newSheet = {
+        id,
+        filename,
+        objectUrl,
+        dataUrl: dataUrl ?? null,
+        width,
+        height,
+        frameConfig: { ...state.frameConfig },
+      };
+      return {
+        ...state,
+        sheets: [...state.sheets, newSheet],
+        activeSheetId: newSheet.id,
+        spriteSheet: { objectUrl, filename, width, height },
+      };
+    }
+
+    case "REMOVE_SHEET": {
+      const remaining = state.sheets.filter((s) => s.id !== action.payload);
+      const wasActive = state.activeSheetId === action.payload;
+      const nextActiveId = wasActive
+        ? (remaining[0]?.id ?? null)
+        : state.activeSheetId;
+      const nextActive = remaining.find((s) => s.id === nextActiveId) ?? null;
+      return {
+        ...state,
+        sheets: remaining,
+        activeSheetId: nextActiveId,
+        spriteSheet: nextActive
+          ? {
+              objectUrl: nextActive.objectUrl,
+              filename: nextActive.filename,
+              width: nextActive.width,
+              height: nextActive.height,
+            }
+          : remaining.length === 0
+            ? null
+            : state.spriteSheet,
+        frameConfig: nextActive?.frameConfig ?? state.frameConfig,
+      };
+    }
+
+    case "SET_ACTIVE_SHEET": {
+      const sheet = state.sheets.find((s) => s.id === action.payload);
+      if (!sheet) return state;
+      return {
+        ...state,
+        activeSheetId: action.payload,
+        spriteSheet: {
+          objectUrl: sheet.objectUrl,
+          filename: sheet.filename,
+          width: sheet.width,
+          height: sheet.height,
+        },
+        frameConfig: sheet.frameConfig ?? state.frameConfig,
+      };
+    }
+
+    case "RESTORE_SHEET_URLS": {
+      // payload: [{ id, objectUrl }]
+      const urlMap = new Map(
+        action.payload.map(({ id, objectUrl }) => [id, objectUrl]),
+      );
+      const sheets = state.sheets.map((s) =>
+        urlMap.has(s.id) ? { ...s, objectUrl: urlMap.get(s.id) } : s,
+      );
+      const activeSheet = sheets.find((s) => s.id === state.activeSheetId);
+      return {
+        ...state,
+        sheets,
+        spriteSheet: activeSheet
+          ? { ...state.spriteSheet, objectUrl: activeSheet.objectUrl }
+          : state.spriteSheet,
+      };
+    }
 
     case "ADD_ANIMATION": {
       const anim = action.payload;

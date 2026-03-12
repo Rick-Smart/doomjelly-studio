@@ -4,71 +4,137 @@
   gap: 10px;
 }
 
-.sprite-importer__loaded {
+/* Heading row with inline Add button */
+.si-heading {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
 }
 
-.sprite-importer__preview-wrap {
-  width: 100%;
-  max-height: 120px;
+.si-add-btn {
+  font-size: 10px;
+  padding: 2px 7px;
+  background: var(--surface3);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text);
+  cursor: pointer;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+.si-add-btn:hover {
+  background: var(--surface2);
+}
+
+/* Sheet list */
+.si-sheet-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.si-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 5px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.si-row:hover {
+  background: var(--surface3);
+}
+.si-row--active {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface2));
+  cursor: default;
+}
+
+/* Thumbnail */
+.si-thumb-wrap {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 3px;
   overflow: hidden;
-  border-radius: 4px;
   background: repeating-conic-gradient(
       var(--surface3) 0% 25%,
       var(--surface2) 0% 50%
     )
-    0 0 / 12px 12px;
+    0 0 / 8px 8px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
-
-.sprite-importer__preview {
+.si-thumb {
   max-width: 100%;
-  max-height: 120px;
+  max-height: 100%;
   object-fit: contain;
   image-rendering: pixelated;
 }
+.si-thumb-placeholder {
+  font-size: 14px;
+  color: var(--text-muted);
+  opacity: 0.5;
+}
 
-.sprite-importer__meta {
+/* Info text */
+.si-info {
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
-
-.sprite-importer__filename {
-  font-size: 12px;
+.si-filename {
+  font-size: 11px;
   font-weight: 600;
   color: var(--text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-
-.sprite-importer__dims,
-.sprite-importer__cells {
-  font-size: 11px;
+.si-dims {
+  font-size: 10px;
   color: var(--text-muted);
 }
-
-.sprite-importer__reimport-hint {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 6px 8px;
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-}
-
-.sprite-importer__reimport-label {
+.si-reimport {
   font-size: 10px;
   color: var(--accent);
   opacity: 0.85;
 }
 
+/* Row action buttons (replace, remove) */
+.si-actions {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex-shrink: 0;
+}
+.si-icon-btn {
+  padding: 2px 6px;
+  font-size: 12px;
+  line-height: 1.2;
+  background: var(--surface3);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text);
+  cursor: pointer;
+}
+.si-icon-btn:hover {
+  background: var(--surface);
+}
+.si-icon-btn--danger {
+  color: var(--danger, #f87171);
+}
+
+/* Keep old class still used by the FileDropZone path */
 .sprite-importer__replace-input {
   display: none;
 }

@@ -1,137 +1,202 @@
 import { useCallback, useRef } from "react";
 import { useProject } from "../../../contexts/ProjectContext";
 import { FileDropZone } from "../../../ui/FileDropZone";
-import { Button } from "../../../ui/Button";
 import "./SpriteImporter.css";
 
 function calcCellCount(imgW, imgH, config) {
   const { frameW, frameH, offsetX, offsetY, gutterX, gutterY } = config;
-  if (!frameW || !frameH) return { cols: 0, rows: 0, total: 0 };
-  const usableW = imgW - offsetX;
-  const usableH = imgH - offsetY;
-  const cols = Math.floor((usableW + gutterX) / (frameW + gutterX));
-  const rows = Math.floor((usableH + gutterY) / (frameH + gutterY));
-  return {
-    cols: Math.max(0, cols),
-    rows: Math.max(0, rows),
-    total: Math.max(0, cols * rows),
-  };
+  if (!frameW || !frameH) return null;
+  const cols = Math.max(
+    0,
+    Math.floor((imgW - offsetX + gutterX) / (frameW + gutterX)),
+  );
+  const rows = Math.max(
+    0,
+    Math.floor((imgH - offsetY + gutterY) / (frameH + gutterY)),
+  );
+  return cols * rows;
+}
+
+function loadSheetFile(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () =>
+      resolve({
+        objectUrl: url,
+        width: img.naturalWidth,
+        height: img.naturalHeight,
+      });
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Bad image"));
+    };
+    img.src = url;
+  });
 }
 
 export function SpriteImporter() {
   const { state, dispatch } = useProject();
-  const { spriteSheet, frameConfig } = state;
+  const { sheets, activeSheetId, spriteSheet, frameConfig } = state;
+  const addInputRef = useRef(null);
   const replaceInputRef = useRef(null);
 
-  const handleFile = useCallback(
-    (file) => {
-      // Revoke any existing object URL before creating a new one
-      if (spriteSheet?.objectUrl) URL.revokeObjectURL(spriteSheet.objectUrl);
-      const url = URL.createObjectURL(file);
-      const img = new Image();
-      img.onload = () => {
+  const dispatchAddSheet = useCallback(
+    async (file) => {
+      try {
+        const { objectUrl, width, height } = await loadSheetFile(file);
         dispatch({
-          type: "SET_SPRITE_SHEET",
+          type: "ADD_SHEET",
           payload: {
-            objectUrl: url,
+            id: crypto.randomUUID(),
             filename: file.name,
-            width: img.naturalWidth,
-            height: img.naturalHeight,
+            objectUrl,
+            width,
+            height,
           },
         });
-      };
-      img.onerror = () => URL.revokeObjectURL(url);
-      img.src = url;
+      } catch {}
+    },
+    [dispatch],
+  );
+
+  const dispatchReplaceSheet = useCallback(
+    async (file) => {
+      try {
+        const { objectUrl, width, height } = await loadSheetFile(file);
+        if (spriteSheet?.objectUrl) URL.revokeObjectURL(spriteSheet.objectUrl);
+        dispatch({
+          type: "SET_SPRITE_SHEET",
+          payload: { objectUrl, filename: file.name, width, height },
+        });
+      } catch {}
     },
     [dispatch, spriteSheet],
   );
 
-  const handleReplaceClick = useCallback(() => {
-    replaceInputRef.current?.click();
-  }, []);
-
-  const handleReplaceInput = useCallback(
-    (e) => {
-      const file = e.target.files?.[0];
-      if (file) handleFile(file);
-      // Reset so same file triggers onChange again if needed
-      e.target.value = "";
-    },
-    [handleFile],
-  );
-
-  const cells = spriteSheet?.width
-    ? calcCellCount(spriteSheet.width, spriteSheet.height, frameConfig)
-    : null;
-
-  // After a refresh, objectUrl is stripped from localStorage.
-  // Show a re-import prompt that retains the previous filename as a hint.
-  const needsReimport = spriteSheet && !spriteSheet.objectUrl;
+  // No sheets yet — show drop zone
+  if (!sheets.length) {
+    return (
+      <div className="sprite-importer">
+        <div className="panel-heading">Sprite Sheets</div>
+        <FileDropZone
+          accept="image/png"
+          onFile={dispatchAddSheet}
+          label="Drop a PNG here"
+          hint="or click to browse"
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="sprite-importer">
-      <div className="panel-heading">Sprite Sheet</div>
+      <div className="panel-heading si-heading">
+        <span>Sprite Sheets</span>
+        <button
+          className="si-add-btn"
+          onClick={() => addInputRef.current?.click()}
+          title="Add another sheet"
+        >
+          + Add
+        </button>
+      </div>
 
-      {!spriteSheet || needsReimport ? (
-        <>
-          {needsReimport && (
-            <div className="sprite-importer__reimport-hint">
-              <span
-                className="sprite-importer__filename"
-                title={spriteSheet.filename}
-              >
-                {spriteSheet.filename}
-              </span>
-              <span className="sprite-importer__reimport-label">
-                Re-import required after refresh
-              </span>
-            </div>
-          )}
-          <FileDropZone
-            accept="image/png"
-            onFile={handleFile}
-            label="Drop a PNG here"
-            hint="or click to browse"
-          />
-        </>
-      ) : (
-        <div className="sprite-importer__loaded">
-          <div className="sprite-importer__preview-wrap">
-            <img
-              className="sprite-importer__preview"
-              src={spriteSheet.objectUrl}
-              alt={spriteSheet.filename}
-            />
-          </div>
-          <div className="sprite-importer__meta">
-            <span
-              className="sprite-importer__filename"
-              title={spriteSheet.filename}
+      <ul className="si-sheet-list">
+        {sheets.map((sheet) => {
+          const isActive = sheet.id === activeSheetId;
+          const cfg = sheet.frameConfig ?? frameConfig;
+          const total = sheet.width
+            ? calcCellCount(sheet.width, sheet.height, cfg)
+            : null;
+          return (
+            <li
+              key={sheet.id}
+              className={`si-row${isActive ? " si-row--active" : ""}`}
+              onClick={() =>
+                !isActive &&
+                dispatch({ type: "SET_ACTIVE_SHEET", payload: sheet.id })
+              }
             >
-              {spriteSheet.filename}
-            </span>
-            <span className="sprite-importer__dims">
-              {spriteSheet.width} × {spriteSheet.height} px
-            </span>
-            {cells && (
-              <span className="sprite-importer__cells">
-                {cells.cols} × {cells.rows} = {cells.total} cells
-              </span>
-            )}
-          </div>
-          <Button variant="ghost" size="sm" onClick={handleReplaceClick}>
-            Replace sheet
-          </Button>
-          {/* Hidden file input for replace-in-place */}
-          <input
-            ref={replaceInputRef}
-            type="file"
-            accept="image/png"
-            className="sprite-importer__replace-input"
-            onChange={handleReplaceInput}
-          />
-        </div>
-      )}
+              <div className="si-thumb-wrap">
+                {sheet.objectUrl ? (
+                  <img
+                    className="si-thumb"
+                    src={sheet.objectUrl}
+                    alt=""
+                    aria-hidden
+                  />
+                ) : (
+                  <span className="si-thumb-placeholder" aria-hidden>
+                    ?
+                  </span>
+                )}
+              </div>
+              <div className="si-info">
+                <span className="si-filename" title={sheet.filename}>
+                  {sheet.filename}
+                </span>
+                <span className="si-dims">
+                  {sheet.width} × {sheet.height} px
+                  {total !== null ? ` · ${total} cells` : ""}
+                </span>
+                {!sheet.objectUrl && (
+                  <span className="si-reimport">re-import required</span>
+                )}
+              </div>
+              <div className="si-actions">
+                {isActive && (
+                  <button
+                    className="si-icon-btn"
+                    title="Replace this sheet’s image"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      replaceInputRef.current?.click();
+                    }}
+                  >
+                    ↻
+                  </button>
+                )}
+                {sheets.length > 1 && (
+                  <button
+                    className="si-icon-btn si-icon-btn--danger"
+                    title="Remove sheet"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      dispatch({ type: "REMOVE_SHEET", payload: sheet.id });
+                    }}
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+
+      <input
+        ref={addInputRef}
+        type="file"
+        accept="image/png"
+        style={{ display: "none" }}
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) dispatchAddSheet(f);
+          e.target.value = "";
+        }}
+      />
+      <input
+        ref={replaceInputRef}
+        type="file"
+        accept="image/png"
+        style={{ display: "none" }}
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) dispatchReplaceSheet(f);
+          e.target.value = "";
+        }}
+      />
     </div>
   );
 }
