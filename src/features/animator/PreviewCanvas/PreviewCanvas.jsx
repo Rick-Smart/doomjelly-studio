@@ -31,6 +31,23 @@ function drawChecker(ctx, w, h, size = 8) {
   }
 }
 
+/**
+ * Given a set of frames and a monotonic tick clock, return the frame that
+ * should be displayed — independent of any other animation's timing.
+ */
+function resolveFrameFromTicks(frames, elapsedTicks) {
+  if (!frames.length) return null;
+  const cycleTicks = frames.reduce((s, f) => s + (f.ticks ?? 6), 0);
+  if (cycleTicks <= 0) return frames[0];
+  const t = elapsedTicks % cycleTicks;
+  let acc = 0;
+  for (const frame of frames) {
+    acc += frame.ticks ?? 6;
+    if (t < acc) return frame;
+  }
+  return frames[frames.length - 1];
+}
+
 export function PreviewCanvas() {
   const { state } = useProject();
   const { animations, activeAnimationId, spriteSheet, frameConfig } = state;
@@ -54,10 +71,13 @@ export function PreviewCanvas() {
   const viewportRef = useRef(null);
   const [displaySize, setDisplaySize] = useState({ w: 0, h: 0 });
 
-  const { frameIndex, isPlaying, play, pause, seek } = useAnimationLoop(
-    frames,
-    { mode, speed, ticksPerSecond: 60, resetKey: activeAnimationId },
-  );
+  const { frameIndex, isPlaying, play, pause, seek, elapsedTicks } =
+    useAnimationLoop(frames, {
+      mode,
+      speed,
+      ticksPerSecond: 60,
+      resetKey: activeAnimationId,
+    });
 
   // Publish frameIndex + controls to PlaybackContext.
   const {
@@ -173,7 +193,9 @@ export function PreviewCanvas() {
     }
 
     // Composite: draw each selected animation layer bottom-to-top.
-    // When no composite is active, fall back to just the active animation.
+    // Active animation uses frameIndex directly (preserves ping-pong/once modes).
+    // All other layers resolve their frame from the shared tick clock so each
+    // layer's timing is independent of the active animation's tick schedule.
     const toRender =
       previewAnimIds.length > 0
         ? animations.filter((a) => previewAnimIds.includes(a.id))
@@ -184,8 +206,10 @@ export function PreviewCanvas() {
     for (const anim of toRender) {
       const af = anim.frames;
       if (!af.length) continue;
-      // Each layer loops independently at the same playhead position.
-      const frame = af[frameIndex % af.length];
+      const frame =
+        anim.id === activeAnim?.id
+          ? af[frameIndex] // active: honours ping-pong / once
+          : resolveFrameFromTicks(af, elapsedTicks); // others: tick-clock
       if (!frame) continue;
       const srcX = offsetX + frame.col * (frameW + gutterX) + (frame.dx ?? 0);
       const srcY = offsetY + frame.row * (frameH + gutterY) + (frame.dy ?? 0);
@@ -204,6 +228,7 @@ export function PreviewCanvas() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     frameIndex,
+    elapsedTicks,
     bg,
     customColor,
     frameConfig,

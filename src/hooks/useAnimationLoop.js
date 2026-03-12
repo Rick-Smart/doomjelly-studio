@@ -7,11 +7,12 @@ export function useAnimationLoop(
 ) {
   const [frameIndex, setFrameIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [elapsedTicks, setElapsedTicks] = useState(0);
 
   const rafRef = useRef(null);
   const isPlayingRef = useRef(false);
   // All mutable playback state in one ref — the rAF callback never goes stale.
-  const r = useRef({ fi: 0, dir: 1, accum: 0, lastTime: null });
+  const r = useRef({ fi: 0, dir: 1, accum: 0, lastTime: null, totalTicks: 0 });
 
   // Keep options live so changes take effect on the next tick without restart.
   const framesRef = useRef(frames);
@@ -25,8 +26,9 @@ export function useAnimationLoop(
 
   // Reset to frame 0 when the active animation changes.
   useEffect(() => {
-    r.current = { fi: 0, dir: 1, accum: 0, lastTime: null };
+    r.current = { fi: 0, dir: 1, accum: 0, lastTime: null, totalTicks: 0 };
     setFrameIndex(0);
+    setElapsedTicks(0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resetKey]);
 
@@ -58,6 +60,7 @@ export function useAnimationLoop(
       ((time - r.current.lastTime) / 1000) * tpsRef.current * speedRef.current;
     r.current.lastTime = time;
     r.current.accum += deltaTicks;
+    r.current.totalTicks += deltaTicks;
 
     let changed = false;
     while (r.current.accum >= (fs[r.current.fi]?.ticks ?? 6)) {
@@ -91,6 +94,7 @@ export function useAnimationLoop(
     }
 
     if (changed) setFrameIndex(r.current.fi);
+    if (changed) setElapsedTicks(Math.round(r.current.totalTicks));
     rafRef.current = requestAnimationFrame(step);
   }, []);
 
@@ -112,9 +116,16 @@ export function useAnimationLoop(
   }, []);
 
   const seek = useCallback((index) => {
+    const fs = framesRef.current;
+    // Compute tick position = sum of ticks of all frames before the target index.
+    const seekTicks = fs
+      .slice(0, index)
+      .reduce((s, f) => s + (f.ticks ?? 6), 0);
     r.current.fi = index;
     r.current.accum = 0;
+    r.current.totalTicks = seekTicks;
     setFrameIndex(index);
+    setElapsedTicks(seekTicks);
   }, []);
 
   // Cleanup on unmount
@@ -124,5 +135,5 @@ export function useAnimationLoop(
     };
   }, []);
 
-  return { frameIndex, isPlaying, play, pause, seek };
+  return { frameIndex, isPlaying, play, pause, seek, elapsedTicks };
 }
