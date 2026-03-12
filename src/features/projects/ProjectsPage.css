@@ -220,6 +220,13 @@
   flex-shrink: 0;
 }
 
+/* ── Add row (sprite + upload sheet) ── */
+.projects-accordion__add-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
 /* ── Add Sprite button ── */
 .projects-btn--add-sprite {
   margin-top: 4px;
@@ -566,4 +573,177 @@
   font-size: 15px;
   font-weight: 600;
   color: var(--accent);
+}
+
+/* ── Modal header + close ── */
+.projects-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.projects-modal__close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.projects-modal__close:hover {
+  background: var(--surface3);
+  color: var(--text);
+}
+
+.projects-modal__status {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 0;
+  padding: 8px 0;
+}
+
+.projects-modal__error {
+  font-size: 12px;
+  color: var(--danger);
+  margin: 0;
+  padding: 4px 0;
+}
+
+.projects-modal__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+/* ── Export modal options ── */
+.projects-modal--export {
+  width: 380px;
+}
+
+.projects-export-options {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.projects-export-option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  padding: 10px 14px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: left;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+}
+
+.projects-export-option:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 6%, var(--surface2));
+}
+
+.projects-export-option:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.projects-export-option__label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.projects-export-option__hint {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* ── Upload sheet modal ── */
+.projects-modal--upload {
+  width: 420px;
+}
+
+.projects-upload-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.projects-upload-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  width: 120px;
+  flex-shrink: 0;
+}
+
+.projects-upload-input {
+  flex: 1;
+  font-size: 13px;
+  padding: 5px 10px;
+  background: var(--surface3);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+}
+
+.projects-upload-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.projects-upload-number {
+  width: 72px;
+  font-size: 13px;
+  padding: 4px 8px;
+  background: var(--surface3);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  text-align: right;
+}
+
+.projects-upload-number:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.projects-upload-drop {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px 14px;
+  background: var(--surface2);
+  border: 2px dashed var(--border);
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+  text-align: center;
+}
+
+.projects-upload-drop:hover {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 5%, var(--surface2));
+  color: var(--text);
+}
+
+.projects-upload-preview {
+  font-size: 12px;
+  color: var(--accent);
+  font-weight: 600;
+  margin: 0;
+  padding: 2px 0;
 }

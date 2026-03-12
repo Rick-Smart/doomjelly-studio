@@ -145,12 +145,26 @@ export function JellySpriteWorkspace() {
       padding={false}
     >
       <ErrorBoundary>
-        <JellySprite
-          onSwitchToAnimator={() => navigate("/editor")}
-          onRegisterCollector={(fn) => {
-            jellySpriteCollectorRef.current = fn;
-          }}
-        />
+        {state.id === spriteId ? (
+          <JellySprite
+            onRegisterCollector={(fn) => {
+              jellySpriteCollectorRef.current = fn;
+            }}
+          />
+        ) : (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              height: "100%",
+              color: "var(--color-text-muted, #888)",
+              fontSize: "0.9rem",
+            }}
+          >
+            Loading sprite…
+          </div>
+        )}
       </ErrorBoundary>
     </Page>
   );

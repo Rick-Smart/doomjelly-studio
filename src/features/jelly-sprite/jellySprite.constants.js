@@ -115,7 +115,6 @@ export const PANEL_TABS = [
   { id: "layers", icon: "⧉", label: "Layers" },
   { id: "canvas", icon: "📐", label: "Canvas" },
   { id: "view", icon: "🖼", label: "View" },
-  { id: "more", icon: "⋯", label: "More" },
 ];
 
 let _layerIdCounter = 1;

@@ -304,14 +304,6 @@ export function jellySpriteReducer(state, action) {
     // UI
     case A.SET_PANEL_TAB:
       return { ...state, panelTab: payload };
-    case A.SET_EXPORT_OPEN:
-      return { ...state, exportOpen: payload };
-    case A.SET_EXPORT_FRAMES_PER_ROW:
-      return { ...state, exportFramesPerRow: payload };
-    case A.SET_EXPORT_PADDING:
-      return { ...state, exportPadding: payload };
-    case A.SET_EXPORT_LABELS:
-      return { ...state, exportLabels: payload };
     case A.SET_RESIZE_ANCHOR:
       return { ...state, resizeAnchor: payload };
     case A.SET_CUSTOM_W:

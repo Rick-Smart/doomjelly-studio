@@ -12,7 +12,7 @@ export function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   if (isAuthenticated) {
-    navigate("/editor", { replace: true });
+    navigate("/projects", { replace: true });
     return null;
   }
 
@@ -22,7 +22,7 @@ export function LoginPage() {
     setLoading(true);
     try {
       await login(email, password);
-      navigate("/editor", { replace: true });
+      navigate("/projects", { replace: true });
     } catch (err) {
       setError(err.message);
     } finally {

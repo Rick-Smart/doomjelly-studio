@@ -85,10 +85,6 @@ export const LOAD_JELLY_STATE = "LOAD_JELLY_STATE"; // full serialized state (fr
 
 // UI
 export const SET_PANEL_TAB = "SET_PANEL_TAB"; // tab id string
-export const SET_EXPORT_OPEN = "SET_EXPORT_OPEN"; // boolean
-export const SET_EXPORT_FRAMES_PER_ROW = "SET_EXPORT_FRAMES_PER_ROW"; // number
-export const SET_EXPORT_PADDING = "SET_EXPORT_PADDING"; // number
-export const SET_EXPORT_LABELS = "SET_EXPORT_LABELS"; // boolean
 export const SET_RESIZE_ANCHOR = "SET_RESIZE_ANCHOR"; // anchor string
 export const SET_CUSTOM_W = "SET_CUSTOM_W"; // number
 export const SET_CUSTOM_H = "SET_CUSTOM_H"; // number

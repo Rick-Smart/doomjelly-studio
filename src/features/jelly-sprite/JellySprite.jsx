@@ -1,6 +1,4 @@
 ﻿import { useRef, useEffect, useLayoutEffect } from "react";
-import JSZip from "jszip";
-import { GIFEncoder, quantize, applyPalette } from "gifenc";
 import { useProject } from "../../contexts/ProjectContext";
 import "./JellySprite.css";
 import * as A from "./store/jellySpriteActions";
@@ -10,7 +8,7 @@ import { JellySpriteProvider } from "./store/JellySpriteProvider";
 import { useJellySpriteStore } from "./store/useJellySpriteStore";
 import { LeftToolbar } from "./panels/LeftToolbar";
 import { CanvasArea } from "./panels/CanvasArea";
-import { RightPanel, ExportModal } from "./panels/RightPanel";
+import { RightPanel } from "./panels/RightPanel";
 import { useCanvas } from "./hooks/useCanvas";
 import { wireHistoryEngine, seedHistory } from "./engine/historyEngine";
 import {
@@ -27,19 +25,16 @@ const CURSOR_PRECISION = `url("data:image/svg+xml,${_cursorSvg}") 12 12, crossha
 // Outer component — just provides the store context
 // onRegisterCollector: optional callback — receives a () => serializedState
 // function so the workspace can pull the full state before saving.
-export function JellySprite({ onSwitchToAnimator, onRegisterCollector }) {
+export function JellySprite({ onRegisterCollector }) {
   return (
     <JellySpriteProvider>
-      <JellySpriteBody
-        onSwitchToAnimator={onSwitchToAnimator}
-        onRegisterCollector={onRegisterCollector}
-      />
+      <JellySpriteBody onRegisterCollector={onRegisterCollector} />
     </JellySpriteProvider>
   );
 }
 
 // Inner component — all logic runs inside JellySpriteProvider
-function JellySpriteBody({ onSwitchToAnimator, onRegisterCollector }) {
+function JellySpriteBody({ onRegisterCollector }) {
   const { state, dispatch } = useProject();
   const { refs, state: ss, dispatch: sd } = useJellySpriteStore();
 
@@ -71,10 +66,6 @@ function JellySpriteBody({ onSwitchToAnimator, onRegisterCollector }) {
     palettes,
     activePalette,
     panelTab,
-    exportOpen,
-    exportFramesPerRow,
-    exportPadding,
-    exportLabels,
     refImage,
     refOpacity,
     refVisible,
@@ -134,12 +125,6 @@ function JellySpriteBody({ onSwitchToAnimator, onRegisterCollector }) {
   const setActivePalette = (v) =>
     sd({ type: A.SET_ACTIVE_PALETTE, payload: v });
   const setPanelTab = (v) => sd({ type: A.SET_PANEL_TAB, payload: v });
-  const setExportOpen = (v) => sd({ type: A.SET_EXPORT_OPEN, payload: v });
-  const setExportFramesPerRow = (v) =>
-    sd({ type: A.SET_EXPORT_FRAMES_PER_ROW, payload: v });
-  const setExportPadding = (v) =>
-    sd({ type: A.SET_EXPORT_PADDING, payload: v });
-  const setExportLabels = (v) => sd({ type: A.SET_EXPORT_LABELS, payload: v });
   const setRefImage = (v) => sd({ type: A.SET_REF_IMAGE, payload: v });
   const setRefOpacity = (v) => sd({ type: A.SET_REF_OPACITY, payload: v });
   const setRefVisible = (v) => sd({ type: A.SET_REF_VISIBLE, payload: v });
@@ -246,16 +231,11 @@ function JellySpriteBody({ onSwitchToAnimator, onRegisterCollector }) {
       // shallow copy of the map — the Uint8ClampedArrays themselves are shared
       pixelBuffers: { ...refs.pixelBuffers },
       maskBuffers: { ...refs.maskBuffers },
-      // legacy alias so export compositeFrameToCanvas still works
-      pixelData: refs.pixelBuffers,
       // per-frame undo/redo stack (shallow copy — entries are immutable)
       historyStack: refs.historyStack,
       historyIndex: refs.historyIndex,
     };
   }
-  // Alias used by legacy export code
-  const saveCurrentFrameToRef = saveCurrentFrameToSnapshot;
-
   function loadFrameFromSnapshot(frameId) {
     const snap = refs.frameSnapshots[frameId];
     if (!snap) {
@@ -1335,205 +1315,6 @@ function JellySpriteBody({ onSwitchToAnimator, onRegisterCollector }) {
     sd({ type: A.SET_CANVAS_SIZE, payload: { w: sw, h: sh } });
   }
 
-  // Animator integration
-  function useInAnimator() {
-    const c = canvasRef.current;
-    if (!c) return;
-    const dataUrl = c.toDataURL("image/png");
-    dispatch({ type: "SET_JELLY_SPRITE_DATA", payload: dataUrl });
-    dispatch({
-      type: "SET_SPRITE_SHEET",
-      payload: {
-        dataUrl,
-        objectUrl: dataUrl,
-        filename: `${state.name || "sprite"}.png`,
-        width: canvasW,
-        height: canvasH,
-      },
-    });
-    onSwitchToAnimator?.();
-  }
-
-  async function importFromAnimator() {
-    const sh = state.spriteSheet;
-    if (!sh?.objectUrl) return;
-    let src = sh.objectUrl;
-    if (!src.startsWith("data:")) {
-      try {
-        const img = new Image();
-        await new Promise((res, rej) => {
-          img.onload = res;
-          img.onerror = rej;
-          img.src = src;
-        });
-        const cvs = document.createElement("canvas");
-        cvs.width = sh.width;
-        cvs.height = sh.height;
-        cvs.getContext("2d").drawImage(img, 0, 0);
-        src = cvs.toDataURL("image/png");
-      } catch {
-        return;
-      }
-    }
-    const loadImg = new Image();
-    loadImg.onload = () => {
-      const tmpCvs = document.createElement("canvas");
-      tmpCvs.width = canvasW;
-      tmpCvs.height = canvasH;
-      const ctx = tmpCvs.getContext("2d");
-      ctx.drawImage(loadImg, 0, 0, canvasW, canvasH);
-      pixelsRef.current.set(ctx.getImageData(0, 0, canvasW, canvasH).data);
-      pushHistoryEntryStubRef.current();
-      redraw();
-      saveToProject();
-    };
-    loadImg.src = src;
-  }
-
-  // Export helpers
-  function compositeFrameToCanvas(frameId) {
-    const w = canvasW,
-      h = canvasH;
-    const cvs = document.createElement("canvas");
-    cvs.width = w;
-    cvs.height = h;
-    const ctx = cvs.getContext("2d");
-    const isActive =
-      framesRef.current[activeFrameIdxRef.current]?.id === frameId;
-    const renderLayers = isActive
-      ? layersRef.current
-      : (frameDataRef.current[frameId]?.layers ?? []);
-    const renderPixelData = isActive
-      ? layerDataRef.current
-      : (frameDataRef.current[frameId]?.pixelData ?? {});
-    renderLayers.forEach((layer) => {
-      if (!layer.visible) return;
-      const data = renderPixelData[layer.id];
-      if (!data) return;
-      const imgData = new ImageData(new Uint8ClampedArray(data), w, h);
-      const tmp = document.createElement("canvas");
-      tmp.width = w;
-      tmp.height = h;
-      tmp.getContext("2d").putImageData(imgData, 0, 0);
-      ctx.globalAlpha = layer.opacity;
-      ctx.drawImage(tmp, 0, 0);
-      ctx.globalAlpha = 1;
-    });
-    return cvs;
-  }
-
-  function triggerDownload(url, filename) {
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-  }
-
-  function exportPNG() {
-    saveCurrentFrameToRef();
-    const id = framesRef.current[activeFrameIdxRef.current]?.id;
-    if (!id) return;
-    compositeFrameToCanvas(id).toBlob((blob) => {
-      triggerDownload(
-        URL.createObjectURL(blob),
-        `${state.name || "sprite"}.png`,
-      );
-    });
-  }
-
-  function exportSpriteSheet(
-    framesPerRow = exportFramesPerRow,
-    padding = exportPadding,
-    labels = exportLabels,
-  ) {
-    saveCurrentFrameToRef();
-    const allFrames = framesRef.current;
-    const fw = canvasW,
-      fh = canvasH;
-    const cols = Math.min(framesPerRow, allFrames.length);
-    const rows = Math.ceil(allFrames.length / cols);
-    const labelH = labels ? 12 : 0;
-    const sheet = document.createElement("canvas");
-    sheet.width = cols * (fw + padding) + padding;
-    sheet.height = rows * (fh + padding + labelH) + padding;
-    const ctx = sheet.getContext("2d");
-    allFrames.forEach((frame, idx) => {
-      const col = idx % cols,
-        row = Math.floor(idx / cols);
-      const x = padding + col * (fw + padding);
-      const y = padding + row * (fh + padding + labelH);
-      ctx.drawImage(compositeFrameToCanvas(frame.id), x, y);
-      if (labels) {
-        ctx.fillStyle = "rgba(0,0,0,0.6)";
-        ctx.font = "9px monospace";
-        ctx.fillText(frame.name || `F${idx + 1}`, x + 2, y + fh + 9);
-      }
-    });
-    sheet.toBlob((blob) => {
-      triggerDownload(
-        URL.createObjectURL(blob),
-        `${state.name || "sprite"}_sheet.png`,
-      );
-    });
-  }
-
-  async function exportFramesZip() {
-    saveCurrentFrameToRef();
-    const zip = new JSZip();
-    const folder = zip.folder("frames");
-    for (let i = 0; i < framesRef.current.length; i++) {
-      const frame = framesRef.current[i];
-      const b64 = compositeFrameToCanvas(frame.id)
-        .toDataURL("image/png")
-        .split(",")[1];
-      folder.file(
-        `${state.name || "sprite"}_frame_${String(i + 1).padStart(3, "0")}.png`,
-        b64,
-        { base64: true },
-      );
-    }
-    triggerDownload(
-      URL.createObjectURL(await zip.generateAsync({ type: "blob" })),
-      `${state.name || "sprite"}_frames.zip`,
-    );
-  }
-
-  async function exportGif() {
-    saveCurrentFrameToRef();
-    const w = canvasW;
-    const h = canvasH;
-    const delay = Math.round(1000 / Math.max(1, fps));
-    const encoder = GIFEncoder();
-    for (const frame of framesRef.current) {
-      const cvs = compositeFrameToCanvas(frame.id);
-      const ctx = cvs.getContext("2d");
-      const imageData = ctx.getImageData(0, 0, w, h).data;
-      const palette = quantize(imageData, 256, { format: "rgb444" });
-      const index = applyPalette(imageData, palette);
-      encoder.writeFrame(index, w, h, { palette, delay });
-    }
-    encoder.finish();
-    const blob = new Blob([encoder.bytes()], { type: "image/gif" });
-    triggerDownload(URL.createObjectURL(blob), `${state.name || "sprite"}.gif`);
-  }
-
-  function exportPaletteHex() {
-    const blob = new Blob(
-      [
-        (palettes[activePalette] ?? [])
-          .map((c) => c.replace("#", ""))
-          .join("\n"),
-      ],
-      { type: "text/plain" },
-    );
-    triggerDownload(
-      URL.createObjectURL(blob),
-      `${activePalette.replace(/\s+/g, "_")}.hex`,
-    );
-  }
-
   // Palette management
   function paletteAddColor(hex) {
     sd({ type: A.PALETTE_ADD_COLOR, payload: hex });
@@ -1716,22 +1497,7 @@ function JellySpriteBody({ onSwitchToAnimator, onRegisterCollector }) {
     setTileCount,
     tileCanvasRef,
     redrawRef,
-    exportOpen,
-    setExportOpen,
-    exportFramesPerRow,
-    setExportFramesPerRow,
-    exportPadding,
-    setExportPadding,
-    exportLabels,
-    setExportLabels,
-    exportPNG,
-    exportSpriteSheet,
-    exportFramesZip,
-    exportGif,
-    exportPaletteHex,
     projectState: state,
-    importFromAnimator,
-    useInAnimator,
   };
 
   return (
@@ -1740,7 +1506,6 @@ function JellySpriteBody({ onSwitchToAnimator, onRegisterCollector }) {
         <LeftToolbar />
         <CanvasArea />
         <RightPanel />
-        <ExportModal />
       </div>
     </JellySpriteCtx.Provider>
   );

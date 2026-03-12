@@ -76,11 +76,7 @@ export const jellySpriteInitialState = {
   tileCount: 2,
 
   // UI state
-  panelTab: "palette", // palette | brush | layers | canvas | view | more
-  exportOpen: false,
-  exportFramesPerRow: 4,
-  exportPadding: 1,
-  exportLabels: false,
+  panelTab: "palette",
 };
 
 // Export seed values so the Provider can initialize refs consistently

@@ -5,6 +5,12 @@ import { useNotification } from "../../contexts/NotificationContext";
 import { Page } from "../../ui/Page";
 import { ConfirmDialog } from "../../ui/ConfirmDialog";
 import {
+  exportJellySheet,
+  exportAnimatorSheet,
+  exportGif,
+  loadImage,
+} from "./spriteExport";
+import {
   listProjects,
   createProject,
   deleteProject,
@@ -36,6 +42,22 @@ export function ProjectsPage() {
   const newProjectRef = useRef(null);
 
   const [addSpriteProjectId, setAddSpriteProjectId] = useState(null);
+
+  // Export modal
+  const [exportTarget, setExportTarget] = useState(null);
+  const [exportLoading, setExportLoading] = useState(false);
+  const [exportFullData, setExportFullData] = useState(null);
+  const [exportError, setExportError] = useState(null);
+
+  // Upload sheet modal
+  const [uploadSheetTarget, setUploadSheetTarget] = useState(null);
+  const [uploadFile, setUploadFile] = useState(null);
+  const [uploadImgDims, setUploadImgDims] = useState(null);
+  const [uploadFrameW, setUploadFrameW] = useState(32);
+  const [uploadFrameH, setUploadFrameH] = useState(32);
+  const [uploadName, setUploadName] = useState("");
+  const [uploadSaving, setUploadSaving] = useState(false);
+  const uploadFileInputRef = useRef(null);
 
   useEffect(() => {
     listProjects().then(setProjects).catch(console.error);
@@ -225,6 +247,165 @@ export function ProjectsPage() {
         console.error(err);
         showToast("Failed to import sprite file.", "error");
       }
+    }
+  }
+
+  async function handleExportOpen(sprite, projectId) {
+    setExportTarget({ ...sprite, projectId });
+    setExportFullData(null);
+    setExportError(null);
+    setExportLoading(true);
+    try {
+      const data = await loadSprite(sprite.id);
+      setExportFullData(data);
+    } catch (err) {
+      console.error(err);
+      setExportError("Failed to load sprite data.");
+    } finally {
+      setExportLoading(false);
+    }
+  }
+
+  function closeExportModal() {
+    setExportTarget(null);
+    setExportFullData(null);
+    setExportError(null);
+  }
+
+  async function handleExportOption(type) {
+    if (!exportFullData) return;
+    const name = exportTarget?.name || "sprite";
+    try {
+      if (type === "jelly") {
+        await exportJellySheet(name, exportFullData.jellySpriteState);
+      } else if (type === "animator") {
+        await exportAnimatorSheet(name, exportFullData.animatorState);
+      } else if (type === "gif") {
+        await exportGif(name, exportFullData.jellySpriteState);
+      }
+    } catch (err) {
+      setExportError(err.message);
+    }
+  }
+
+  function handleUploadFileChange(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadFile(file);
+    setUploadImgDims(null);
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      setUploadImgDims({ w: img.naturalWidth, h: img.naturalHeight });
+      URL.revokeObjectURL(url);
+    };
+    img.src = url;
+  }
+
+  function closeUploadModal() {
+    setUploadSheetTarget(null);
+    setUploadFile(null);
+    setUploadImgDims(null);
+    setUploadName("");
+    setUploadFrameW(32);
+    setUploadFrameH(32);
+  }
+
+  async function handleUploadSheetConfirm() {
+    if (!uploadFile || !uploadImgDims) return;
+    setUploadSaving(true);
+    const cols = Math.max(1, Math.floor(uploadImgDims.w / uploadFrameW));
+    const rows = Math.max(1, Math.floor(uploadImgDims.h / uploadFrameH));
+    const frameCount = cols * rows;
+    const dataUrl = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (ev) => resolve(ev.target.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(uploadFile);
+    });
+    // Create thumbnail from first frame
+    let thumbnail = null;
+    try {
+      const sheetImg = await loadImage(dataUrl);
+      const tc = document.createElement("canvas");
+      tc.width = uploadFrameW;
+      tc.height = uploadFrameH;
+      tc.getContext("2d").drawImage(
+        sheetImg,
+        0,
+        0,
+        uploadFrameW,
+        uploadFrameH,
+        0,
+        0,
+        uploadFrameW,
+        uploadFrameH,
+      );
+      thumbnail = tc.toDataURL("image/png");
+    } catch {
+      // thumbnail stays null
+    }
+    const spriteSheet = {
+      dataUrl,
+      width: uploadImgDims.w,
+      height: uploadImgDims.h,
+      frameW: uploadFrameW,
+      frameH: uploadFrameH,
+      cols,
+      rows,
+      frameCount,
+    };
+    const { projectId, spriteId } = uploadSheetTarget;
+    try {
+      if (spriteId) {
+        const existing = await loadSprite(spriteId);
+        await saveSprite(
+          {
+            ...existing,
+            id: spriteId,
+            projectId,
+            jellyBody: existing.jellySpriteState ?? null,
+            animatorBody: { spriteSheet },
+          },
+          existing.thumbnail ?? thumbnail ?? undefined,
+        );
+        loadSpritesForProject(projectId);
+        showToast("Sprite sheet updated.", "success");
+        closeUploadModal();
+      } else {
+        const newId = crypto.randomUUID();
+        const name = uploadName.trim() || "Untitled Sprite";
+        await saveSprite(
+          {
+            id: newId,
+            projectId,
+            name,
+            frameCount,
+            canvasW: uploadFrameW,
+            canvasH: uploadFrameH,
+            jellyBody: null,
+            animatorBody: { spriteSheet },
+          },
+          thumbnail ?? undefined,
+        );
+        loadSpritesForProject(projectId);
+        dispatch({
+          type: "LOAD_PROJECT",
+          payload: {
+            id: newId,
+            projectId,
+            name,
+            animatorState: { spriteSheet },
+          },
+        });
+        closeUploadModal();
+        navigate("/editor");
+      }
+    } catch (err) {
+      console.error(err);
+      showToast("Failed to upload sprite sheet.", "error");
+    } finally {
+      setUploadSaving(false);
     }
   }
 
@@ -443,6 +624,15 @@ export function ProjectsPage() {
                                     <button
                                       className="projects-btn projects-btn--sm"
                                       onClick={() =>
+                                        handleExportOpen(sprite, project.id)
+                                      }
+                                      title="Export sprite"
+                                    >
+                                      Export ↓
+                                    </button>
+                                    <button
+                                      className="projects-btn projects-btn--sm"
+                                      onClick={() =>
                                         handleOpenInAnimator(sprite.id)
                                       }
                                       title="Open sprite sheet in Animator"
@@ -463,12 +653,26 @@ export function ProjectsPage() {
                             })}
                           </ul>
                         )}
-                        <button
-                          className="projects-btn projects-btn--add-sprite"
-                          onClick={() => setAddSpriteProjectId(project.id)}
-                        >
-                          + Add Sprite
-                        </button>
+                        <div className="projects-accordion__add-row">
+                          <button
+                            className="projects-btn projects-btn--add-sprite"
+                            onClick={() => setAddSpriteProjectId(project.id)}
+                          >
+                            + Add Sprite
+                          </button>
+                          <button
+                            className="projects-btn projects-btn--add-sprite"
+                            onClick={() =>
+                              setUploadSheetTarget({
+                                projectId: project.id,
+                                spriteId: null,
+                                spriteName: "",
+                              })
+                            }
+                          >
+                            + Upload Sheet
+                          </button>
+                        </div>
                       </>
                     )}
                   </div>
@@ -536,6 +740,220 @@ export function ProjectsPage() {
             >
               Cancel
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Export modal ── */}
+      {exportTarget && (
+        <div className="projects-modal-overlay" onClick={closeExportModal}>
+          <div
+            className="projects-modal projects-modal--export"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="projects-modal__header">
+              <h2 className="projects-modal__title">
+                Export: {exportTarget.name}
+              </h2>
+              <button
+                className="projects-modal__close"
+                onClick={closeExportModal}
+              >
+                ✕
+              </button>
+            </div>
+            {exportLoading ? (
+              <p className="projects-modal__status">Loading…</p>
+            ) : (
+              <div className="projects-export-options">
+                {(() => {
+                  const jellyFrames =
+                    exportFullData?.jellySpriteState?.frames ?? [];
+                  const hasFlat = jellyFrames.some((f) => f.flatImage);
+                  const hasAnimator =
+                    !!exportFullData?.animatorState?.spriteSheet?.dataUrl;
+                  const gifFrames = jellyFrames.filter(
+                    (f) => f.flatImage,
+                  ).length;
+                  return (
+                    <>
+                      <button
+                        className="projects-export-option"
+                        disabled={!hasFlat}
+                        onClick={() => handleExportOption("jelly")}
+                        title={
+                          hasFlat
+                            ? ""
+                            : "Save the sprite in JellySprite first to generate frame data"
+                        }
+                      >
+                        <span className="projects-export-option__label">
+                          PNG — JellySprite sheet
+                        </span>
+                        <span className="projects-export-option__hint">
+                          All frames from the pixel editor
+                        </span>
+                      </button>
+                      <button
+                        className="projects-export-option"
+                        disabled={!hasAnimator}
+                        onClick={() => handleExportOption("animator")}
+                        title={
+                          hasAnimator
+                            ? ""
+                            : "Open in Animator and set up animations first"
+                        }
+                      >
+                        <span className="projects-export-option__label">
+                          PNG + JSON — Animator sheet
+                        </span>
+                        <span className="projects-export-option__hint">
+                          Sprite sheet with animation metadata
+                        </span>
+                      </button>
+                      <button
+                        className="projects-export-option"
+                        disabled={gifFrames < 2}
+                        onClick={() => handleExportOption("gif")}
+                        title={
+                          gifFrames < 2
+                            ? "Requires at least 2 saved frames"
+                            : ""
+                        }
+                      >
+                        <span className="projects-export-option__label">
+                          GIF — Animated
+                        </span>
+                        <span className="projects-export-option__hint">
+                          Animated GIF from pixel frames
+                        </span>
+                      </button>
+                    </>
+                  );
+                })()}
+              </div>
+            )}
+            {exportError && (
+              <p className="projects-modal__error">{exportError}</p>
+            )}
+            <button className="projects-btn" onClick={closeExportModal}>
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Upload sheet modal ── */}
+      {uploadSheetTarget && (
+        <div className="projects-modal-overlay" onClick={closeUploadModal}>
+          <div
+            className="projects-modal projects-modal--upload"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="projects-modal__header">
+              <h2 className="projects-modal__title">
+                {uploadSheetTarget.spriteId
+                  ? `Update sheet: ${uploadSheetTarget.spriteName}`
+                  : "Upload Sprite Sheet"}
+              </h2>
+              <button
+                className="projects-modal__close"
+                onClick={closeUploadModal}
+              >
+                ✕
+              </button>
+            </div>
+            {!uploadSheetTarget.spriteId && (
+              <div className="projects-upload-row">
+                <label className="projects-upload-label">Sprite name</label>
+                <input
+                  className="projects-upload-input"
+                  type="text"
+                  value={uploadName}
+                  onChange={(e) => setUploadName(e.target.value)}
+                  placeholder="Untitled Sprite"
+                />
+              </div>
+            )}
+            <input
+              ref={uploadFileInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              style={{ display: "none" }}
+              onChange={handleUploadFileChange}
+            />
+            <button
+              className="projects-upload-drop"
+              onClick={() => uploadFileInputRef.current?.click()}
+            >
+              {uploadFile ? (
+                <span>
+                  📄 {uploadFile.name}
+                  {uploadImgDims
+                    ? ` (${uploadImgDims.w} × ${uploadImgDims.h} px)`
+                    : ""}
+                </span>
+              ) : (
+                <span>Click to browse for an image…</span>
+              )}
+            </button>
+            {uploadFile && (
+              <>
+                <div className="projects-upload-row">
+                  <label className="projects-upload-label">
+                    Frame width (px)
+                  </label>
+                  <input
+                    className="projects-upload-number"
+                    type="number"
+                    min={1}
+                    value={uploadFrameW}
+                    onChange={(e) =>
+                      setUploadFrameW(Math.max(1, Number(e.target.value)))
+                    }
+                  />
+                </div>
+                <div className="projects-upload-row">
+                  <label className="projects-upload-label">
+                    Frame height (px)
+                  </label>
+                  <input
+                    className="projects-upload-number"
+                    type="number"
+                    min={1}
+                    value={uploadFrameH}
+                    onChange={(e) =>
+                      setUploadFrameH(Math.max(1, Number(e.target.value)))
+                    }
+                  />
+                </div>
+                {uploadImgDims && (
+                  <p className="projects-upload-preview">
+                    {Math.floor(uploadImgDims.w / uploadFrameW)} ×{" "}
+                    {Math.floor(uploadImgDims.h / uploadFrameH)} ={" "}
+                    {Math.floor(uploadImgDims.w / uploadFrameW) *
+                      Math.floor(uploadImgDims.h / uploadFrameH)}{" "}
+                    frames
+                  </p>
+                )}
+              </>
+            )}
+            <div className="projects-modal__footer">
+              <button className="projects-btn" onClick={closeUploadModal}>
+                Cancel
+              </button>
+              <button
+                className="projects-btn projects-btn--primary"
+                disabled={!uploadFile || !uploadImgDims || uploadSaving}
+                onClick={handleUploadSheetConfirm}
+              >
+                {uploadSaving
+                  ? "Saving…"
+                  : uploadSheetTarget.spriteId
+                    ? "Update Sheet"
+                    : "Create Sprite"}
+              </button>
+            </div>
           </div>
         </div>
       )}
