@@ -8,18 +8,18 @@
 
 ## Sprint status
 
-| Sprint   | Name                               | Status                   |
-| -------- | ---------------------------------- | ------------------------ |
-| Sprint 0 | Data Stability                     | ✅ Complete (`92997f7`)  |
-| Sprint 1 | Foundation Cleanup                 | ✅ Complete (`b5fda67`)  |
-| Sprint 2 | Monolith Decomposition             | ✅ Complete (`d8033f9`)  |
-| Sprint 3 | Feature Contract Enforcement       | ✅ Complete (`86e3b26`)  |
-| Sprint 4 | Context Decomposition              | ✅ Complete (`ac647ed`)  |
-| Sprint 5 | State Finalization                 | ✅ Complete (`625e694`)  |
-| Sprint 6 | Unified Document Model             | 🔄 In progress (6a done) |
-| Sprint 7 | JellySprite PixelDocument Refactor | 🔲 Not started           |
-| Sprint 8 | TypeScript Migration               | 🔲 Not started           |
-| Sprint 9 | Zustand State Management           | 🔲 Not started           |
+| Sprint   | Name                               | Status                  |
+| -------- | ---------------------------------- | ----------------------- |
+| Sprint 0 | Data Stability                     | ✅ Complete (`92997f7`) |
+| Sprint 1 | Foundation Cleanup                 | ✅ Complete (`b5fda67`) |
+| Sprint 2 | Monolith Decomposition             | ✅ Complete (`d8033f9`) |
+| Sprint 3 | Feature Contract Enforcement       | ✅ Complete (`86e3b26`) |
+| Sprint 4 | Context Decomposition              | ✅ Complete (`ac647ed`) |
+| Sprint 5 | State Finalization                 | ✅ Complete (`625e694`) |
+| Sprint 6 | Unified Document Model             | ✅ Complete (`5be735c`) |
+| Sprint 7 | JellySprite PixelDocument Refactor | 🔲 Not started          |
+| Sprint 8 | TypeScript Migration               | 🔲 Not started          |
+| Sprint 9 | Zustand State Management           | 🔲 Not started          |
 
 ---
 
@@ -781,7 +781,7 @@ const src = selectActiveSheet(state)?.objectUrl ?? null;
 
 ---
 
-## � Sprint 6 — Unified Document Model (6a complete)
+## ✅ Sprint 6 — Unified Document Model (COMPLETE `5be735c`)
 
 **Goal:** JellySprite and Animator stop being two separate editors that
 hand a save blob back and forth. Instead they become two live **views** of a
