@@ -88,11 +88,7 @@ export async function saveSprite(sprite, thumbnail) {
   const canvasH = sprite.canvasH ?? sprite.jellyBody?.canvasH ?? 32;
   const tools = {
     animator: !!sprite.animatorBody,
-    jelly: !!(
-      sprite.jellyBody ??
-      sprite.jellySpriteState ??
-      sprite.jellySpriteDataUrl
-    ),
+    jelly: !!sprite.jellyBody,
   };
   const record = {
     ...sprite,

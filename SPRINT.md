@@ -40,7 +40,7 @@
 | Sprint 12 | Service Layer Cleanup                | ✅ Complete (`fb89db4`)     |
 | Sprint 13 | Navigation Integrity + Creative Flow | ✅ Complete (`aaa3e58`)     |
 | Sprint 14 | Full Ruleset Compliance Pass (CSS)   | 🔴 Queued (after Sprint 15) |
-| Sprint 15 | Data Model Normalization             | 🔄 In progress              |
+| Sprint 15 | Data Model Normalization             | ✅ Complete                 |
 
 ---
 
@@ -281,7 +281,7 @@ Every `src/ui/` component requires: `ComponentName.jsx`, `ComponentName.css` (to
 
 ## Sprint 15 — Data Model Normalization
 
-**Status:** 🔄 In progress  
+**Status:** ✅ Complete  
 **Origin:** Data model audit — naming schism between save and load paths causes broken exports, overwritten data, and dead legacy code.
 
 ### Design assumptions challenged
