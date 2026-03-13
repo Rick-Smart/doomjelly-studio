@@ -1,5 +1,5 @@
 import { useRef, useEffect } from "react";
-import { useAnimator } from "../../../contexts/AnimatorContext";
+import { useAnimatorStore } from "../../../contexts/useAnimatorStore.js";
 import { selectActiveSheet, selectActiveAnimation } from "../selectors";
 import { usePlayback } from "../../../contexts/PlaybackContext";
 import { FrameThumb } from "../shared/FrameThumb";
@@ -17,7 +17,7 @@ const CELL_MIN_W = 44;
  * Click a cell to seek playback to that frame.
  */
 export function TimelineView() {
-  const { state, dispatch } = useAnimator();
+  const { dispatch, ...state } = useAnimatorStore();
   const { animations, activeAnimationId, frameConfig } = state;
   const activeAnim = selectActiveAnimation(state);
   const frames = activeAnim?.frames ?? [];

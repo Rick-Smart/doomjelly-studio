@@ -1,10 +1,10 @@
 import { useNavigate } from "react-router-dom";
-import { useAnimator } from "../../../contexts/AnimatorContext";
+import { useAnimatorStore } from "../../../contexts/useAnimatorStore.js";
 import { sheetGridDims } from "../../../engine/frameUtils";
 import "./SheetList.css";
 
 export function SheetList() {
-  const { state, dispatch } = useAnimator();
+  const { dispatch, ...state } = useAnimatorStore();
   const navigate = useNavigate();
   const { sheets, activeSheetId, frameConfig } = state;
 

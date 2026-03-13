@@ -837,13 +837,17 @@ Any user action that should produce a single undo step batches all its
 sub-dispatches so history captures before/after the full operation, never a
 partial intermediate state.
 
-**Status:** ⚠️ Partial — audit pending  
+**Status:** ✅ Compliant — Sprint 10 audit complete  
 **Introduced:** Sprint 7 (`15ee57a`) — `PixelDocument.pushHistory()` / `undo()` / `redo()`  
 **Notes:** JellySprite pixel operations go through `PixelDocument` which owns
 the history stack — single-operation batching is enforced there. Animator
-undo/redo history is managed by `AnimatorContext`. Full audit of whether every
-multi-step Animator dispatch is properly batched has not been completed.  
-**Fix target:** Sprint 8 investigation item.
+undo/redo uses `useAnimatorStore` with `UNDOABLE_ACTIONS`. Sprint 10 audit
+confirmed all exclusions are intentional: sheet operations (`ADD_SHEET`,
+`REMOVE_SHEET`, `SET_SPRITE_SHEET`) excluded because snapshotting binary blob
+data is impractical; navigation actions (`SET_ACTIVE_SHEET`,
+`SET_ACTIVE_ANIMATION`) and lifecycle actions (`LOAD_PROJECT`,
+`RESET_PROJECT`, `RESTORE_SHEET_URLS`) are all correctly excluded.  
+**Closed:** Sprint 10 (`10e`)
 
 ---
 
@@ -1592,7 +1596,7 @@ Remove the `DocumentProvider` from `App.jsx`.
 
 ---
 
-## 🔲 Sprint 10 — Store Consumer Migration
+## ✅ Sprint 10 — Store Consumer Migration
 
 ### Why this sprint is mandatory
 

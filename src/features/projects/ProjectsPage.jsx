@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { useDocument } from "../../contexts/DocumentContext";
+import { useDocumentStore } from "../../contexts/useDocumentStore.js";
 import { useNotification } from "../../contexts/NotificationContext";
 import { Page } from "../../ui/Page";
 import { ConfirmDialog } from "../../ui/ConfirmDialog";
@@ -25,7 +25,12 @@ import {
 import "./ProjectsPage.css";
 
 export function ProjectsPage() {
-  const { state, dispatch } = useDocument();
+  const {
+    dispatch,
+    isDirty: _isDirty,
+    markSaved: _ms,
+    ...state
+  } = useDocumentStore();
   const { showToast } = useNotification();
   const navigate = useNavigate();
 

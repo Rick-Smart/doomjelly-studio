@@ -2,17 +2,17 @@ import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useTheme } from "../contexts/ThemeContext";
 import { THEMES } from "../contexts/ThemeContext";
-import { useDocument } from "../contexts/DocumentContext";
+import { useDocumentStore } from "../contexts/useDocumentStore.js";
 import "./AppShell.css";
 
 export function AppShell() {
   const { user, logout } = useAuth();
   const { theme, setTheme, themes } = useTheme();
-  const { state } = useDocument();
+  const { id: stateId } = useDocumentStore();
 
   const NAV_ITEMS = [
     {
-      to: state.id ? `/jelly-sprite/${state.id}` : "/jelly-sprite",
+      to: stateId ? `/jelly-sprite/${stateId}` : "/jelly-sprite",
       label: "Jelly Sprite",
       base: "/jelly-sprite",
     },

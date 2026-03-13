@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { useDocument } from "../../contexts/DocumentContext";
+import { useDocumentStore } from "../../contexts/useDocumentStore.js";
 import { useNotification } from "../../contexts/NotificationContext";
 import { Page } from "../../ui/Page";
 import { loadDocument, saveDocument } from "../../services/documentService";
@@ -9,7 +9,12 @@ import { ErrorBoundary } from "../../ui/ErrorBoundary/ErrorBoundary";
 import { EditableTitle } from "../../ui/EditableTitle";
 
 export function JellySpriteWorkspace() {
-  const { state, dispatch } = useDocument();
+  const {
+    dispatch,
+    isDirty: _isDirty,
+    markSaved: _ms,
+    ...state
+  } = useDocumentStore();
   const { showToast } = useNotification();
   const navigate = useNavigate();
   const { spriteId } = useParams();

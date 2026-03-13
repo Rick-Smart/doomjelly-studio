@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useAnimator } from "../../../contexts/AnimatorContext";
+import { useAnimatorStore } from "../../../contexts/useAnimatorStore.js";
 import { EmptyState } from "../../../ui/EmptyState";
 import { IconButton } from "../../../ui/IconButton";
 import { ConfirmDialog } from "../../../ui/ConfirmDialog";
@@ -9,7 +9,7 @@ export function AnimationSidebar({
   pinnedTrackIds = [],
   onTogglePinnedTrack,
 } = {}) {
-  const { state, dispatch } = useAnimator();
+  const { dispatch, ...state } = useAnimatorStore();
   const { animations, activeAnimationId } = state;
 
   const [editingId, setEditingId] = useState(null);

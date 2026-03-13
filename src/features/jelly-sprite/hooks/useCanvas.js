@@ -1,12 +1,12 @@
 ﻿import { useRef, useEffect } from "react";
 import { useJellySpriteStore } from "../store/useJellySpriteStore.js";
-import { useToolContext } from "../store/ToolContext";
+import { useToolStore } from "../store/useToolStore.js";
 import { createRenderer } from "../engine/canvasRenderer.js";
 import { createDrawingEngine } from "../engine/drawingEngine.js";
 
 export function useCanvas() {
   const { refs, state, dispatch } = useJellySpriteStore();
-  const { state: ts } = useToolContext();
+  const ts = useToolStore();
   const canvasRef = useRef(null);
 
   // On mount: create offscreen, init pixel buffers, wire all engines

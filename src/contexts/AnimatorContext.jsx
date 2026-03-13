@@ -242,13 +242,3 @@ export function animatorReducer(state, action) {
       return state;
   }
 }
-
-// ---------------------------------------------------------------------------
-// Provider (no-op) + hook re-export — Sprint 9
-// ---------------------------------------------------------------------------
-/** @deprecated Wrap is a no-op since Sprint 9; state lives in useAnimatorStore. */
-export function AnimatorProvider({ children }) {
-  return children;
-}
-
-export { useAnimator, useAnimatorStore } from "./useAnimatorStore.js";

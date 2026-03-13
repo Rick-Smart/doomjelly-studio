@@ -1,5 +1,5 @@
 import { useRef, useEffect } from "react";
-import { useAnimator } from "../../../contexts/AnimatorContext";
+import { useAnimatorStore } from "../../../contexts/useAnimatorStore.js";
 import { selectActiveSheet } from "../selectors";
 import { usePlayback } from "../../../contexts/PlaybackContext";
 import { FrameThumb } from "../shared/FrameThumb";
@@ -116,7 +116,7 @@ function TrackRow({
 }
 
 export function TracksPanel({ pinnedTrackIds = [] }) {
-  const { state, dispatch } = useAnimator();
+  const { dispatch, ...state } = useAnimatorStore();
   const { animations, activeAnimationId, activeSheetId, sheets, frameConfig } =
     state;
   const activeSheet = selectActiveSheet(state);

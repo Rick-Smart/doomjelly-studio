@@ -1,11 +1,11 @@
 ﻿import { useRef, useEffect, useLayoutEffect } from "react";
-import { useDocument } from "../../contexts/DocumentContext";
+import { useDocumentStore } from "../../contexts/useDocumentStore.js";
 import "./JellySprite.css";
 import * as A from "./store/jellySpriteActions";
 import { makeLayer, makeFrame, MAX_ZOOM } from "./jellySprite.constants";
 import { JellySpriteCtx } from "./JellySpriteContext";
 import { JellySpriteProvider } from "./store/JellySpriteProvider";
-import { useToolContext } from "./store/ToolContext";
+import { useToolStore } from "./store/useToolStore.js";
 import { useJellySpriteStore } from "./store/useJellySpriteStore";
 import { LeftToolbar } from "./panels/LeftToolbar";
 import { CanvasArea } from "./panels/CanvasArea";
@@ -36,9 +36,9 @@ export function JellySprite({ onRegisterCollector }) {
 
 // Inner component — all logic runs inside JellySpriteProvider
 function JellySpriteBody({ onRegisterCollector }) {
-  const { state, dispatch } = useDocument();
+  const { jellySpriteState, dispatch } = useDocumentStore();
   const { refs, state: ss, dispatch: sd } = useJellySpriteStore();
-  const { state: ts, dispatch: td } = useToolContext();
+  const { dispatch: td, ...ts } = useToolStore();
 
   // Document state (JellySpriteStore)
   const {
@@ -834,7 +834,7 @@ function JellySpriteBody({ onRegisterCollector }) {
   // NOTE: This effect must appear in code BEFORE the [canvasW, canvasH]
   // effect so React fires it first on initial mount.
   useEffect(() => {
-    const saved = state.jellySpriteState;
+    const saved = jellySpriteState;
     if (!saved) return;
     const restored = deserializeJellySprite(saved, refs);
     if (restored) pendingRestoreRef.current = restored;

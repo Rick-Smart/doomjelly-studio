@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState } from "react";
-import { useAnimator } from "../../../contexts/AnimatorContext";
+import { useAnimatorStore } from "../../../contexts/useAnimatorStore.js";
 import { selectActiveSheet, selectActiveAnimation } from "../selectors";
 import { usePlayback } from "../../../contexts/PlaybackContext";
 import { EmptyState } from "../../../ui/EmptyState";
@@ -10,7 +10,7 @@ import { FrameRow } from "./FrameRow";
 import "./SequenceBuilder.css";
 
 export function SequenceBuilder() {
-  const { state, dispatch } = useAnimator();
+  const { dispatch, ...state } = useAnimatorStore();
   const { animations, activeAnimationId, activeSheetId, sheets, frameConfig } =
     state;
   const activeSheet = selectActiveSheet(state);

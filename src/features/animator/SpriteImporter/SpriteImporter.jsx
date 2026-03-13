@@ -1,5 +1,5 @@
 import { useCallback, useRef } from "react";
-import { useAnimator } from "../../../contexts/AnimatorContext";
+import { useAnimatorStore } from "../../../contexts/useAnimatorStore.js";
 import { selectActiveSheet } from "../selectors";
 import { FileDropZone } from "../../../ui/FileDropZone";
 import "./SpriteImporter.css";
@@ -37,7 +37,7 @@ function loadSheetFile(file) {
 }
 
 export function SpriteImporter() {
-  const { state, dispatch } = useAnimator();
+  const { dispatch, ...state } = useAnimatorStore();
   const { sheets, activeSheetId, frameConfig } = state;
   const activeSheet = selectActiveSheet(state);
   const addInputRef = useRef(null);

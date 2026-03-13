@@ -1,6 +1,6 @@
 ﻿import { useState, useMemo } from "react";
 import JSZip from "jszip";
-import { useAnimator } from "../../../contexts/AnimatorContext";
+import { useAnimatorStore } from "../../../contexts/useAnimatorStore.js";
 import { Modal } from "../../../ui/Modal";
 import { EXPORT_FORMATS } from "../../../services/exportService";
 import { serialiseProject } from "../../../services/projectService";
@@ -34,7 +34,7 @@ function pickSelected(animations, target, activeAnimationId) {
  * Props: isOpen bool, onClose fn
  */
 export function ExportPanel({ isOpen, onClose }) {
-  const { state } = useAnimator();
+  const state = useAnimatorStore();
   const {
     animations,
     activeAnimationId,

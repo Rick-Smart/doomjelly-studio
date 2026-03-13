@@ -249,24 +249,3 @@ export function toolReducer(state, action) {
       return state;
   }
 }
-
-// ── Sprint 9: Provider replaced by useToolStore ───────────────────────────────
-// ToolProvider is kept as a no-op so existing JSX doesn't hard-error if any
-// stale import survives. Remove usages in JellySprite.jsx (Sprint 9).
-
-import { useToolStore } from "./useToolStore.js";
-
-/** @deprecated — wrap removed in Sprint 9. Children render without a provider. */
-export function ToolProvider({ children }) {
-  return children;
-}
-
-/**
- * useToolContext() — backward-compat shim. Returns { state, dispatch } from
- * useToolStore so callers see the same API as before Sprint 9.
- * Migrate callers to useToolStore() directly in Sprint 10.
- */
-export function useToolContext() {
-  const { dispatch, ...state } = useToolStore();
-  return { state, dispatch };
-}

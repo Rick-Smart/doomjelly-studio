@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useLocalStorage } from "../../../hooks/useLocalStorage";
-import { useDocument } from "../../../contexts/DocumentContext";
-import { useAnimator } from "../../../contexts/AnimatorContext";
+import { useDocumentStore } from "../../../contexts/useDocumentStore.js";
+import { useAnimatorStore } from "../../../contexts/useAnimatorStore.js";
 import { useNotification } from "../../../contexts/NotificationContext";
 import { PlaybackProvider } from "../../../contexts/PlaybackContext";
 import { Page } from "../../../ui/Page";
@@ -33,9 +33,24 @@ function KeyboardHandler({ onSave, onHelp }) {
 }
 
 export function AnimatorPage() {
-  const { state: projectState, dispatch: projectDispatch } = useDocument();
-  const { state, dispatch, undo, redo, canUndo, canRedo, isDirty, markSaved } =
-    useAnimator();
+  const {
+    dispatch: projectDispatch,
+    isDirty: _projDirty,
+    markSaved: _projMs,
+    ...projectState
+  } = useDocumentStore();
+  const {
+    dispatch,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
+    isDirty,
+    markSaved,
+    _past,
+    _future,
+    ...state
+  } = useAnimatorStore();
   const { showToast } = useNotification();
   const navigate = useNavigate();
   const { spriteId: urlSpriteId } = useParams();

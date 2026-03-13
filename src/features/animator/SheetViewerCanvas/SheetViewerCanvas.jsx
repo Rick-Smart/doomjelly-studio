@@ -1,6 +1,6 @@
 ﻿import { useEffect, useRef, useCallback, useState } from "react";
 import { cellToPixel } from "../../../engine/frameUtils";
-import { useAnimator } from "../../../contexts/AnimatorContext";
+import { useAnimatorStore } from "../../../contexts/useAnimatorStore.js";
 import { selectActiveAnimation } from "../selectors";
 import { useTheme } from "../../../contexts/ThemeContext";
 import "./SheetViewerCanvas.css";
@@ -17,7 +17,7 @@ const ZOOM_STEP = 0.15;
  * Supports scroll-to-zoom and space+drag (or middle-click drag) to pan.
  */
 export function SheetViewerCanvas({ imageUrl }) {
-  const { state, dispatch } = useAnimator();
+  const { dispatch, ...state } = useAnimatorStore();
   const { theme } = useTheme();
   const { frameConfig, animations, activeAnimationId, activeSheetId, sheets } =
     state;

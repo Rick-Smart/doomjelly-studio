@@ -14,11 +14,11 @@ const UNDOABLE_ACTIONS = new Set([
   "SET_FRAME_CONFIG",
 ]);
 
-function snapshot(state) {
+function snapshot(s) {
   return {
-    animations: state.animations,
-    activeAnimationId: state.activeAnimationId,
-    frameConfig: { ...state.frameConfig },
+    animations: s.animations,
+    activeAnimationId: s.activeAnimationId,
+    frameConfig: { ...s.frameConfig },
   };
 }
 
@@ -26,7 +26,8 @@ function snapshot(state) {
 // Store
 // ---------------------------------------------------------------------------
 export const useAnimatorStore = create((set, get) => ({
-  state: { ...initialAnimatorState },
+  // All animator domain fields at top level
+  ...initialAnimatorState,
   canUndo: false,
   canRedo: false,
   isDirty: false,
@@ -34,14 +35,25 @@ export const useAnimatorStore = create((set, get) => ({
   _future: [],
 
   dispatch(action) {
-    const { state, _past, _future, isDirty } = get();
+    const {
+      _past,
+      _future,
+      isDirty,
+      canUndo: _cu,
+      canRedo: _cr,
+      dispatch: _d,
+      undo: _u,
+      redo: _r,
+      markSaved: _ms,
+      ...domainState
+    } = get();
 
     let past = _past;
     let future = _future;
     let dirty = isDirty;
 
     if (UNDOABLE_ACTIONS.has(action.type)) {
-      past = [...past.slice(-49), snapshot(state)];
+      past = [...past.slice(-49), snapshot(domainState)];
       future = [];
       dirty = true;
     } else if (
@@ -55,17 +67,17 @@ export const useAnimatorStore = create((set, get) => ({
       dirty = true;
     }
 
-    const next = animatorReducer(state, action);
+    const next = animatorReducer(domainState, action);
 
     // Cross-store sync: push updated animations to DocumentStore as tags
-    if (next.animations !== state.animations) {
+    if (next.animations !== domainState.animations) {
       useDocumentStore
         .getState()
         .dispatch({ type: "SET_TAGS", payload: next.animations });
     }
 
     set({
-      state: next,
+      ...next,
       _past: past,
       _future: future,
       canUndo: past.length > 0,
@@ -75,32 +87,58 @@ export const useAnimatorStore = create((set, get) => ({
   },
 
   undo() {
-    const { state, _past, _future } = get();
+    const {
+      _past,
+      _future,
+      dispatch: _d,
+      undo: _u,
+      redo: _r,
+      markSaved: _ms,
+      canUndo: _cu,
+      canRedo: _cr,
+      isDirty,
+      ...domainState
+    } = get();
     if (_past.length === 0) return;
     const prev = _past.at(-1);
     const past = _past.slice(0, -1);
-    const future = [snapshot(state), ..._future.slice(0, 49)];
+    const future = [snapshot(domainState), ..._future.slice(0, 49)];
     set({
-      state: { ...state, ...prev },
+      ...domainState,
+      ...prev,
       _past: past,
       _future: future,
       canUndo: past.length > 0,
       canRedo: true,
+      isDirty,
     });
   },
 
   redo() {
-    const { state, _past, _future } = get();
+    const {
+      _past,
+      _future,
+      dispatch: _d,
+      undo: _u,
+      redo: _r,
+      markSaved: _ms,
+      canUndo: _cu,
+      canRedo: _cr,
+      isDirty,
+      ...domainState
+    } = get();
     if (_future.length === 0) return;
     const next = _future[0];
-    const past = [..._past.slice(-49), snapshot(state)];
+    const past = [..._past.slice(-49), snapshot(domainState)];
     const future = _future.slice(1);
     set({
-      state: { ...state, ...next },
+      ...domainState,
+      ...next,
       _past: past,
       _future: future,
       canUndo: true,
       canRedo: future.length > 0,
+      isDirty,
     });
   },
 
@@ -108,6 +146,3 @@ export const useAnimatorStore = create((set, get) => ({
     set({ isDirty: false });
   },
 }));
-
-// Drop-in alias — all useAnimator() consumers continue to work unchanged
-export const useAnimator = useAnimatorStore;
