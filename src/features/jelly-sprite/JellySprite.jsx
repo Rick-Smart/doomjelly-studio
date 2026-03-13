@@ -7,6 +7,7 @@ import { JellySpriteCtx } from "./JellySpriteContext";
 import { JellySpriteProvider } from "./store/JellySpriteProvider";
 import { useToolStore } from "./store/useToolStore.js";
 import { useJellySpriteStore } from "./store/useJellySpriteStore";
+import { usePixelDocumentStore } from "./store/usePixelDocumentStore.js";
 import { LeftToolbar } from "./panels/LeftToolbar";
 import { CanvasArea } from "./panels/CanvasArea";
 import { RightPanel } from "./panels/RightPanel";
@@ -24,18 +25,16 @@ const _cursorSvg = `<svg xmlns='http://www.w3.org/2000/svg' width='24' height='2
 const CURSOR_PRECISION = `url("data:image/svg+xml,${_cursorSvg}") 12 12, crosshair`;
 
 // Outer component — just provides the store context
-// onRegisterCollector: optional callback — receives a () => serializedState
-// function so the workspace can pull the full state before saving.
-export function JellySprite({ onRegisterCollector }) {
+export function JellySprite() {
   return (
     <JellySpriteProvider>
-      <JellySpriteBody onRegisterCollector={onRegisterCollector} />
+      <JellySpriteBody />
     </JellySpriteProvider>
   );
 }
 
 // Inner component — all logic runs inside JellySpriteProvider
-function JellySpriteBody({ onRegisterCollector }) {
+function JellySpriteBody() {
   const {
     dispatch,
     isDirty: _docIsDirty,
@@ -96,8 +95,9 @@ function JellySpriteBody({ onRegisterCollector }) {
     tileCount,
   } = ts;
 
-  // Merge stateRef every render so drawingEngine / canvasRenderer closures see all fields
-  refs.stateRef.current = { ...ss, ...ts };
+  // Sync non-Zustand refs so engine closures see the latest values per render
+  refs.onionSkinning = ss.onionSkinning;
+  refs.editingMaskId = ss.editingMaskId;
 
   // Dispatch wrappers — keep the same setter names so all callers are unchanged
   const setZoom = (v) =>
@@ -571,11 +571,11 @@ function JellySpriteBody({ onRegisterCollector }) {
     return { data, thumbnail, spriteSheet };
   }
 
-  // Register the collector with the workspace on mount (and clean up on
-  // unmount in case of future hot-reload scenarios).
+  // Register the collector in the store on mount so JellySpriteWorkspace can
+  // call usePixelDocumentStore.getState().collect() without a callback prop.
   useEffect(() => {
-    onRegisterCollector?.(() => collectSaveData());
-    return () => onRegisterCollector?.(null);
+    usePixelDocumentStore.getState().setCollectFn(() => collectSaveData());
+    return () => usePixelDocumentStore.getState().setCollectFn(null);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Stop playback if FPS changes while playing
@@ -788,7 +788,7 @@ function JellySpriteBody({ onRegisterCollector }) {
   }
 
   function clearCanvas() {
-    const activeLayerId = refs.stateRef.current.activeLayerId;
+    const activeLayerId = refs.doc.activeLayerId;
     const buf = refs.doc.pixelBuffers[activeLayerId];
     if (buf) {
       buf.fill(0);
@@ -832,6 +832,11 @@ function JellySpriteBody({ onRegisterCollector }) {
     td({ type: A.PICK_COLOR, payload: hex });
   }
 
+  // Connect refs.doc to usePixelDocumentStore on mount (11d)
+  useEffect(() => {
+    usePixelDocumentStore.getState().setDoc(refs.doc);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Phase-1 restore: decode saved state before the init effect runs
   // Runs once on mount. If the project has a full jellySprite save payload,
   // decode the base64 pixel/mask data into refs and stash the decoded
@@ -850,6 +855,9 @@ function JellySpriteBody({ onRegisterCollector }) {
     const w = canvasW,
       h = canvasH,
       size = w * h * 4;
+
+    // Sync Zustand store with refs.doc values set by this render (11d)
+    usePixelDocumentStore.getState().syncFromDoc();
 
     // Phase-2 restore: consume the decoded state from the mount effect
     const restore = pendingRestoreRef.current;
@@ -1121,7 +1129,7 @@ function JellySpriteBody({ onRegisterCollector }) {
     pasteSelection: () => refs.drawingEngine?.pasteSelection(),
     deleteSelection: () => refs.drawingEngine?.deleteSelectionContents(),
     selectAll: () => {
-      const { canvasW: w, canvasH: h } = refs.stateRef.current;
+      const { canvasW: w, canvasH: h } = usePixelDocumentStore.getState();
       const mask = new Uint8Array(w * h).fill(1);
       refs.selectionMask = mask;
       refs.selectionMaskPath = null;
@@ -1145,7 +1153,7 @@ function JellySpriteBody({ onRegisterCollector }) {
     },
     defaultColors: () => setFgColor("#000000"),
     adjustBrushSize: (delta) => {
-      const current = refs.stateRef.current.brushSize ?? 1;
+      const current = useToolStore.getState().brushSize ?? 1;
       setBrushSize(Math.max(1, Math.min(32, current + delta)));
     },
     flipCanvasH: () => refs.drawingEngine?.flipSelH?.(),
@@ -1358,7 +1366,7 @@ function JellySpriteBody({ onRegisterCollector }) {
     // Prefer drawing engine selection (refs.selection), fall back to legacy path
     const sel = refs.selection;
     if (!sel) return;
-    const { canvasW: w, canvasH: h } = refs.stateRef.current;
+    const { canvasW: w, canvasH: h } = usePixelDocumentStore.getState();
     const { x: sx, y: sy, w: sw, h: sh } = sel;
 
     function cropBuf(data) {

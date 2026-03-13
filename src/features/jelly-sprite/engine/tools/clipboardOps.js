@@ -1,10 +1,11 @@
 import { copyRegion, pasteRegion } from "../pixelOps.js";
+import { usePixelDocumentStore } from "../../store/usePixelDocumentStore.js";
 
 export function copySelection(refs) {
   const sel = refs.selection;
   if (!sel) return;
-  const st = refs.stateRef.current;
-  const buf = refs.doc.pixelBuffers[st.activeLayerId];
+  const { activeLayerId, canvasW } = usePixelDocumentStore.getState();
+  const buf = refs.doc.pixelBuffers[activeLayerId];
   if (!buf) return;
   refs.clipboard = copyRegion(
     buf,
@@ -12,7 +13,7 @@ export function copySelection(refs) {
     sel.y,
     sel.w,
     sel.h,
-    st.canvasW,
+    canvasW,
     refs.selectionMask,
   );
   refs.clipboardW = sel.w;
@@ -21,10 +22,13 @@ export function copySelection(refs) {
 
 export function pasteSelection(refs, setSelection) {
   if (!refs.clipboard) return;
-  const st = refs.stateRef.current;
-  const buf = refs.doc.pixelBuffers[st.activeLayerId];
+  const {
+    activeLayerId,
+    canvasW: w,
+    canvasH: h,
+  } = usePixelDocumentStore.getState();
+  const buf = refs.doc.pixelBuffers[activeLayerId];
   if (!buf) return;
-  const { canvasW: w, canvasH: h } = st;
   const px = Math.max(0, Math.floor(w / 2 - refs.clipboardW / 2));
   const py = Math.max(0, Math.floor(h / 2 - refs.clipboardH / 2));
   pasteRegion(
@@ -45,10 +49,13 @@ export function pasteSelection(refs, setSelection) {
 export function deleteSelectionContents(refs) {
   const sel = refs.selection;
   if (!sel) return;
-  const st = refs.stateRef.current;
-  const buf = refs.doc.pixelBuffers[st.activeLayerId];
+  const {
+    activeLayerId,
+    canvasW: w,
+    canvasH: h,
+  } = usePixelDocumentStore.getState();
+  const buf = refs.doc.pixelBuffers[activeLayerId];
   if (!buf) return;
-  const { canvasW: w, canvasH: h } = st;
   for (let dy = 0; dy < sel.h; dy++) {
     for (let dx = 0; dx < sel.w; dx++) {
       const px = sel.x + dx,

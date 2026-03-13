@@ -11,7 +11,9 @@ export function useCanvas() {
 
   // On mount: create offscreen, init pixel buffers, wire all engines
   useEffect(() => {
-    const { canvasW, canvasH, layers } = refs.stateRef.current;
+    const canvasW = refs.doc.canvasW;
+    const canvasH = refs.doc.canvasH;
+    const layers = refs.doc.layers;
 
     refs.canvasEl = canvasRef.current;
 

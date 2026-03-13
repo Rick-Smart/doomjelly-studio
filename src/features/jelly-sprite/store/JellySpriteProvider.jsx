@@ -38,10 +38,6 @@ export function JellySpriteProvider({ children }) {
     tileCanvasEl: null,
     refImgEl: null,
 
-    // Always-current state for closures (drawing engine, renderer).
-    // Updated every render — see JellySpriteBody.
-    stateRef: { current: jellySpriteInitialState },
-
     // Playback
     playIntervalId: null,
     playbackFrameIdx: 0,
@@ -72,8 +68,6 @@ export function JellySpriteProvider({ children }) {
     };
     refs.doc = doc;
   }
-
-  // Note: stateRef is merged in JellySpriteBody as { ...ss, ...ts } to include ToolContext state.
 
   return (
     <JellySpriteStoreCtx.Provider value={{ state, dispatch, refs }}>

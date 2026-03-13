@@ -1,4 +1,6 @@
 ﻿import { compositeLayersToCanvas } from "./compositeEngine.js";
+import { useToolStore } from "../store/useToolStore.js";
+import { usePixelDocumentStore } from "../store/usePixelDocumentStore.js";
 
 const ONION_OPACITY = 0.3;
 
@@ -99,26 +101,27 @@ export function createRenderer(refs) {
     const off = refs.offscreenEl;
     if (!canvas || !off) return;
 
-    const state = refs.stateRef.current;
     const {
       canvasW: w,
       canvasH: h,
-      zoom: z,
       layers,
       activeLayerId,
       frames,
       activeFrameIdx,
+    } = usePixelDocumentStore.getState();
+    const {
+      zoom: z,
       gridVisible,
       frameGridVisible,
-      onionSkinning,
       frameConfig,
       refImage,
       refVisible,
       refOpacity,
       tileVisible,
       tileCount,
-      selection,
-    } = state;
+    } = useToolStore.getState();
+    const onionSkinning = refs.onionSkinning ?? false;
+    const selection = refs.selection;
 
     const ctx = canvas.getContext("2d");
 

@@ -1,10 +1,11 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useDocumentStore } from "../../contexts/useDocumentStore.js";
 import { useNotification } from "../../contexts/NotificationContext";
 import { Page } from "../../ui/Page";
 import { loadDocument, saveDocument } from "../../services/documentService";
 import { JellySprite } from "./JellySprite";
+import { usePixelDocumentStore } from "./store/usePixelDocumentStore";
 import { ErrorBoundary } from "../../ui/ErrorBoundary/ErrorBoundary";
 import { EditableTitle } from "../../ui/EditableTitle";
 
@@ -20,8 +21,6 @@ export function JellySpriteWorkspace() {
   const { spriteId } = useParams();
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-
-  const jellySpriteCollectorRef = useRef(null);
 
   // Load sprite from URL param on mount (or when URL changes)
   useEffect(() => {
@@ -44,7 +43,7 @@ export function JellySpriteWorkspace() {
   async function handleSave() {
     setSaving(true);
     try {
-      const collected = jellySpriteCollectorRef.current?.() ?? null;
+      const collected = usePixelDocumentStore.getState().collect();
       const jellyBody = collected?.data ?? null;
       const thumbnail = collected?.thumbnail ?? null;
       const spriteSheet = collected?.spriteSheet ?? null;
@@ -99,11 +98,7 @@ export function JellySpriteWorkspace() {
     >
       <ErrorBoundary>
         {state.id === spriteId || (!spriteId && state.id) ? (
-          <JellySprite
-            onRegisterCollector={(fn) => {
-              jellySpriteCollectorRef.current = fn;
-            }}
-          />
+          <JellySprite />
         ) : (
           <div
             style={{

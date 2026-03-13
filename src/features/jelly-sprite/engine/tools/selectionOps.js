@@ -7,15 +7,19 @@
   rotateArbitraryNearestNeighbor,
 } from "../pixelOps.js";
 import { getOrBuildMask, boundsFromMask } from "../selectionUtils.js";
+import { usePixelDocumentStore } from "../../store/usePixelDocumentStore.js";
 
 // Internal helpers (not exported)
 
 function commitFloating(refs, state) {
   const sel = refs.selection;
   if (!sel || !state.movePixels) return;
-  const st = refs.stateRef.current;
-  const { canvasW: w, canvasH: h } = st;
-  const buf = refs.doc.pixelBuffers[st.activeLayerId];
+  const {
+    canvasW: w,
+    canvasH: h,
+    activeLayerId,
+  } = usePixelDocumentStore.getState();
+  const buf = refs.doc.pixelBuffers[activeLayerId];
   if (!buf) return;
   if (state.previewSnap) buf.set(state.previewSnap);
   pasteRegion(buf, state.movePixels, sel.x, sel.y, sel.w, sel.h, w, h);
@@ -28,9 +32,12 @@ function ensureFloatingSelection(refs, state) {
   if (state.movePixels) return true;
   const sel = refs.selection;
   if (!sel) return false;
-  const st = refs.stateRef.current;
-  const { canvasW: w, canvasH: h } = st;
-  const buf = refs.doc.pixelBuffers[st.activeLayerId];
+  const {
+    canvasW: w,
+    canvasH: h,
+    activeLayerId,
+  } = usePixelDocumentStore.getState();
+  const buf = refs.doc.pixelBuffers[activeLayerId];
   if (!buf) return false;
   state.movePixels = new Uint8ClampedArray(sel.w * sel.h * 4);
   for (let dy = 0; dy < sel.h; dy++) {
@@ -80,9 +87,12 @@ function applyFloatingTransform(
   refs.selectionMask = null;
   refs.selectionMaskOrigin = { x: newSel.x, y: newSel.y };
   setSelection(newSel, true); // fromMove=true — keep movePixels alive
-  const st = refs.stateRef.current;
-  const { canvasW: w, canvasH: h } = st;
-  const buf = refs.doc.pixelBuffers[st.activeLayerId];
+  const {
+    canvasW: w,
+    canvasH: h,
+    activeLayerId,
+  } = usePixelDocumentStore.getState();
+  const buf = refs.doc.pixelBuffers[activeLayerId];
   if (buf && state.previewSnap) {
     buf.set(state.previewSnap);
     pasteRegion(buf, newPixels, newSel.x, newSel.y, newW, newH, w, h);
@@ -96,8 +106,7 @@ function applyFloatingTransform(
  * Invert the current selection mask. Commits any floating selection first.
  */
 export function invertSelection(refs, state, setSelection) {
-  const st = refs.stateRef.current;
-  const { canvasW: w, canvasH: h } = st;
+  const { canvasW: w, canvasH: h } = usePixelDocumentStore.getState();
   if (state.movePixels) {
     commitFloating(refs, state);
     (refs.onStrokeComplete ?? refs.pushHistory)?.();
@@ -186,8 +195,11 @@ export function rotateSelArbitrary(refs, state, setSelection, deg) {
     h: newH,
   };
   state.movePixels = newBuf;
-  const st = refs.stateRef.current;
-  const { canvasW: cw, canvasH: ch } = st;
+  const {
+    canvasW: cw,
+    canvasH: ch,
+    activeLayerId,
+  } = usePixelDocumentStore.getState();
   const rotMask = new Uint8Array(cw * ch);
   for (let my = 0; my < newH; my++) {
     for (let mx = 0; mx < newW; mx++) {
@@ -203,7 +215,7 @@ export function rotateSelArbitrary(refs, state, setSelection, deg) {
   refs.selectionMaskOrigin = { x: newSel.x, y: newSel.y };
   refs.selectionMaskPath = null;
   setSelection(newSel, true);
-  const buf = refs.doc.pixelBuffers[st.activeLayerId];
+  const buf = refs.doc.pixelBuffers[activeLayerId];
   if (buf && state.previewSnap) {
     buf.set(state.previewSnap);
     pasteRegion(buf, newBuf, newSel.x, newSel.y, newW, newH, cw, ch);

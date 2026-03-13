@@ -13,6 +13,17 @@
   magicWandMaskGlobal,
   pasteRegion,
 } from "./pixelOps.js";
+import { useToolStore } from "../store/useToolStore.js";
+import { usePixelDocumentStore } from "../store/usePixelDocumentStore.js";
+
+/** Merged state snapshot for drawing-engine event handlers. */
+function getEngineState(refs) {
+  return {
+    ...useToolStore.getState(),
+    ...usePixelDocumentStore.getState(),
+    editingMaskId: refs.editingMaskId ?? null,
+  };
+}
 import {
   buildLassoMask,
   bresenhamLine,
@@ -46,7 +57,7 @@ function canvasCoords(e, canvasEl, zoom, w, h, clamp = true) {
  * Passed to stampBrush / paintWithSymmetry / sprayBrush.
  */
 function makeBrushCtx(refs) {
-  const st = refs.stateRef.current;
+  const st = getEngineState(refs);
   const layers = st.layers;
   const activeLayerId = st.activeLayerId;
   const editingMaskId = st.editingMaskId ?? null;
@@ -68,7 +79,7 @@ function makeBrushCtx(refs) {
 }
 
 function getActiveRgba(refs) {
-  const st = refs.stateRef.current;
+  const st = getEngineState(refs);
   return hexToRgba(
     st.fgColor,
     Math.round(st.fgAlpha * (st.brushOpacity / 100) * 255),
@@ -133,7 +144,7 @@ export function createDrawingEngine(refs) {
 
   // Single-coord apply
   function applyFreehand(x, y) {
-    const st = refs.stateRef.current;
+    const st = getEngineState(refs);
     const tool = st.tool;
     if (tool === "pencil") {
       stampBrush(makeBrushCtx(refs), x, y, getActiveRgba(refs));
@@ -179,7 +190,7 @@ export function createDrawingEngine(refs) {
   // Shape preview helper
   function previewShape(x0, y0, x1, y1) {
     if (!state.previewSnap) return;
-    const st = refs.stateRef.current;
+    const st = getEngineState(refs);
     const buf = refs.doc.pixelBuffers[st.activeLayerId];
     if (!buf) return;
     buf.set(state.previewSnap);
@@ -230,7 +241,7 @@ export function createDrawingEngine(refs) {
     // active, so the leave-handler only fires after the pointer is truly gone.
     refs.canvasEl?.setPointerCapture(e.pointerId);
 
-    const st = refs.stateRef.current;
+    const st = getEngineState(refs);
     const { canvasW: w, canvasH: h, zoom, tool } = st;
     const { x, y } = canvasCoords(e, refs.canvasEl, zoom, w, h);
 
@@ -385,7 +396,7 @@ export function createDrawingEngine(refs) {
   function onPointerMove(e) {
     if (!isDrawing) return null;
 
-    const st = refs.stateRef.current;
+    const st = getEngineState(refs);
     const { canvasW: w, canvasH: h, zoom, tool } = st;
     // Move tool needs unclamped coords so the selection delta is correct even
     // when the cursor is outside the canvas.  All other tools clamp to bounds.
@@ -499,7 +510,7 @@ export function createDrawingEngine(refs) {
     if (!isDrawing) return;
     isDrawing = false;
 
-    const st = refs.stateRef.current;
+    const st = getEngineState(refs);
     const { canvasW: w, canvasH: h, zoom, tool } = st;
     // Move tool: unclamped so the finalised selection position matches where the
     // user released (even if partially off-canvas).  Other tools: clamped.
@@ -657,7 +668,7 @@ export function createDrawingEngine(refs) {
   // Pointer leave
   function onPointerLeave() {
     if (!isDrawing) return;
-    const st = refs.stateRef.current;
+    const st = getEngineState(refs);
     if (["line", "rect", "ellipse"].includes(st.tool) && state.previewSnap) {
       const buf = refs.doc.pixelBuffers[st.activeLayerId];
       if (buf) buf.set(state.previewSnap);
