@@ -2,7 +2,7 @@
 
 **Branch:** `feature/jelly-sprite-improvements`  
 **Architecture reference:** `ARCHITECTURE.md` — read this first before starting any sprint.  
-**Last updated:** March 12, 2026
+**Last updated:** March 13, 2026
 
 ---
 
@@ -12,8 +12,8 @@
 | -------- | ---------------------------- | ----------------------- |
 | Sprint 0 | Data Stability               | ✅ Complete (`92997f7`) |
 | Sprint 1 | Foundation Cleanup           | ✅ Complete (`b5fda67`) |
-| Sprint 2 | Monolith Decomposition       | 🔲 Ready to start       |
-| Sprint 3 | Feature Contract Enforcement | 🔲 Blocked on Sprint 2  |
+| Sprint 2 | Monolith Decomposition       | ✅ Complete (`d8033f9`) |
+| Sprint 3 | Feature Contract Enforcement | 🔲 Ready to start       |
 
 ---
 
@@ -203,10 +203,10 @@ export const selectFrameCount = (state) =>
 
 ---
 
-## 🔲 Sprint 2 — Monolith Decomposition (~860 lines, 17 imports) into focused,
+## ✅ Sprint 2 — Monolith Decomposition (COMPLETE `d8033f9`)
 
-independently-editable components. Target: `AnimatorPage.jsx` becomes layout
-only — ~150 lines.
+`AnimatorPage.jsx` trimmed from 814 lines → ~150 lines (layout only).  
+`projectService.js` split into 6 focused modules. 222 modules, clean build.
 
 ### 2a — Extract `buildAnimatorBody` → `animatorSerializer.js`
 
