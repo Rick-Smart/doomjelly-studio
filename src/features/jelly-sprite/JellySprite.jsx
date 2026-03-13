@@ -36,7 +36,12 @@ export function JellySprite({ onRegisterCollector }) {
 
 // Inner component — all logic runs inside JellySpriteProvider
 function JellySpriteBody({ onRegisterCollector }) {
-  const { jellySpriteState, dispatch } = useDocumentStore();
+  const {
+    dispatch,
+    isDirty: _docIsDirty,
+    markSaved: _docMarkSaved,
+    ...state
+  } = useDocumentStore();
   const { refs, state: ss, dispatch: sd } = useJellySpriteStore();
   const { dispatch: td, ...ts } = useToolStore();
 
@@ -834,7 +839,7 @@ function JellySpriteBody({ onRegisterCollector }) {
   // NOTE: This effect must appear in code BEFORE the [canvasW, canvasH]
   // effect so React fires it first on initial mount.
   useEffect(() => {
-    const saved = jellySpriteState;
+    const saved = state.jellySpriteState;
     if (!saved) return;
     const restored = deserializeJellySprite(saved, refs);
     if (restored) pendingRestoreRef.current = restored;

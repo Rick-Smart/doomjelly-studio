@@ -643,7 +643,8 @@ an editor. Sharing or refreshing the URL must always work.
 
 **Status:** ✅ Compliant  
 **Introduced:** Sprint 0 (`908ba2d`) — `routes.jsx`, `AnimatorPage.jsx`  
-**Notes:** Both tools load their document from the URL param on mount.
+**Notes:** Both tools load their document from the URL param on mount.  
+**Enforcement:** Before closing any sprint that touches routing or navigation: `grep -rn "navigate.*'/jelly-sprite'\|navigate.*'/animator'" src/` must return 0 matches. All `<Route>` paths for editors in `routes.jsx` must include `:spriteId`.
 
 ---
 
@@ -656,7 +657,8 @@ restore effect rather than crashing.
 **Status:** ✅ Compliant  
 **Introduced:** Sprint 0 (`908ba2d`) — `AnimatorPage.jsx`, `AnimatorContext.jsx`  
 **Notes:** `LOAD_PROJECT` normalises all sheets to `objectUrl: null`. The restore
-`useEffect` in `AnimatorPage.jsx` rebuilds them from `dataUrl`.
+`useEffect` in `AnimatorPage.jsx` rebuilds them from `dataUrl`.  
+**Enforcement:** Before any sprint touching sheet persistence: `grep -rn 'objectUrl' src/services/` must return 0 matches. The animator reducer's `LOAD_PROJECT` case must set `objectUrl: null` on all incoming sheets.
 
 ---
 
@@ -668,7 +670,8 @@ call `selectActiveSheet(state)` from `src/features/animator/selectors.js`.
 **Status:** ✅ Compliant  
 **Introduced:** Sprint 0 (`92997f7`), cleaned up in Sprint 5 (`625e694`)  
 **Notes:** `AnimatorContext` reducer has no `spriteSheet` field. `LOAD_PROJECT`
-retains a migration branch for old saves only.
+retains a migration branch for old saves only.  
+**Enforcement:** `grep -rn 'state\.spriteSheet' src/features/` must return 0 matches. Any sprint touching the animator reducer must confirm no new `spriteSheet` field is introduced outside the legacy migration branch.
 
 ---
 
@@ -680,7 +683,8 @@ saves before `navigate()` are banned — they lose data on fast connections.
 **Status:** ✅ Compliant  
 **Introduced:** Sprint 0 (`92997f7`) — `AnimatorPage.jsx`  
 **Notes:** `handleEditInJellySprite`: `if (isDirty) await handleSave()` before
-`navigate()`. `JellySpriteWorkspace` saves before navigating to Animator.
+`navigate()`. `JellySpriteWorkspace` saves before navigating to Animator.  
+**Enforcement:** In any sprint touching navigation handlers in editor pages: search for every `navigate(` call in the file and confirm any that leave an editor is preceded by `await` of a save function. A bare `handleSave()` (no `await`) followed by immediate `navigate()` is a violation.
 
 ---
 
@@ -691,7 +695,8 @@ New saves never write a `spriteSheet` field. The shape is:
 `LOAD_PROJECT` keeps a migration branch for old saves that had `spriteSheet`.
 
 **Status:** ✅ Compliant  
-**Introduced:** Sprint 0 (`92997f7`) — `AnimatorPage.jsx`, `AnimatorContext.jsx`
+**Introduced:** Sprint 0 (`92997f7`) — `AnimatorPage.jsx`, `AnimatorContext.jsx`  
+**Enforcement:** Before any sprint modifying `buildAnimatorBody` or its callers: confirm the returned object contains no `spriteSheet` key. `grep -rn '"spriteSheet"' src/services/` must return 0 matches on new write paths.
 
 ---
 
@@ -702,7 +707,8 @@ New saves never write a `spriteSheet` field. The shape is:
 `src/services/localIndex.js` writes only slim index records.
 
 **Status:** ✅ Compliant  
-**Introduced:** Sprint 0 (`908ba2d`) — `ProjectContext.jsx` → `localIndex.js`
+**Introduced:** Sprint 0 (`908ba2d`) — `ProjectContext.jsx` → `localIndex.js`  
+**Enforcement:** Before any sprint touching save or export: `grep -rn 'dataUrl\|objectUrl' src/services/localIndex.js` must return 0 matches. Every new localStorage write path must be reviewed — if the value being written could contain a blob or base64 string, reject it.
 
 ---
 
@@ -714,7 +720,8 @@ the current history entry reflects the real URL and refresh works.
 
 **Status:** ✅ Compliant  
 **Introduced:** Sprint 0 (`908ba2d`) — `JellySpriteWorkspace.jsx`, `AnimatorPage.jsx`  
-**Notes:** `JellySpriteWorkspace.jsx:59`, `AnimatorPage.jsx:211`.
+**Notes:** `JellySpriteWorkspace.jsx:59`, `AnimatorPage.jsx:211`.  
+**Enforcement:** In any sprint adding a new first-save flow: confirm the `navigate` call uses `{ replace: true }` and includes the new ID in the path. Search new code for any `navigate(` on a first-save path that lacks `replace: true`.
 
 ---
 
@@ -725,7 +732,8 @@ not `null`. Returning `null` causes a blank-flash and breaks Suspense boundaries
 
 **Status:** ✅ Compliant  
 **Introduced:** Sprint 0 (`908ba2d`) — `ProtectedRoute.jsx`  
-**Notes:** Currently renders a full-screen `div` with "Loading…" text.
+**Notes:** Currently renders a full-screen `div` with "Loading…" text.  
+**Enforcement:** In any sprint touching `ProtectedRoute.jsx`: `grep -n 'return null' src/router/ProtectedRoute.jsx` must return 0 matches. The loading branch must return a visible element.
 
 ---
 
@@ -737,7 +745,8 @@ error or private-browsing restriction never surfaces as a save failure.
 
 **Status:** ✅ Compliant  
 **Introduced:** Sprint 0 (`92997f7`) — `projectService.js` / `localIndex.js`  
-**Fixed:** Sprint 8a — both write functions wrapped in `try/catch`.
+**Fixed:** Sprint 8a — both write functions wrapped in `try/catch`.  
+**Enforcement:** In any sprint adding a localStorage write: wrap it in `try/catch`. `grep -n 'localStorage\.set' src/services/` — every match must be inside a try block. IDB failures should propagate; localStorage failures must be silently swallowed.
 
 ---
 
@@ -769,7 +778,8 @@ import { frameToRect } from "../../../engine/frameUtils";
 
 **Status:** ✅ Compliant  
 **Introduced:** Sprint 3 (`86e3b26`)  
-**Notes:** Audit confirms no cross-feature imports in `src/features/**`.
+**Notes:** Audit confirms no cross-feature imports in `src/features/**`.  
+**Enforcement:** Before closing any sprint: scan every touched file in `src/features/` for import paths containing `../../` that resolve into a sibling feature directory. Any such import is a violation — the shared code must be promoted to `src/engine/`, `src/services/`, `src/hooks/`, or `src/ui/`.
 
 ---
 
@@ -788,7 +798,8 @@ import { AnimatorPage } from "../features/animator/AnimatorPage/AnimatorPage";
 **Status:** ✅ Compliant  
 **Introduced:** Sprint 1 (`b5fda67`)  
 **Fixed:** Sprint 8a — `src/features/auth/index.js` barrel created. `routes.jsx`
-now imports `LoginPage` via the barrel.
+now imports `LoginPage` via the barrel.  
+**Enforcement:** In any sprint adding a new feature component referenced outside its own directory: confirm an `index.js` barrel exists and the external import uses it. `grep -rn "features/[a-z-]*/[A-Z][A-Za-z/]*'" src/router/ src/layout/ src/App.jsx` must return 0 matches (no deep-path imports from outside the feature).
 
 ---
 
@@ -802,7 +813,8 @@ Any derived state computed identically by more than one component lives in
 **Introduced:** Sprint 1 (`b5fda67`) — `src/features/animator/selectors.js`  
 **Fixed:** Sprint 8a — all inline duplicates replaced with selector calls across
 `AnimatorPage.jsx`, `TracksPanel.jsx`, `useAnimatorKeyboard.js`, `SequenceBuilder.jsx`,
-`PreviewCanvas.jsx`, `TimelineView.jsx`, `SheetViewerCanvas.jsx`.
+`PreviewCanvas.jsx`, `TimelineView.jsx`, `SheetViewerCanvas.jsx`.  
+**Enforcement:** In any sprint adding a value derived from animator or document state used by 2+ components: add it to `selectors.js` first. Before closing the sprint, check touched files for inline `.find(` or `.filter(` on shared arrays (`animations`, `sheets`, `frames`) — duplicated derivation logic is a violation.
 
 ---
 
@@ -815,7 +827,8 @@ subdirectories (e.g. `jelly-sprite/engine/`) are feature-internal and may use
 DOM APIs where required for canvas rendering — Rule 14 applies only to `src/engine/`.
 
 **Status:** ✅ Compliant  
-**Introduced:** Sprint 3 (`86e3b26`) — `src/engine/frameUtils.js`
+**Introduced:** Sprint 3 (`86e3b26`) — `src/engine/frameUtils.js`  
+**Enforcement:** Before closing any sprint adding code to `src/engine/`: `grep -rn 'from.*react\|useRef\|useEffect\|document\.\|window\.' src/engine/` must return 0 matches. Every function must be a pure input→output transformation with no side effects.
 
 ---
 
@@ -827,7 +840,8 @@ Promise resolves, never inside the service.
 
 **Status:** ✅ Compliant  
 **Introduced:** Sprint 2 (`d8033f9`)  
-**Notes:** Audit confirms no React imports in any `src/services/*.js` file.
+**Notes:** Audit confirms no React imports in any `src/services/*.js` file.  
+**Enforcement:** Before closing any sprint adding to `src/services/`: `grep -rn 'from.*react\|showToast\|dispatch(' src/services/` must return 0 matches. Services return Promises only — toasts and dispatches belong in the calling component.
 
 ---
 
@@ -847,7 +861,8 @@ confirmed all exclusions are intentional: sheet operations (`ADD_SHEET`,
 data is impractical; navigation actions (`SET_ACTIVE_SHEET`,
 `SET_ACTIVE_ANIMATION`) and lifecycle actions (`LOAD_PROJECT`,
 `RESET_PROJECT`, `RESTORE_SHEET_URLS`) are all correctly excluded.  
-**Closed:** Sprint 10 (`10e`)
+**Closed:** Sprint 10 (`10e`)  
+**Enforcement:** When adding a new user-facing mutation action to the animator: decide at the time of writing whether it belongs in `UNDOABLE_ACTIONS` and document the decision as a comment next to the set. Any action that mutates animation structure (frames, names, order) must be undoable unless snapshotting would require copying binary blob data.
 
 ---
 
@@ -858,7 +873,8 @@ the initial bundle size constant as features grow.
 
 **Status:** ✅ Compliant  
 **Introduced:** Sprint 1 (`b5fda67`) — `routes.jsx`  
-**Fixed:** Sprint 8a — `LoginPage` converted to `React.lazy()` via `auth/index.js` barrel.
+**Fixed:** Sprint 8a — `LoginPage` converted to `React.lazy()` via `auth/index.js` barrel.  
+**Enforcement:** In any sprint adding a new top-level page: the route in `routes.jsx` must use `React.lazy()` + `<Suspense>`. `grep -n "^import.*Page" src/router/routes.jsx` must return 0 static (non-lazy) page imports.
 
 ---
 
@@ -881,7 +897,35 @@ tokens in `src/index.css`.
 All inline `color-mix()` literals in `TracksPanel.css` replaced with tokens.
 `Toast.css` `#22c55e` replaced with `var(--success)`.
 `SplitButton.css` `#fff` replaced with `var(--color-on-accent)` and border-left
-replaced with `var(--accent-separator)`.
+replaced with `var(--accent-separator)`.  
+**Enforcement:** In any sprint adding new CSS: before closing, check new `.css` files for raw hex color literals or repeated `color-mix()` values that match an existing token. If a value appears in more than one place, add a named token to `src/index.css` instead.
+
+---
+
+### Rule 19 — Store migration completeness check
+
+Before any store consumer migration is declared complete, the following
+checklist must be satisfied for **every file touched**:
+
+1. **Full variable audit** — `grep` the file for every reference to the old
+   hook's return variable (e.g. `\bstate\b`, `\bts\b`) and confirm each usage
+   is accounted for in the new destructure. A migration that only extracts the
+   fields immediately visible at the top of the function may miss downstream
+   usages hundreds of lines later.
+2. **Whole-object pass-through check** — if the old variable was passed as a
+   whole object anywhere (e.g. `projectState: state`, `ctx.value = state`,
+   spread into JSX props), the new import must expose an equivalent whole
+   object, not just individual scalar extractions.
+3. **Build gate** — `npm run build` must succeed with 0 errors after the
+   migration, before the sprint task is closed.
+4. **Runtime smoke-test** — navigate to every route that was migrated and
+   confirm no `ReferenceError` or blank screen occurs.
+
+**Status:** ✅ Compliant  
+**Introduced:** Sprint 10 — post-migration `state is not defined` crash in
+`JellySpriteBody` caused by extracting only `jellySpriteState` when the
+component also used `state` as a whole object (`projectState: state` in the
+context value). Rule added to prevent recurrence.
 
 ---
 
