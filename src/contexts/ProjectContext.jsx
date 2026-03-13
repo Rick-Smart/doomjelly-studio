@@ -392,11 +392,13 @@ export function ProjectProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    // Don't persist dataUrl blobs — they can be huge and don't survive sessions well.
-    // Store everything except spriteSheet.dataUrl; the user re-imports the sheet.
+    // Don't persist dataUrl/objectUrl blobs — they can be huge and don't survive
+    // sessions well. Strip binary fields from sheets[]; only keep metadata.
+    // spriteSheet.dataUrl is also stripped (already done below).
     const { spriteSheet, ...rest } = state;
     const persistable = {
       ...rest,
+      sheets: state.sheets.map(({ dataUrl: _d, objectUrl: _o, ...s }) => s),
       spriteSheet: spriteSheet
         ? {
             filename: spriteSheet.filename,

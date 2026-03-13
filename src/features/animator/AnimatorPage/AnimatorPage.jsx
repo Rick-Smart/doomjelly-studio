@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useLocalStorage } from "../../../hooks/useLocalStorage";
 import { useProject } from "../../../contexts/ProjectContext";
 import { useNotification } from "../../../contexts/NotificationContext";
@@ -407,6 +407,33 @@ export function AnimatorPage() {
     useProject();
   const { showToast } = useNotification();
   const navigate = useNavigate();
+  const { spriteId: urlSpriteId } = useParams();
+
+  // Self-load from URL param — makes refresh and direct links work
+  useEffect(() => {
+    if (!urlSpriteId) return;
+    if (state.id === urlSpriteId) return; // already loaded
+    import("../../../services/projectService").then(({ loadSprite }) =>
+      loadSprite(urlSpriteId)
+        .then((data) => {
+          if (data)
+            dispatch({
+              type: "LOAD_PROJECT",
+              payload: { ...data, id: urlSpriteId },
+            });
+          else {
+            showToast("Sprite not found.", "error");
+            navigate("/projects");
+          }
+        })
+        .catch(() => {
+          showToast("Failed to load sprite.", "error");
+          navigate("/projects");
+        }),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [urlSpriteId]);
+
   const imageUrl = state.spriteSheet?.objectUrl ?? null;
   const [leftOpen, setLeftOpen] = useState(true);
   const [leftWidth, setLeftWidth] = useLocalStorage("dj-panel-left", 220);
@@ -459,9 +486,11 @@ export function AnimatorPage() {
     return () => {
       if (!isDirtyRef.current) return;
       const st = stateRef.current;
-      getSheetDataUrl(st)
-        .then((dataUrl) => {
-          const animatorBody = buildAnimatorBody(dataUrl, st);
+      buildAnimatorBody(st)
+        .then((animatorBody) => {
+          if (!animatorBody) return;
+          const activeSheet =
+            st.sheets.find((s) => s.id === st.activeSheetId) ?? st.sheets[0];
           return saveSprite({
             id: st.id ?? crypto.randomUUID(),
             projectId: st.projectId ?? null,
@@ -469,14 +498,8 @@ export function AnimatorPage() {
             animatorBody,
             animCount: st.animations.length,
             frameCount: st.animations.reduce((s, a) => s + a.frames.length, 0),
-            canvasW:
-              st.spriteSheet?.width ??
-              st.animatorState?.spriteSheet?.width ??
-              32,
-            canvasH:
-              st.spriteSheet?.height ??
-              st.animatorState?.spriteSheet?.height ??
-              32,
+            canvasW: activeSheet?.width ?? 32,
+            canvasH: activeSheet?.height ?? 32,
           });
         })
         .catch(console.error);
@@ -548,8 +571,12 @@ export function AnimatorPage() {
   async function handleSave() {
     setSaving(true);
     try {
-      const spriteId = state.id ?? crypto.randomUUID();
-      if (!state.id) dispatch({ type: "SET_PROJECT_ID", payload: spriteId });
+      const spriteId = urlSpriteId ?? state.id ?? crypto.randomUUID();
+      if (!state.id) {
+        dispatch({ type: "SET_PROJECT_ID", payload: spriteId });
+        // Update URL so refresh works after first save
+        navigate(`/animator/${spriteId}`, { replace: true });
+      }
       const animatorBody = await buildAnimatorBody(state);
       const thumbnail = imageUrl
         ? await generateThumbnail(
@@ -612,7 +639,8 @@ export function AnimatorPage() {
       }
       if (src) dispatch({ type: "SET_JELLY_SPRITE_DATA", payload: src });
     }
-    navigate("/jelly-sprite");
+    const targetId = state.id ?? urlSpriteId;
+    navigate(targetId ? `/jelly-sprite/${targetId}` : "/jelly-sprite");
   }
 
   const saveMenuItems = [

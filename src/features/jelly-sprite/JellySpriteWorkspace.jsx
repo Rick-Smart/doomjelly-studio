@@ -98,6 +98,10 @@ export function JellySpriteWorkspace() {
       });
       const id = data.id;
       if (!state.id) dispatch({ type: "SET_PROJECT_ID", payload: id });
+      // Update URL so refresh always reloads the correct sprite
+      if (!spriteId || spriteId !== id) {
+        navigate(`/jelly-sprite/${id}`, { replace: true });
+      }
       await saveSprite({
         ...data,
         id,

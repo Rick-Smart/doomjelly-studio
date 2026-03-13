@@ -21,6 +21,7 @@ export function AppRoutes() {
       >
         <Route index element={<Navigate to="/projects" replace />} />
         <Route path="animator" element={<AnimatorPage />} />
+        <Route path="animator/:spriteId" element={<AnimatorPage />} />
         <Route path="jelly-sprite" element={<JellySpriteWorkspace />} />
         <Route
           path="jelly-sprite/:spriteId"
