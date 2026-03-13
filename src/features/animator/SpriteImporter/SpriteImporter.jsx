@@ -1,6 +1,6 @@
 import { useCallback, useRef } from "react";
 import { useAnimatorStore } from "../../../contexts/useAnimatorStore.js";
-import { selectActiveSheet } from "../selectors";
+import { selectActiveSheet } from "../../../contexts/animatorSelectors";
 import { FileDropZone } from "../../../ui/FileDropZone";
 import "./SpriteImporter.css";
 

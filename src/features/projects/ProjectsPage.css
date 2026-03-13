@@ -266,7 +266,7 @@
 .projects-btn--primary {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--color-on-accent);
 }
 
 .projects-btn--primary:hover {
@@ -281,7 +281,7 @@
 .projects-btn--danger:hover {
   background: var(--danger);
   border-color: var(--danger);
-  color: #fff;
+  color: var(--color-on-accent);
 }
 
 /* ── Add Sprite modal ── */
@@ -529,7 +529,7 @@
 .projects-btn--primary {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--color-on-accent);
 }
 
 .projects-btn--primary:hover {
@@ -544,7 +544,7 @@
 .projects-btn--danger:hover {
   background: var(--danger);
   border-color: var(--danger);
-  color: #fff;
+  color: var(--color-on-accent);
 }
 
 /* ── Drag & drop import ── */

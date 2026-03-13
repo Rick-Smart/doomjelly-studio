@@ -123,7 +123,11 @@
   border-radius: 2px;
   image-rendering: pixelated;
   /* checkerboard behind transparent sprites */
-  background: repeating-conic-gradient(#333 0% 25%, #555 0% 50%) 0 0 / 8px 8px;
+  background: repeating-conic-gradient(
+      var(--checker-dark-2) 0% 25%,
+      var(--checker-dark-1) 0% 50%
+    )
+    0 0 / 8px 8px;
 }
 
 .seq-frame__coords {

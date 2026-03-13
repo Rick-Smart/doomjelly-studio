@@ -31,11 +31,33 @@
   /* Semantic color tokens */
   --success: #22c55e;
   --warning: #f59e0b;
+  --warning-amber: #f0a020;
+  --warning-amber-tint-soft: color-mix(
+    in srgb,
+    var(--warning-amber) 20%,
+    var(--surface2)
+  );
+  --warning-amber-tint-mid: color-mix(
+    in srgb,
+    var(--warning-amber) 18%,
+    var(--surface2)
+  );
+  --warning-amber-tint-surface: color-mix(
+    in srgb,
+    var(--warning-amber) 18%,
+    var(--surface)
+  );
   --text-disabled: #4a4a6a;
   --surface-alt: #1e1e30;
   /* On-accent foreground + accent button separator */
   --color-on-accent: #fff;
   --accent-separator: color-mix(in srgb, #fff 25%, var(--accent));
+  /* Transparency checkerboard — used for canvas/alpha visualisation */
+  --checker-light: #fff;
+  --checker-mid: #aaa;
+  --checker-mid-alt: #ddd;
+  --checker-dark-1: #555;
+  --checker-dark-2: #333;
 
   /* Layout constants shared by timeline + tracks panel */
   --cell-min-w: 44px;

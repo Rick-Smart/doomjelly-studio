@@ -327,7 +327,7 @@
 .custom-theme-editor__upload-btn {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--color-on-accent);
 }
 
 .custom-theme-editor__upload-btn:hover {
@@ -342,7 +342,7 @@
 
 .custom-theme-editor__clear-btn:hover {
   background: var(--danger);
-  color: #fff;
+  color: var(--color-on-accent);
 }
 
 .custom-theme-editor__bg-preview {

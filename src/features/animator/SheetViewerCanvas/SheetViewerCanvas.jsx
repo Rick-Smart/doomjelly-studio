@@ -1,7 +1,7 @@
 ﻿import { useEffect, useRef, useCallback, useState } from "react";
 import { cellToPixel } from "../../../engine/frameUtils";
 import { useAnimatorStore } from "../../../contexts/useAnimatorStore.js";
-import { selectActiveAnimation } from "../selectors";
+import { selectActiveAnimation } from "../../../contexts/animatorSelectors";
 import { useTheme } from "../../../contexts/ThemeContext";
 import "./SheetViewerCanvas.css";
 

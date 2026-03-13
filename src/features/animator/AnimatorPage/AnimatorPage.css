@@ -37,7 +37,7 @@
 .editor-toolbar__btn--primary {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--color-on-accent);
 }
 
 .editor-toolbar__btn--primary:hover {

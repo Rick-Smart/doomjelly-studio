@@ -1,6 +1,9 @@
 import { useRef, useEffect } from "react";
 import { useAnimatorStore } from "../../../contexts/useAnimatorStore.js";
-import { selectActiveSheet, selectActiveAnimation } from "../selectors";
+import {
+  selectActiveSheet,
+  selectActiveAnimation,
+} from "../../../contexts/animatorSelectors";
 import { usePlayback } from "../../../contexts/PlaybackContext";
 import { FrameThumb } from "../shared/FrameThumb";
 import { useDragReorder } from "../../../hooks/useDragReorder";

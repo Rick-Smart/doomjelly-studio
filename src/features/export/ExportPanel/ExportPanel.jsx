@@ -6,6 +6,10 @@ import { Modal } from "../../../ui/Modal";
 import { EXPORT_FORMATS } from "../../../services/exportService";
 import { serialiseSprite } from "../../../services/serialization";
 import {
+  selectActiveSheet,
+  selectActiveAnimation,
+} from "../../../contexts/animatorSelectors";
+import {
   loadImage,
   buildPackedAtlas,
   buildAnimStrips,
@@ -43,7 +47,7 @@ export function ExportPanel({ isOpen, onClose }) {
     projectId: docProjectId,
     name: projectName,
   } = useDocumentStore();
-  const activeSheet = sheets.find((s) => s.id === activeSheetId) ?? null;
+  const activeSheet = selectActiveSheet(state);
 
   const [exportType, setExportType] = useState("json");
   const [formatId, setFormatId] = useState("generic");
@@ -52,7 +56,7 @@ export function ExportPanel({ isOpen, onClose }) {
   const [isExporting, setIsExporting] = useState(false);
   const [exportError, setExportError] = useState(null);
 
-  const activeAnim = animations.find((a) => a.id === activeAnimationId);
+  const activeAnim = selectActiveAnimation(state);
   const format = EXPORT_FORMATS.find((f) => f.id === formatId);
   const hasImage = !!activeSheet?.objectUrl;
   const hasAnims = animations.length > 0;

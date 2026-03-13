@@ -52,10 +52,7 @@
   width: 100%;
   padding: 9px;
   background: var(--accent);
-  color: #fff;
-  border: none;
-  border-radius: 4px;
-  font-size: 14px;
+  color: var(--color-on-accent);
   font-weight: 600;
   transition: background 0.15s;
 }

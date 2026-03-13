@@ -90,14 +90,7 @@
   width: 100%;
   padding: 7px 0;
   background: var(--accent);
-  color: #fff;
-  border: none;
-  border-radius: 5px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: opacity 0.15s;
-}
+  color: var(--color-on-accent);
 
 .anim-sidebar__cta:hover {
   opacity: 0.85;

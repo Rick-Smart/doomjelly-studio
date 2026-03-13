@@ -16,7 +16,7 @@ import {
   buildAnimatorBody,
   buildSheetFromJellyBody,
 } from "../animatorSerializer";
-import { selectActiveSheet } from "../selectors";
+import { selectActiveSheet } from "../../../contexts/animatorSelectors";
 import { KeyboardHelp } from "../KeyboardHelp";
 import { TracksPanel } from "../TracksPanel";
 import { generateThumbnail } from "../../../services/imageExportService";

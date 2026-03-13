@@ -1,7 +1,10 @@
 import { useRef, useEffect, useState } from "react";
 import { cellToPixel } from "../../../engine/frameUtils";
 import { useAnimatorStore } from "../../../contexts/useAnimatorStore.js";
-import { selectActiveSheet, selectActiveAnimation } from "../selectors";
+import {
+  selectActiveSheet,
+  selectActiveAnimation,
+} from "../../../contexts/animatorSelectors";
 import { useAnimationLoop } from "../../../hooks/useAnimationLoop";
 import { usePlayback } from "../../../contexts/PlaybackContext";
 import { useLocalStorage } from "../../../hooks/useLocalStorage";
