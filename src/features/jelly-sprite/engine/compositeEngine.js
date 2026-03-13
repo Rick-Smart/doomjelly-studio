@@ -1,4 +1,9 @@
-export function compositeLayersToCanvas(layers, pixelBuffers, maskBuffers, target) {
+export function compositeLayersToCanvas(
+  layers,
+  pixelBuffers,
+  maskBuffers,
+  target,
+) {
   const w = target.width;
   const h = target.height;
   const ctx = target.getContext("2d");
@@ -9,6 +14,12 @@ export function compositeLayersToCanvas(layers, pixelBuffers, maskBuffers, targe
     if (!layer.visible) continue;
     const data = pixelBuffers[layer.id];
     if (!data) continue;
+
+    // Guard: skip layers whose buffer doesn't match the target canvas dimensions.
+    // This can happen in the brief window between a canvas resize and the effect
+    // that rebuilds pixel buffers (e.g. justRestoredRef race). Skipping is
+    // always safer than crashing with an ImageData constructor error.
+    if (data.length !== w * h * 4) continue;
 
     const mask = maskBuffers?.[layer.id];
     let drawData = data;

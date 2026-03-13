@@ -936,25 +936,34 @@ function JellySpriteBody() {
     // Dimension-change after a restore: skip zero-fill
     // When LOAD_JELLY_STATE changes canvasW/canvasH this effect re-fires.
     // The refs are already correct — just resize the offscreen canvas and redraw.
+    // Guard: if a pending user resize exists (pendingResizeDataRef is set), the
+    // user triggered a canvas resize after an initial load whose dimensions
+    // matched the default state (so LOAD_JELLY_STATE never re-fired this effect
+    // to clear the flag). In that case fall through to the normal resize path so
+    // freshBuffers are created and pendingResizeDataRef is applied correctly.
     if (justRestoredRef.current) {
       justRestoredRef.current = false;
-      if (refs.offscreenEl) {
-        refs.offscreenEl.width = w;
-        refs.offscreenEl.height = h;
+      if (!pendingResizeDataRef.current) {
+        if (refs.offscreenEl) {
+          refs.offscreenEl.width = w;
+          refs.offscreenEl.height = h;
+        }
+        wireHistoryEngine(refs, sd);
+        redraw();
+        const wrap = refs.canvasEl?.parentElement;
+        if (wrap) {
+          const availW = wrap.clientWidth - 40;
+          const availH = wrap.clientHeight - 40;
+          const fillZoom = Math.max(
+            1,
+            Math.min(MAX_ZOOM, Math.floor(Math.min(availW / w, availH / h))),
+          );
+          setZoom(fillZoom);
+        }
+        return;
       }
-      wireHistoryEngine(refs, sd);
-      redraw();
-      const wrap = refs.canvasEl?.parentElement;
-      if (wrap) {
-        const availW = wrap.clientWidth - 40;
-        const availH = wrap.clientHeight - 40;
-        const fillZoom = Math.max(
-          1,
-          Math.min(MAX_ZOOM, Math.floor(Math.min(availW / w, availH / h))),
-        );
-        setZoom(fillZoom);
-      }
-      return;
+      // pendingResizeDataRef is set: user resized after restore. Fall through to
+      // the normal resize path below so buffers are rebuilt at the new size.
     }
 
     // Normal init / user-triggered resize

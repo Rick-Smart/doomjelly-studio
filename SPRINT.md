@@ -8,39 +8,40 @@
 
 ## Quick Navigation
 
-|                                                                               |                                              |
-| ----------------------------------------------------------------------------- | -------------------------------------------- |
-| [Sprint Status Dashboard](#sprint-status-dashboard)                           | Current state of all sprints                 |
-| [Sprint Governance](#sprint-governance)                                       | Policies, shim rules, start/close checklists |
-| [Sprint Close Checklist](#sprint-close-checklist)                             | Enforcement greps to run before every close  |
-| [Rules 1–20 Reference](#rules-120-reference)                                  | Architecture laws + enforcement notes        |
-| [Sprint 14 — Active](#sprint-14--full-ruleset-compliance-pass)                | Current sprint full detail                   |
-| [Sprint 13 — Last Completed](#sprint-13--navigation-integrity--creative-flow) | Bugs fixed, changes, audit                   |
-| [Sprint History (0–12)](#sprint-history-012)                                  | Collapsed summaries for completed work       |
+|                                                                    |                                              |
+| ------------------------------------------------------------------ | -------------------------------------------- |
+| [Sprint Status Dashboard](#sprint-status-dashboard)                | Current state of all sprints                 |
+| [Sprint Governance](#sprint-governance)                            | Policies, shim rules, start/close checklists |
+| [Sprint Close Checklist](#sprint-close-checklist)                  | Enforcement greps to run before every close  |
+| [Rules 1–20 Reference](#rules-120-reference)                       | Architecture laws + enforcement notes        |
+| [Sprint 16 — Active](#sprint-16--crash-fix-dead-code--rough-edges) | Current sprint full detail                   |
+| [Sprint 15 — Last Completed](#sprint-15--data-model-normalization) | Bugs fixed, changes, audit                   |
+| [Sprint History (0–12)](#sprint-history-012)                       | Collapsed summaries for completed work       |
 
 ---
 
 ## Sprint Status Dashboard
 
-| Sprint    | Name                                 | Status                      |
-| --------- | ------------------------------------ | --------------------------- |
-| Sprint 0  | Data Stability                       | ✅ Complete (`92997f7`)     |
-| Sprint 1  | Foundation Cleanup                   | ✅ Complete (`b5fda67`)     |
-| Sprint 2  | Monolith Decomposition               | ✅ Complete (`d8033f9`)     |
-| Sprint 3  | Feature Contract Enforcement         | ✅ Complete (`86e3b26`)     |
-| Sprint 4  | Context Decomposition                | ✅ Complete (`ac647ed`)     |
-| Sprint 5  | State Finalization                   | ✅ Complete (`625e694`)     |
-| Sprint 6  | Unified Document Model               | ✅ Complete (`5be735c`)     |
-| Sprint 7  | JellySprite PixelDocument Refactor   | ✅ Complete (`15ee57a`)     |
-| Sprint 8a | Rule Violation Fixes                 | ✅ Complete (`dc32ace`)     |
-| Sprint 8  | TypeScript Migration                 | ✅ Complete (`d302053`)     |
-| Sprint 9  | Zustand State Management             | ✅ Complete (`388f043`)     |
-| Sprint 10 | Store Consumer Migration             | ✅ Complete (`8ed4bd7`)     |
-| Sprint 11 | PixelDocument Store + 7e Cleanup     | ✅ Complete (`806493b`)     |
-| Sprint 12 | Service Layer Cleanup                | ✅ Complete (`fb89db4`)     |
-| Sprint 13 | Navigation Integrity + Creative Flow | ✅ Complete (`aaa3e58`)     |
-| Sprint 14 | Full Ruleset Compliance Pass (CSS)   | 🔴 Queued (after Sprint 15) |
-| Sprint 15 | Data Model Normalization             | ✅ Complete                 |
+| Sprint    | Name                                 | Status                  |
+| --------- | ------------------------------------ | ----------------------- |
+| Sprint 0  | Data Stability                       | ✅ Complete (`92997f7`) |
+| Sprint 1  | Foundation Cleanup                   | ✅ Complete (`b5fda67`) |
+| Sprint 2  | Monolith Decomposition               | ✅ Complete (`d8033f9`) |
+| Sprint 3  | Feature Contract Enforcement         | ✅ Complete (`86e3b26`) |
+| Sprint 4  | Context Decomposition                | ✅ Complete (`ac647ed`) |
+| Sprint 5  | State Finalization                   | ✅ Complete (`625e694`) |
+| Sprint 6  | Unified Document Model               | ✅ Complete (`5be735c`) |
+| Sprint 7  | JellySprite PixelDocument Refactor   | ✅ Complete (`15ee57a`) |
+| Sprint 8a | Rule Violation Fixes                 | ✅ Complete (`dc32ace`) |
+| Sprint 8  | TypeScript Migration                 | ✅ Complete (`d302053`) |
+| Sprint 9  | Zustand State Management             | ✅ Complete (`388f043`) |
+| Sprint 10 | Store Consumer Migration             | ✅ Complete (`8ed4bd7`) |
+| Sprint 11 | PixelDocument Store + 7e Cleanup     | ✅ Complete (`806493b`) |
+| Sprint 12 | Service Layer Cleanup                | ✅ Complete (`fb89db4`) |
+| Sprint 13 | Navigation Integrity + Creative Flow | ✅ Complete (`aaa3e58`) |
+| Sprint 14 | Full Ruleset Compliance Pass (CSS)   | ✅ Complete (`81bd5ec`) |
+| Sprint 15 | Data Model Normalization             | ✅ Complete (`1d6f081`) |
+| Sprint 16 | Crash Fix, Dead Code & Rough Edges   | 🔄 In progress          |
 
 ---
 
@@ -276,6 +277,97 @@ Before a store consumer migration is declared complete: (1) grep all references 
 Extract a UI pattern into `src/ui/` when it appears identically in two or more distinct files. The first usage is a prototype; the second reveals the correct shared API. Do not extract speculatively. Feature-internal patterns stay in the feature directory.
 
 Every `src/ui/` component requires: `ComponentName.jsx`, `ComponentName.css` (tokens only — Rule 18), `index.js` barrel with named exports.
+
+---
+
+## Sprint 16 — Crash Fix, Dead Code & Rough Edges
+
+**Status:** 🔄 In progress  
+**Origin:** Post-Sprint-15 usability audit + canvas resize crash reported by user.
+
+### Design assumptions challenged
+
+| Assumption                                                                     | Verdict                                                                                                                                                                                                                                                            |
+| ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `justRestoredRef` fast-path is always safe to take                             | ❌ Wrong. When a saved sprite has the same dimensions as the initial default state, `LOAD_JELLY_STATE` doesn't change `canvasW/H`, so the flag is never cleared. The first user-triggered resize takes the fast path and skips buffer rebuild → `ImageData` crash. |
+| `useDrawingTools.js` is still in use                                           | ❌ Dead code. Removed in Phase G. Only two comment references remain in `JellySprite.jsx`.                                                                                                                                                                         |
+| Drawing engine code can safely read canvas dimensions from `refs.doc` directly | ⚠️ It can, but must be discouraged. The canonical source is `usePixelDocumentStore.getState()`. Mixing read sources causes stale-dimension crashes during resize. Write formal rules to prevent regression.                                                        |
+| `collectSaveData` closure is always fresh                                      | ❌ Wrong. Registered via `useEffect([], [])` so `canvasW/H` are captured at mount time. Late-loaded page data may arrive after mount. See 16c.                                                                                                                     |
+
+### Bugs fixed
+
+| #   | Description                                                                                                                                 | Root cause                                                                                                                                                                                                             |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| B1  | `ImageData` crash when resizing canvas after opening a sprite whose saved dimensions match the initial default (e.g. 32×32 → 32×32 on load) | `justRestoredRef.current` set `true` in restore branch; never cleared because `LOAD_JELLY_STATE` doesn't change `canvasW/H`; next resize hits fast path which skips `freshBuffers` / `pendingResizeDataRef` → mismatch |
+
+### Tasks
+
+#### 16a — Fix canvas resize crash after same-dimension restore ✅
+
+**Root cause:** `justRestoredRef.current` is set `true` in the Phase-2 restore branch so the subsequent `[canvasW, canvasH]` effect (triggered by `LOAD_JELLY_STATE`) can skip the expensive zero-fill. When the saved sprite has the same dimensions as the initial state, `LOAD_JELLY_STATE` does not change `canvasW/H`, so the effect never re-fires and `justRestoredRef` stays `true` forever. The first user-triggered canvas resize then takes the `justRestored` fast path, which resizes `offscreenEl` to the new size but does **not** create `freshBuffers` or apply `pendingResizeDataRef`. `redraw()` is called with `offscreenEl` at `nw×nh` but `refs.doc.pixelBuffers` still at `oldW×oldH×4` → `new ImageData(data, nw, nh)` throws.
+
+**Fix (`JellySprite.jsx`):** Guard the `justRestored` fast path with `!pendingResizeDataRef.current`. If a pending resize exists the user triggered a manual resize after a restore — clear the flag then fall through to the normal resize path so buffers are properly rebuilt.
+
+**Belt-and-suspenders (`compositeEngine.js`):** Add a size guard before `new ImageData(drawData, w, h)` that skips layers whose buffer length doesn't match `4 × w × h`. This catches any future resize/restore timing edge cases silently rather than crashing.
+
+#### 16b — Delete dead `useDrawingTools.js`
+
+`src/features/jelly-sprite/hooks/useDrawingTools.js` was the pre-Phase-G drawing loop. Phase G replaced it with `drawingEngine.js`. The file is no longer imported anywhere (confirmed: only two comment references in `JellySprite.jsx`). Delete it.
+
+#### 16c — Fix stale `collectSaveData` closure
+
+`collectSaveData` is registered in `usePixelDocumentStore` via `useEffect([], [])` at mount time. The closure captures `canvasW`, `canvasH`, and other scalars as they were on the **first render**. If the canvas is resized before the save, `generateFrameThumbnail` inside `collectSaveData` uses the stale dimensions and creates wrong-sized thumbnails (though the browser's `ImageData` constructor would throw or silently produce a blank image).
+
+**Fix:** Replace the captured closure values with live reads inside `collectSaveData`. Use `ss.canvasW` / `ss.canvasH` (from the reducer state object available through the ref pattern) or read `refs.doc.canvasW` / `refs.doc.canvasH` at call time rather than closing over the outer `canvasW`/`canvasH` constants.
+
+#### 16d — Fix `pickAndLoadSpriteFile` cancel hang
+
+When the user opens the sprite-import file picker and cancels (dismisses the dialog without selecting a file), `pickAndLoadSpriteFile` waits on the `change` event which never fires. The promise never resolves and the loading spinner stays visible.
+
+**Fix:** Listen for `focus` returning to `window` after the input is programmatically clicked. If the `change` event has not fired within a short debounce (e.g. 300 ms after `window:focus`), resolve the promise with `null`.
+
+#### 16e — Cascading IDB delete on project delete
+
+When a project is deleted from `ProjectsPage`, `projectService.deleteProject` removes the metadata row from IDB but does **not** delete the associated sprite blob stored under `idb:sprite:<id>`. Orphaned blobs accumulate indefinitely.
+
+**Fix:** In `projectService.deleteProject`, after deleting the metadata row, call `storage.removeItem('idb:sprite:' + id)` (or equivalent IDB key) to purge the blob.
+
+#### 16f — Write `TOOL_RULES.md` — drawing engine architecture contract
+
+Formal rules governing all code inside `src/features/jelly-sprite/engine/` and `hooks/`. Prevents future store collisions after architecture changes.
+
+### Rules compliance
+
+| Rule                        | Impact                                                                  |
+| --------------------------- | ----------------------------------------------------------------------- |
+| 14 — engine pure            | `TOOL_RULES.md` codifies this for the drawing engine layer specifically |
+| 19 — migration completeness | Deleting `useDrawingTools.js` removes the last pre-Phase-G drawing code |
+
+### Enforcement greps (run before close)
+
+```bash
+# useDrawingTools must be gone
+grep -rn "useDrawingTools" src/
+
+# No raw pixelBuffers access outside refs.doc
+grep -rn "pixelBuffers\s*=\s*new\|pixelBuffers\[" src/features/jelly-sprite/engine/
+
+# Build gate
+npm run build
+```
+
+### Commit order
+
+```
+1. Fix canvas resize crash — justRestoredRef guard + compositeEngine size guard (16a)
+2. Delete useDrawingTools.js (16b)
+3. Fix collectSaveData stale closure (16c)
+4. Fix pickAndLoadSpriteFile cancel hang (16d)
+5. Cascading IDB delete on project delete (16e)
+6. Write TOOL_RULES.md (16f)
+7. npm run build + enforcement greps
+8. Commit: "fix: Sprint 16 — crash fix, dead code & rough edges"
+```
 
 ---
 
