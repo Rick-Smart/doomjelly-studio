@@ -275,6 +275,7 @@ export function ProjectsPage() {
     setAddSpriteProjectId(null);
     try {
       const data = await pickAndLoadSpriteFile();
+      if (!data) return; // user cancelled the file picker
       const spriteId = data.id ?? crypto.randomUUID();
       const sprite = { ...data, id: spriteId, projectId };
       await saveSprite(sprite, data.thumbnail ?? undefined);

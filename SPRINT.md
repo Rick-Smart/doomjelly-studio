@@ -41,7 +41,7 @@
 | Sprint 13 | Navigation Integrity + Creative Flow | ✅ Complete (`aaa3e58`) |
 | Sprint 14 | Full Ruleset Compliance Pass (CSS)   | ✅ Complete (`81bd5ec`) |
 | Sprint 15 | Data Model Normalization             | ✅ Complete (`1d6f081`) |
-| Sprint 16 | Crash Fix, Dead Code & Rough Edges   | 🔄 In progress          |
+| Sprint 16 | Crash Fix, Dead Code & Rough Edges   | ✅ Complete             |
 
 ---
 
@@ -282,7 +282,7 @@ Every `src/ui/` component requires: `ComponentName.jsx`, `ComponentName.css` (to
 
 ## Sprint 16 — Crash Fix, Dead Code & Rough Edges
 
-**Status:** 🔄 In progress  
+**Status:** ✅ Complete  
 **Origin:** Post-Sprint-15 usability audit + canvas resize crash reported by user.
 
 ### Design assumptions challenged
@@ -299,6 +299,10 @@ Every `src/ui/` component requires: `ComponentName.jsx`, `ComponentName.css` (to
 | #   | Description                                                                                                                                 | Root cause                                                                                                                                                                                                             |
 | --- | ------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | B1  | `ImageData` crash when resizing canvas after opening a sprite whose saved dimensions match the initial default (e.g. 32×32 → 32×32 on load) | `justRestoredRef.current` set `true` in restore branch; never cleared because `LOAD_JELLY_STATE` doesn't change `canvasW/H`; next resize hits fast path which skips `freshBuffers` / `pendingResizeDataRef` → mismatch |
+| B2  | "Failed to save sprite" `ImageData` crash on save                                                                                           | `generateFrameThumbnail` + `collectSaveData` read `canvasW/H` from the first-render React closure. `setCollectFn` registered on mount so stale dimensions were always used if canvas size differed from initial state. |
+| B3  | `LoginPage` — React warning: "Cannot update BrowserRouter while rendering"                                                                  | `navigate("/projects")` called synchronously in render body. Moved to `useEffect([isAuthenticated])`.                                                                                                                  |
+| B4  | `useEffect is not defined` error on LoginPage                                                                                               | `useEffect` added to LoginPage but not imported from React.                                                                                                                                                            |
+| B5  | 406 errors navigating to Animator as a new/different user                                                                                   | `useDocumentStore` persists the last sprite ID; nav links built from it; `sbLoadSprite` used `.single()` which 406s on 0 rows. Fixed: `.maybeSingle()` + clear persisted ID on auth user change.                       |
 
 ### Tasks
 
@@ -320,19 +324,24 @@ Every `src/ui/` component requires: `ComponentName.jsx`, `ComponentName.css` (to
 
 **Fix:** Replace the captured closure values with live reads inside `collectSaveData`. Use `ss.canvasW` / `ss.canvasH` (from the reducer state object available through the ref pattern) or read `refs.doc.canvasW` / `refs.doc.canvasH` at call time rather than closing over the outer `canvasW`/`canvasH` constants.
 
-#### 16d — Fix `pickAndLoadSpriteFile` cancel hang
+#### 16d — Fix `pickAndLoadSpriteFile` cancel hang ✅
 
-When the user opens the sprite-import file picker and cancels (dismisses the dialog without selecting a file), `pickAndLoadSpriteFile` waits on the `change` event which never fires. The promise never resolves and the loading spinner stays visible.
+When the user opens the sprite-import file picker and cancels, the promise never resolved — the `change` event never fires on cancel and the old implementation had no fallback.
 
-**Fix:** Listen for `focus` returning to `window` after the input is programmatically clicked. If the `change` event has not fired within a short debounce (e.g. 300 ms after `window:focus`), resolve the promise with `null`.
+**Fix (`serialization.js`):** Added `window:focus` listener (once) after `input.click()`. When the dialog closes — cancel or confirm — the browser returns focus to the window. After a 300 ms debounce (to allow the `change` event to fire first on confirm), if the promise hasn't settled yet it resolves with `null`. A `settled` flag prevents double-resolution. The old `setTimeout(() => removeChild, 1000)` is replaced by cleanup inside `settle()`.
 
-#### 16e — Cascading IDB delete on project delete
+**Fix (`ProjectsPage.jsx`):** Added `if (!data) return;` guard after `pickAndLoadSpriteFile()` — a `null` result means the user cancelled; skip import silently. Also removed the now-redundant `"No file selected"` error message check.
 
-When a project is deleted from `ProjectsPage`, `projectService.deleteProject` removes the metadata row from IDB but does **not** delete the associated sprite blob stored under `idb:sprite:<id>`. Orphaned blobs accumulate indefinitely.
+#### 16e — Cascading delete on project delete ✅
 
-**Fix:** In `projectService.deleteProject`, after deleting the metadata row, call `storage.removeItem('idb:sprite:' + id)` (or equivalent IDB key) to purge the blob.
+When a project was deleted, sprite **records** in IDB (`SPRITES_STORE`) were never deleted — only the localStorage index entries were removed. On Supabase, only the `projects_v2` row was deleted; `sprites` rows were orphaned (no FK cascade configured).
 
-#### 16f — Write `TOOL_RULES.md` — drawing engine architecture contract
+**Fix (`projects.js`):**
+
+- IDB path: collect orphaned sprite IDs from the sprites index before purging it, then `idbDelete(SPRITES_STORE, id)` for each in parallel.
+- Supabase path: call `sbListSprites(projectId)` then `sbDeleteSprite` for each sprite before calling `sbDeleteProject`. Both operations use `.catch(() => {})` guards so a single failing sprite delete doesn't block the project deletion.
+
+#### 16f — Write `TOOL_RULES.md` — drawing engine architecture contract ✅
 
 Formal rules governing all code inside `src/features/jelly-sprite/engine/` and `hooks/`. Prevents future store collisions after architecture changes.
 
