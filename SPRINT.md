@@ -11,8 +11,8 @@
 | Sprint   | Name                         | Status                  |
 | -------- | ---------------------------- | ----------------------- |
 | Sprint 0 | Data Stability               | ✅ Complete (`92997f7`) |
-| Sprint 1 | Foundation Cleanup           | 🔲 Ready to start       |
-| Sprint 2 | Monolith Decomposition       | 🔲 Blocked on Sprint 1  |
+| Sprint 1 | Foundation Cleanup           | ✅ Complete (`b5fda67`) |
+| Sprint 2 | Monolith Decomposition       | 🔲 Ready to start       |
 | Sprint 3 | Feature Contract Enforcement | 🔲 Blocked on Sprint 2  |
 
 ---
@@ -55,7 +55,7 @@ of sync. Sprint 0 eliminated those entire bug classes permanently.
 
 ---
 
-## 🔲 Sprint 1 — Foundation Cleanup
+## ✅ Sprint 1 — Foundation Cleanup (COMPLETE `b5fda67`)
 
 **Goal:** Eliminate duplication, ship shared infrastructure, add lazy loading.
 No new user-visible features. Every item here unblocks Sprint 2.
@@ -203,9 +203,8 @@ export const selectFrameCount = (state) =>
 
 ---
 
-## 🔲 Sprint 2 — Monolith Decomposition
+## 🔲 Sprint 2 — Monolith Decomposition (~860 lines, 17 imports) into focused,
 
-**Goal:** Break `AnimatorPage.jsx` (~860 lines, 17 imports) into focused,
 independently-editable components. Target: `AnimatorPage.jsx` becomes layout
 only — ~150 lines.
 
@@ -483,4 +482,3 @@ src/
     routes.jsx                    Lazy loading in Sprint 1f
     ProtectedRoute.jsx            ✅ Done (Rule 8)
 ```
-
