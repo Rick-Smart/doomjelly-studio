@@ -40,7 +40,7 @@ function base64ToUint8(b64) {
 export function serializeJellySprite(refs, ss, frames) {
   const serializedFrames = (frames ?? ss.frames ?? [])
     .map((frame) => {
-      const snap = refs.frameSnapshots?.[frame.id];
+      const snap = refs.doc.frameSnapshots?.[frame.id];
       if (!snap) return null;
 
       const pixelBuffers = {};
@@ -163,8 +163,8 @@ export function deserializeJellySprite(data, refs) {
     frameList.push({ id: frameData.id, name: frameData.name });
   }
 
-  // Commit to refs
-  refs.frameSnapshots = newSnapshots;
+  // Commit to refs.doc (PixelDocument)
+  refs.doc.frameSnapshots = newSnapshots;
 
   const activeFrameIdx = Math.min(
     data.activeFrameIdx ?? 0,
@@ -173,8 +173,8 @@ export function deserializeJellySprite(data, refs) {
   const activeFrameId = frameList[activeFrameIdx]?.id;
   const activeSnap = newSnapshots[activeFrameId];
 
-  refs.pixelBuffers = activeSnap?.pixelBuffers ?? {};
-  refs.maskBuffers = activeSnap?.maskBuffers ?? {};
+  refs.doc.pixelBuffers = activeSnap?.pixelBuffers ?? {};
+  refs.doc.maskBuffers = activeSnap?.maskBuffers ?? {};
 
   return {
     storeState: {

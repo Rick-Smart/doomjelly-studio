@@ -133,15 +133,15 @@ export function createRenderer(refs) {
       const isActiveFrame = dispIdx === activeFrameIdx;
       const renderLayers = isActiveFrame
         ? layers
-        : (refs.frameSnapshots[displayFrame.id]?.layers ?? layers);
+        : (refs.doc.frameSnapshots[displayFrame.id]?.layers ?? layers);
       const renderPixelBuffers = isActiveFrame
-        ? refs.pixelBuffers
-        : (refs.frameSnapshots[displayFrame.id]?.pixelBuffers ??
-          refs.pixelBuffers);
+        ? refs.doc.pixelBuffers
+        : (refs.doc.frameSnapshots[displayFrame.id]?.pixelBuffers ??
+          refs.doc.pixelBuffers);
       const renderMaskBuffers = isActiveFrame
-        ? refs.maskBuffers
-        : (refs.frameSnapshots[displayFrame.id]?.maskBuffers ??
-          refs.maskBuffers);
+        ? refs.doc.maskBuffers
+        : (refs.doc.frameSnapshots[displayFrame.id]?.maskBuffers ??
+          refs.doc.maskBuffers);
       compositeLayersToCanvas(
         renderLayers,
         renderPixelBuffers,
@@ -163,7 +163,7 @@ export function createRenderer(refs) {
       const drawGhost = (frameIdx, tintColor) => {
         const ghostFrame = frames[frameIdx];
         if (!ghostFrame) return;
-        const snap = refs.frameSnapshots[ghostFrame.id];
+        const snap = refs.doc.frameSnapshots[ghostFrame.id];
         if (!snap) return;
 
         // Composite the ghost frame onto the offscreen canvas

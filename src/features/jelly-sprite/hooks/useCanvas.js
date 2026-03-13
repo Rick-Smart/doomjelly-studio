@@ -21,8 +21,8 @@ export function useCanvas() {
 
     // Initialise any pixelBuffer slots that are still null
     layers.forEach((layer) => {
-      if (!refs.pixelBuffers[layer.id]) {
-        refs.pixelBuffers[layer.id] = new Uint8ClampedArray(
+      if (!refs.doc.pixelBuffers[layer.id]) {
+        refs.doc.pixelBuffers[layer.id] = new Uint8ClampedArray(
           canvasW * canvasH * 4,
         );
       }

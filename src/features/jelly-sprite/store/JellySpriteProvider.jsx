@@ -5,6 +5,7 @@ import {
   INIT_LAYER,
   INIT_FRAME,
 } from "./jellySpriteInitialState";
+import { PixelDocument } from "../engine/PixelDocument.js";
 
 export const JellySpriteStoreCtx = createContext(null);
 
@@ -15,25 +16,10 @@ export function JellySpriteProvider({ children }) {
   );
 
   // Refs object — created once, never replaced
-  // Initialize with the same seed layer/frame that the initial state uses.
   const refs = useRef({
-    // Pixel data for the active frame (populated properly in M2/M3)
-    pixelBuffers: { [INIT_LAYER.id]: null },
-    maskBuffers: {},
-
-    // Saved state for all frames keyed by frame ID
-    frameSnapshots: {
-      [INIT_FRAME.id]: {
-        layers: jellySpriteInitialState.layers,
-        activeLayerId: INIT_LAYER.id,
-        pixelBuffers: { [INIT_LAYER.id]: null },
-        maskBuffers: {},
-      },
-    },
-
-    // History
-    historyStack: [],
-    historyIndex: -1,
+    // PixelDocument — canonical pixel/mask/history/snapshot store (Sprint 7c+)
+    // Lazy-initialized below so PixelDocument construction is deferred.
+    doc: null,
 
     // Drawing
     clipboard: null,
@@ -43,15 +29,17 @@ export function JellySpriteProvider({ children }) {
     lassoPath: [],
     marchOffset: 0,
     marchingAntsRaf: null,
+    selection: null,
+    selectionMaskPath: null,
 
-    // Canvas elements (set by useCanvas in M2)
+    // Canvas elements (set by useCanvas)
     canvasEl: null,
     offscreenEl: null,
     tileCanvasEl: null,
     refImgEl: null,
 
-    // Always-current state for closures that can't close over state directly
-    // (drawing engine, renderer). Updated every render — see Provider body below.
+    // Always-current state for closures (drawing engine, renderer).
+    // Updated every render — see JellySpriteBody.
     stateRef: { current: jellySpriteInitialState },
 
     // Playback
@@ -66,7 +54,24 @@ export function JellySpriteProvider({ children }) {
     redoHistory: () => {},
   }).current; // .current so we get the plain object, not the ref wrapper
 
-  // Note: stateRef is now merged in JellySpriteBody as { ...ss, ...ts } to include ToolContext state.
+  // Lazy-init PixelDocument — runs only on the first render (refs.doc starts null)
+  if (!refs.doc) {
+    const doc = new PixelDocument({
+      canvasW: jellySpriteInitialState.canvasW,
+      canvasH: jellySpriteInitialState.canvasH,
+    });
+    // Initialize pixel buffers to null until the canvas mounts
+    doc.pixelBuffers = { [INIT_LAYER.id]: null };
+    doc.frameSnapshots[INIT_FRAME.id] = {
+      layers: jellySpriteInitialState.layers,
+      activeLayerId: INIT_LAYER.id,
+      pixelBuffers: { [INIT_LAYER.id]: null },
+      maskBuffers: {},
+    };
+    refs.doc = doc;
+  }
+
+  // Note: stateRef is merged in JellySpriteBody as { ...ss, ...ts } to include ToolContext state.
 
   return (
     <JellySpriteStoreCtx.Provider value={{ state, dispatch, refs }}>

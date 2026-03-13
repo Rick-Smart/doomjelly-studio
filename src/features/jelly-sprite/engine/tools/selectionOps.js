@@ -15,7 +15,7 @@ function commitFloating(refs, state) {
   if (!sel || !state.movePixels) return;
   const st = refs.stateRef.current;
   const { canvasW: w, canvasH: h } = st;
-  const buf = refs.pixelBuffers[st.activeLayerId];
+  const buf = refs.doc.pixelBuffers[st.activeLayerId];
   if (!buf) return;
   if (state.previewSnap) buf.set(state.previewSnap);
   pasteRegion(buf, state.movePixels, sel.x, sel.y, sel.w, sel.h, w, h);
@@ -30,7 +30,7 @@ function ensureFloatingSelection(refs, state) {
   if (!sel) return false;
   const st = refs.stateRef.current;
   const { canvasW: w, canvasH: h } = st;
-  const buf = refs.pixelBuffers[st.activeLayerId];
+  const buf = refs.doc.pixelBuffers[st.activeLayerId];
   if (!buf) return false;
   state.movePixels = new Uint8ClampedArray(sel.w * sel.h * 4);
   for (let dy = 0; dy < sel.h; dy++) {
@@ -58,7 +58,14 @@ function ensureFloatingSelection(refs, state) {
   return true;
 }
 
-function applyFloatingTransform(refs, state, setSelection, newPixels, newW, newH) {
+function applyFloatingTransform(
+  refs,
+  state,
+  setSelection,
+  newPixels,
+  newW,
+  newH,
+) {
   const sel = refs.selection;
   if (!sel) return;
   state.movePixels = newPixels;
@@ -75,7 +82,7 @@ function applyFloatingTransform(refs, state, setSelection, newPixels, newW, newH
   setSelection(newSel, true); // fromMove=true — keep movePixels alive
   const st = refs.stateRef.current;
   const { canvasW: w, canvasH: h } = st;
-  const buf = refs.pixelBuffers[st.activeLayerId];
+  const buf = refs.doc.pixelBuffers[st.activeLayerId];
   if (buf && state.previewSnap) {
     buf.set(state.previewSnap);
     pasteRegion(buf, newPixels, newSel.x, newSel.y, newW, newH, w, h);
@@ -196,7 +203,7 @@ export function rotateSelArbitrary(refs, state, setSelection, deg) {
   refs.selectionMaskOrigin = { x: newSel.x, y: newSel.y };
   refs.selectionMaskPath = null;
   setSelection(newSel, true);
-  const buf = refs.pixelBuffers[st.activeLayerId];
+  const buf = refs.doc.pixelBuffers[st.activeLayerId];
   if (buf && state.previewSnap) {
     buf.set(state.previewSnap);
     pasteRegion(buf, newBuf, newSel.x, newSel.y, newW, newH, cw, ch);

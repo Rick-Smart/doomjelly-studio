@@ -1,137 +1,53 @@
-import { MAX_HISTORY } from "../jellySprite.constants.js";
 import * as A from "../store/jellySpriteActions.js";
 
 /**
- * Snapshot the current drawing state and push it onto the history stack.
- * Truncates any forward history first (new action invalidates redo).
+ * Dispatch the post-undo/redo React state update and trigger a redraw.
+ * Reads current history state from refs.doc (PixelDocument).
  */
-function pushHistory(refs) {
-  const { pixelBuffers, maskBuffers } = refs;
-  const state = refs.stateRef.current;
-
-  const snapshot = {
-    layers: state.layers, // immutable value — safe to share
-    activeLayerId: state.activeLayerId,
-    pixelBuffers: {},
-    maskBuffers: {},
-  };
-
-  for (const [id, buf] of Object.entries(pixelBuffers)) {
-    snapshot.pixelBuffers[id] = buf ? new Uint8ClampedArray(buf) : null;
-  }
-  for (const [id, buf] of Object.entries(maskBuffers)) {
-    snapshot.maskBuffers[id] = buf ? new Uint8Array(buf) : null;
-  }
-
-  // Truncate forward history
-  refs.historyStack = refs.historyStack.slice(0, refs.historyIndex + 1);
-  refs.historyStack.push(snapshot);
-
-  // Cap at MAX_HISTORY
-  if (refs.historyStack.length > MAX_HISTORY) {
-    refs.historyStack.shift();
-  }
-  refs.historyIndex = refs.historyStack.length - 1;
-}
-
-/**
- * Restore from a given history snapshot. Mutates refs.pixelBuffers /
- * refs.maskBuffers in-place and dispatches RESTORE_HISTORY to update
- * the reducer state (layers + activeLayerId + canUndo/canRedo flags).
- */
-function applySnapshot(refs, snapshot, dispatch) {
-  // Restore pixel buffers
-  for (const [id, buf] of Object.entries(snapshot.pixelBuffers)) {
-    if (buf) {
-      if (!refs.pixelBuffers[id]) {
-        refs.pixelBuffers[id] = new Uint8ClampedArray(buf);
-      } else {
-        refs.pixelBuffers[id].set(buf);
-      }
-    } else {
-      refs.pixelBuffers[id] = null;
-    }
-  }
-
-  // Restore mask buffers
-  for (const [id, buf] of Object.entries(snapshot.maskBuffers)) {
-    if (buf) {
-      if (!refs.maskBuffers[id]) {
-        refs.maskBuffers[id] = new Uint8Array(buf);
-      } else {
-        refs.maskBuffers[id].set(buf);
-      }
-    } else {
-      refs.maskBuffers[id] = null;
-    }
-  }
-
+function syncHistoryToReact(refs, dispatch) {
   dispatch({
     type: A.RESTORE_HISTORY,
     payload: {
-      layers: snapshot.layers,
-      activeLayerId: snapshot.activeLayerId,
-      canUndo: refs.historyIndex > 0,
-      canRedo: refs.historyIndex < refs.historyStack.length - 1,
+      layers: refs.doc.layers,
+      activeLayerId: refs.doc.activeLayerId,
+      canUndo: refs.doc.canUndo,
+      canRedo: refs.doc.canRedo,
     },
   });
-
   refs.redraw?.();
-}
-
-/** Step backwards one history entry. */
-function undoHistory(refs, dispatch) {
-  if (refs.historyIndex <= 0) return;
-  refs.historyIndex--;
-  applySnapshot(refs, refs.historyStack[refs.historyIndex], dispatch);
-}
-
-/** Step forward one history entry. */
-function redoHistory(refs, dispatch) {
-  if (refs.historyIndex >= refs.historyStack.length - 1) return;
-  refs.historyIndex++;
-  applySnapshot(refs, refs.historyStack[refs.historyIndex], dispatch);
 }
 
 /**
  * wireHistoryEngine — attach pushHistory / undoHistory / redoHistory
- * to the refs object and record the initial state as snapshot index 0.
+ * to the refs object. Each delegates to refs.doc (PixelDocument).
  *
- * Call once from useCanvas (after pixel buffers are initialised) or
- * from a dedicated useHistory hook.
+ * Call after pixel buffers are initialised so the initial snapshot captures
+ * valid data.
  */
 export function wireHistoryEngine(refs, dispatch) {
-  refs.pushHistory = () => pushHistory(refs);
-  refs.undoHistory = () => undoHistory(refs, dispatch);
-  refs.redoHistory = () => redoHistory(refs, dispatch);
+  refs.pushHistory = () => refs.doc.pushHistory();
+  refs.undoHistory = () => {
+    if (!refs.doc.undo()) return;
+    syncHistoryToReact(refs, dispatch);
+  };
+  refs.redoHistory = () => {
+    if (!refs.doc.redo()) return;
+    syncHistoryToReact(refs, dispatch);
+  };
 
-  // Seed history with the initial blank state so undo never goes below 0
-  refs.historyStack = [];
-  refs.historyIndex = -1;
-  pushHistory(refs);
+  // Seed initial blank state so canUndo starts false
+  refs.doc.historyStack = [];
+  refs.doc.historyIndex = -1;
+  refs.doc.pushHistory();
 }
 
 /**
- * seedHistory — reset the history stack and push a single initial snapshot
- * using explicit layers/activeLayerId rather than refs.stateRef.current.
+ * seedHistory — reset the PixelDocument history stack using explicit
+ * layers/activeLayerId rather than relying on doc.layers (which may be
+ * stale right after a frame switch, before React re-renders).
  *
- * Use this whenever refs.stateRef.current may be stale (e.g. right after a
- * frame switch, before React has re-rendered and updated stateRef).
+ * Call after frame-switch, canvas resize, or full-state restore.
  */
 export function seedHistory(refs, layers, activeLayerId) {
-  const { pixelBuffers, maskBuffers } = refs;
-  const snapshot = {
-    layers,
-    activeLayerId,
-    pixelBuffers: {},
-    maskBuffers: {},
-  };
-  for (const [id, buf] of Object.entries(pixelBuffers)) {
-    snapshot.pixelBuffers[id] = buf ? new Uint8ClampedArray(buf) : null;
-  }
-  for (const [id, buf] of Object.entries(maskBuffers)) {
-    snapshot.maskBuffers[id] = buf ? new Uint8Array(buf) : null;
-  }
-  refs.historyStack = [snapshot];
-  refs.historyIndex = 0;
+  refs.doc.seedHistory(layers, activeLayerId);
 }

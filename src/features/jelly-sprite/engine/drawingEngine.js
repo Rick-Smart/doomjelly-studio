@@ -52,8 +52,8 @@ function makeBrushCtx(refs) {
   const editingMaskId = st.editingMaskId ?? null;
 
   return {
-    buf: refs.pixelBuffers[activeLayerId] ?? null,
-    maskBuf: editingMaskId ? refs.maskBuffers[editingMaskId] : null,
+    buf: refs.doc.pixelBuffers[activeLayerId] ?? null,
+    maskBuf: editingMaskId ? refs.doc.maskBuffers[editingMaskId] : null,
     editingMaskId,
     brushType: st.brushType,
     brushSize: st.brushSize,
@@ -157,7 +157,7 @@ export function createDrawingEngine(refs) {
       );
     } else if (tool === "picker") {
       const activeLayerId = st.activeLayerId;
-      const buf = refs.pixelBuffers[activeLayerId];
+      const buf = refs.doc.pixelBuffers[activeLayerId];
       if (!buf) return null;
       const [r, g, b, a] = getPixel(buf, x, y, st.canvasW);
       if (a > 0) return rgbaToHex(r, g, b); // caller picks the colour
@@ -180,7 +180,7 @@ export function createDrawingEngine(refs) {
   function previewShape(x0, y0, x1, y1) {
     if (!state.previewSnap) return;
     const st = refs.stateRef.current;
-    const buf = refs.pixelBuffers[st.activeLayerId];
+    const buf = refs.doc.pixelBuffers[st.activeLayerId];
     if (!buf) return;
     buf.set(state.previewSnap);
 
@@ -245,7 +245,7 @@ export function createDrawingEngine(refs) {
       const sel = refs.selection;
       if (sel) {
         moveOrigin = { x, y, selX: sel.x, selY: sel.y };
-        const buf = refs.pixelBuffers[st.activeLayerId];
+        const buf = refs.doc.pixelBuffers[st.activeLayerId];
         if (buf && !state.movePixels) {
           // First drag: lift pixels out of the canvas buffer.
           state.movePixels = new Uint8ClampedArray(sel.w * sel.h * 4);
@@ -312,7 +312,7 @@ export function createDrawingEngine(refs) {
       if (tool === "select-rect" && selMode === "replace")
         refs.selectionMask = null;
       refs.selectionPreviewRect = null; // clear stale add/subtract preview
-      const buf = refs.pixelBuffers[st.activeLayerId];
+      const buf = refs.doc.pixelBuffers[st.activeLayerId];
       if (buf) state.previewSnap = new Uint8ClampedArray(buf);
     }
 
@@ -343,7 +343,7 @@ export function createDrawingEngine(refs) {
 
     // Magic wand
     if (tool === "select-wand") {
-      const buf = refs.pixelBuffers[st.activeLayerId];
+      const buf = refs.doc.pixelBuffers[st.activeLayerId];
       if (buf) {
         const tol = st.wandTolerance ?? 0;
         const wandFn =
@@ -407,7 +407,7 @@ export function createDrawingEngine(refs) {
         x: moveOrigin.selX + ddx,
         y: moveOrigin.selY + ddy,
       };
-      const buf = refs.pixelBuffers[st.activeLayerId];
+      const buf = refs.doc.pixelBuffers[st.activeLayerId];
       if (buf && state.previewSnap) {
         buf.set(state.previewSnap);
         pasteRegion(
@@ -659,7 +659,7 @@ export function createDrawingEngine(refs) {
     if (!isDrawing) return;
     const st = refs.stateRef.current;
     if (["line", "rect", "ellipse"].includes(st.tool) && state.previewSnap) {
-      const buf = refs.pixelBuffers[st.activeLayerId];
+      const buf = refs.doc.pixelBuffers[st.activeLayerId];
       if (buf) buf.set(state.previewSnap);
       state.previewSnap = null;
       refs.redraw?.();

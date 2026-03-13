@@ -189,6 +189,14 @@ function JellySpriteBody({ onRegisterCollector }) {
   isPlayingRef.current = ss.isPlaying;
   // playbackFrameIdxRef is only advanced by startPlayback — not synced to store
 
+  // Keep PixelDocument metadata in sync with React state (every render).
+  // saveCurrentFrame() and switchFrame() use this.layers / this.frames etc.,
+  // so they must reflect the latest Redux state before any frame operation.
+  refs.doc.layers = layersRef.current;
+  refs.doc.activeLayerId = ss.activeLayerId;
+  refs.doc.frames = framesRef.current;
+  refs.doc.activeFrameIdx = ss.activeFrameIdx;
+
   // playIntervalRef: holds setInterval id for playback (not in React state)
   const playIntervalRef = useRef(null);
 
@@ -223,68 +231,44 @@ function JellySpriteBody({ onRegisterCollector }) {
   redrawRef.current = () => refs.redraw?.();
   const redraw = () => refs.redraw?.();
 
-  // Frame snapshot store (M6)
-  // refs.frameSnapshots: { [frameId]: { layers, activeLayerId, pixelBuffers, maskBuffers } }
-  // Initialised lazily the first time a frame is saved or switched away from.
-  // We alias frameDataRef → refs.frameSnapshots so export helpers keep working.
-  const frameDataRef = {
-    get current() {
-      return refs.frameSnapshots;
-    },
-    set current(val) {
-      refs.frameSnapshots = val;
-    },
-  };
-
   // Frame helpers
   function saveCurrentFrameToSnapshot() {
-    const frameId = framesRef.current[activeFrameIdxRef.current]?.id;
-    if (!frameId) return;
-    refs.frameSnapshots[frameId] = {
-      layers: [...layersRef.current],
-      activeLayerId: activeLayerIdRef.current,
-      // shallow copy of the map — the Uint8ClampedArrays themselves are shared
-      pixelBuffers: { ...refs.pixelBuffers },
-      maskBuffers: { ...refs.maskBuffers },
-      // per-frame undo/redo stack (shallow copy — entries are immutable)
-      historyStack: refs.historyStack,
-      historyIndex: refs.historyIndex,
-    };
+    // Sync PixelDocument metadata before saving (refs already synced above)
+    refs.doc.saveCurrentFrame();
   }
   function loadFrameFromSnapshot(frameId) {
-    const snap = refs.frameSnapshots[frameId];
+    const snap = refs.doc.frameSnapshots[frameId];
     if (!snap) {
       // New frame — initialise blank
       const newLayer = makeLayer("Layer 1");
       const pb = {
         [newLayer.id]: new Uint8ClampedArray(canvasW * canvasH * 4),
       };
-      refs.frameSnapshots[frameId] = {
+      refs.doc.frameSnapshots[frameId] = {
         layers: [newLayer],
         activeLayerId: newLayer.id,
         pixelBuffers: pb,
         maskBuffers: {},
-        pixelData: pb,
       };
-      refs.pixelBuffers = pb;
-      refs.maskBuffers = {};
+      refs.doc.pixelBuffers = pb;
+      refs.doc.maskBuffers = {};
       pixelsRef.current = pb[newLayer.id];
       sd({ type: A.SET_LAYERS, payload: [newLayer] });
       sd({ type: A.SET_ACTIVE_LAYER, payload: newLayer.id });
-      seedHistory(refs, [newLayer], newLayer.id);
+      refs.doc.seedHistory([newLayer], newLayer.id);
       return;
     }
-    refs.pixelBuffers = snap.pixelBuffers;
-    refs.maskBuffers = snap.maskBuffers ?? {};
-    pixelsRef.current = refs.pixelBuffers[snap.activeLayerId] ?? null;
+    refs.doc.pixelBuffers = snap.pixelBuffers;
+    refs.doc.maskBuffers = snap.maskBuffers ?? {};
+    pixelsRef.current = refs.doc.pixelBuffers[snap.activeLayerId] ?? null;
     sd({ type: A.SET_LAYERS, payload: [...snap.layers] });
     sd({ type: A.SET_ACTIVE_LAYER, payload: snap.activeLayerId });
     // Restore per-frame history; seed fresh (with correct layers) if none saved
     if (snap.historyStack?.length) {
-      refs.historyStack = snap.historyStack;
-      refs.historyIndex = snap.historyIndex;
+      refs.doc.historyStack = snap.historyStack;
+      refs.doc.historyIndex = snap.historyIndex;
     } else {
-      seedHistory(refs, snap.layers, snap.activeLayerId);
+      refs.doc.seedHistory(snap.layers, snap.activeLayerId);
     }
   }
 
@@ -297,9 +281,11 @@ function JellySpriteBody({ onRegisterCollector }) {
     const ctx2 = tmp.getContext("2d");
     const isActive =
       framesRef.current[activeFrameIdxRef.current]?.id === frameId;
-    const snap = refs.frameSnapshots[frameId];
+    const snap = refs.doc.frameSnapshots[frameId];
     const renderLayers = isActive ? layersRef.current : (snap?.layers ?? []);
-    const renderPB = isActive ? refs.pixelBuffers : (snap?.pixelBuffers ?? {});
+    const renderPB = isActive
+      ? refs.doc.pixelBuffers
+      : (snap?.pixelBuffers ?? {});
     renderLayers.forEach((layer) => {
       if (!layer.visible) return;
       const data = renderPB[layer.id];
@@ -335,9 +321,10 @@ function JellySpriteBody({ onRegisterCollector }) {
       type: A.SWITCH_FRAME,
       payload: {
         newIdx,
-        layers: refs.frameSnapshots[newFrameId]?.layers ?? layersRef.current,
+        layers:
+          refs.doc.frameSnapshots[newFrameId]?.layers ?? layersRef.current,
         activeLayerId:
-          refs.frameSnapshots[newFrameId]?.activeLayerId ??
+          refs.doc.frameSnapshots[newFrameId]?.activeLayerId ??
           activeLayerIdRef.current,
       },
     });
@@ -349,29 +336,28 @@ function JellySpriteBody({ onRegisterCollector }) {
     const newFrame = makeFrame(`Frame ${framesRef.current.length + 1}`);
     const newLayer = makeLayer("Layer 1");
     const pb = { [newLayer.id]: new Uint8ClampedArray(canvasW * canvasH * 4) };
-    refs.frameSnapshots[newFrame.id] = {
+    refs.doc.frameSnapshots[newFrame.id] = {
       layers: [newLayer],
       activeLayerId: newLayer.id,
       pixelBuffers: pb,
       maskBuffers: {},
-      pixelData: pb,
     };
-    refs.pixelBuffers = pb;
-    refs.maskBuffers = {};
+    refs.doc.pixelBuffers = pb;
+    refs.doc.maskBuffers = {};
     pixelsRef.current = pb[newLayer.id];
     sd({ type: A.ADD_FRAME, payload: { frame: newFrame, layer: newLayer } });
-    seedHistory(refs, [newLayer], newLayer.id);
+    refs.doc.seedHistory([newLayer], newLayer.id);
     refs.redraw?.();
   }
 
   function duplicateFrame(idx) {
     saveCurrentFrameToSnapshot();
     const srcId = framesRef.current[idx]?.id;
-    const src = refs.frameSnapshots[srcId] ?? {
+    const src = refs.doc.frameSnapshots[srcId] ?? {
       layers: layersRef.current,
       activeLayerId: activeLayerIdRef.current,
-      pixelBuffers: refs.pixelBuffers,
-      maskBuffers: refs.maskBuffers,
+      pixelBuffers: refs.doc.pixelBuffers,
+      maskBuffers: refs.doc.maskBuffers,
     };
     const newFrame = makeFrame(framesRef.current[idx].name + " dup");
     const newPB = {};
@@ -391,15 +377,14 @@ function JellySpriteBody({ onRegisterCollector }) {
       return dup;
     });
     const newActiveLayerId = newLayers[newLayers.length - 1].id;
-    refs.frameSnapshots[newFrame.id] = {
+    refs.doc.frameSnapshots[newFrame.id] = {
       layers: newLayers,
       activeLayerId: newActiveLayerId,
       pixelBuffers: newPB,
       maskBuffers: newMB,
-      pixelData: newPB,
     };
-    refs.pixelBuffers = newPB;
-    refs.maskBuffers = newMB;
+    refs.doc.pixelBuffers = newPB;
+    refs.doc.maskBuffers = newMB;
     pixelsRef.current = newPB[newActiveLayerId];
     const newIdx = idx + 1;
     sd({
@@ -424,7 +409,7 @@ function JellySpriteBody({ onRegisterCollector }) {
   function deleteFrame(idx) {
     if (framesRef.current.length <= 1) return;
     const delId = framesRef.current[idx]?.id;
-    delete refs.frameSnapshots[delId];
+    delete refs.doc.frameSnapshots[delId];
     const remaining = framesRef.current.filter((_, i) => i !== idx);
     const newIdx = Math.min(idx, remaining.length - 1);
     loadFrameFromSnapshot(remaining[newIdx].id);
@@ -435,10 +420,10 @@ function JellySpriteBody({ onRegisterCollector }) {
         remainingFrames: remaining,
         newIdx,
         newLayers:
-          refs.frameSnapshots[remaining[newIdx].id]?.layers ??
+          refs.doc.frameSnapshots[remaining[newIdx].id]?.layers ??
           layersRef.current,
         newActiveLayerId:
-          refs.frameSnapshots[remaining[newIdx].id]?.activeLayerId ??
+          refs.doc.frameSnapshots[remaining[newIdx].id]?.activeLayerId ??
           activeLayerIdRef.current,
       },
     });
@@ -488,10 +473,10 @@ function JellySpriteBody({ onRegisterCollector }) {
     refs.pushHistory?.();
     updateThumbnailForActiveFrame();
     // Update canUndo/canRedo in reducer so buttons reflect current stack state
-    sd({ type: A.SET_CAN_UNDO, payload: refs.historyIndex > 0 });
+    sd({ type: A.SET_CAN_UNDO, payload: refs.doc.historyIndex > 0 });
     sd({
       type: A.SET_CAN_REDO,
-      payload: refs.historyIndex < refs.historyStack.length - 1,
+      payload: refs.doc.historyIndex < refs.doc.historyStack.length - 1,
     });
   };
   // Wire onStrokeComplete so the drawing engine triggers history + thumbnail +
@@ -577,7 +562,7 @@ function JellySpriteBody({ onRegisterCollector }) {
   // Layer actions (M5: dispatch + mutate pixel buffers directly)
   function addLayer() {
     const newLayer = makeLayer(`Layer ${ss.layers.length + 1}`);
-    refs.pixelBuffers[newLayer.id] = new Uint8ClampedArray(
+    refs.doc.pixelBuffers[newLayer.id] = new Uint8ClampedArray(
       canvasW * canvasH * 4,
     );
     sd({ type: A.ADD_LAYER, payload: { layer: newLayer } });
@@ -585,8 +570,8 @@ function JellySpriteBody({ onRegisterCollector }) {
   function deleteLayer(id) {
     if (ss.layers.length <= 1) return;
     const remaining = ss.layers.filter((l) => l.id !== id);
-    delete refs.pixelBuffers[id];
-    delete refs.maskBuffers[id];
+    delete refs.doc.pixelBuffers[id];
+    delete refs.doc.maskBuffers[id];
     const newActive =
       id === ss.activeLayerId
         ? remaining[remaining.length - 1].id
@@ -604,13 +589,13 @@ function JellySpriteBody({ onRegisterCollector }) {
     const src = ss.layers.find((l) => l.id === id);
     if (!src) return;
     const dup = makeLayer(src.name + " copy");
-    const srcData = refs.pixelBuffers[id];
-    refs.pixelBuffers[dup.id] = srcData
+    const srcData = refs.doc.pixelBuffers[id];
+    refs.doc.pixelBuffers[dup.id] = srcData
       ? new Uint8ClampedArray(srcData)
       : new Uint8ClampedArray(canvasW * canvasH * 4);
-    const srcMask = refs.maskBuffers[id];
+    const srcMask = refs.doc.maskBuffers[id];
     if (srcMask) {
-      refs.maskBuffers[dup.id] = new Uint8Array(srcMask);
+      refs.doc.maskBuffers[dup.id] = new Uint8Array(srcMask);
       dup.hasMask = true;
     }
     const insertAfterIndex = ss.layers.findIndex((l) => l.id === id);
@@ -623,8 +608,8 @@ function JellySpriteBody({ onRegisterCollector }) {
     const idx = ss.layers.findIndex((l) => l.id === id);
     if (idx <= 0) return;
     const below = ss.layers[idx - 1];
-    const topData = refs.pixelBuffers[id];
-    const botData = refs.pixelBuffers[below.id];
+    const topData = refs.doc.pixelBuffers[id];
+    const botData = refs.doc.pixelBuffers[below.id];
     if (!topData || !botData) return;
     const topLayer = ss.layers[idx];
     for (let i = 0; i < botData.length; i += 4) {
@@ -646,7 +631,7 @@ function JellySpriteBody({ onRegisterCollector }) {
       );
       botData[i + 3] = Math.round(outA * 255);
     }
-    delete refs.pixelBuffers[id];
+    delete refs.doc.pixelBuffers[id];
     pushHistoryEntryStubRef.current();
     refs.redraw?.();
     sd({
@@ -658,7 +643,7 @@ function JellySpriteBody({ onRegisterCollector }) {
     const flat = new Uint8ClampedArray(canvasW * canvasH * 4);
     ss.layers.forEach((layer) => {
       if (!layer.visible) return;
-      const data = refs.pixelBuffers[layer.id];
+      const data = refs.doc.pixelBuffers[layer.id];
       if (!data) return;
       for (let i = 0; i < flat.length; i += 4) {
         const ta = (data[i + 3] / 255) * layer.opacity;
@@ -676,8 +661,8 @@ function JellySpriteBody({ onRegisterCollector }) {
       }
     });
     const baseLayer = makeLayer("Flattened");
-    refs.pixelBuffers = { [baseLayer.id]: flat };
-    refs.maskBuffers = {};
+    refs.doc.pixelBuffers = { [baseLayer.id]: flat };
+    refs.doc.maskBuffers = {};
     pushHistoryEntryStubRef.current();
     refs.redraw?.();
     sd({ type: A.FLATTEN_ALL, payload: { newLayer: baseLayer } });
@@ -696,12 +681,12 @@ function JellySpriteBody({ onRegisterCollector }) {
       refs.redraw?.();
   }
   function addLayerMask(layerId) {
-    refs.maskBuffers[layerId] = new Uint8Array(canvasW * canvasH).fill(255);
+    refs.doc.maskBuffers[layerId] = new Uint8Array(canvasW * canvasH).fill(255);
     sd({ type: A.ADD_LAYER_MASK, payload: layerId });
     refs.redraw?.();
   }
   function removeLayerMask(layerId) {
-    delete refs.maskBuffers[layerId];
+    delete refs.doc.maskBuffers[layerId];
     sd({ type: A.REMOVE_LAYER_MASK, payload: layerId });
     refs.redraw?.();
   }
@@ -716,7 +701,7 @@ function JellySpriteBody({ onRegisterCollector }) {
       isPlayingRef,
       playbackFrameIdxRef,
       onionSkinning,
-      frameSnapshots: refs.frameSnapshots,
+      frameSnapshots: refs.doc.frameSnapshots,
     };
   }); // no deps — runs every render so values stay current
 
@@ -731,13 +716,13 @@ function JellySpriteBody({ onRegisterCollector }) {
 
   function clearCanvas() {
     const activeLayerId = refs.stateRef.current.activeLayerId;
-    const buf = refs.pixelBuffers[activeLayerId];
+    const buf = refs.doc.pixelBuffers[activeLayerId];
     if (buf) {
       buf.fill(0);
       refs.pushHistory?.();
       refs.redraw?.();
       updateThumbnailForActiveFrame();
-      sd({ type: A.SET_CAN_UNDO, payload: refs.historyIndex > 0 });
+      sd({ type: A.SET_CAN_UNDO, payload: refs.doc.historyIndex > 0 });
       sd({ type: A.SET_CAN_REDO, payload: false });
       return;
     }
@@ -837,7 +822,7 @@ function JellySpriteBody({ onRegisterCollector }) {
       // dimensions (canvasW/canvasH in the closure are still the old values
       // at this point; rW/rH come from the restore payload).
       for (const frame of restore.frames) {
-        const snap = refs.frameSnapshots[frame.id];
+        const snap = refs.doc.frameSnapshots[frame.id];
         if (!snap) continue;
         const tmp = document.createElement("canvas");
         tmp.width = rW;
@@ -897,11 +882,11 @@ function JellySpriteBody({ onRegisterCollector }) {
     for (const l of ss.layers) {
       freshBuffers[l.id] = new Uint8ClampedArray(size);
     }
-    refs.pixelBuffers = freshBuffers;
+    refs.doc.pixelBuffers = freshBuffers;
 
     if (pendingResizeDataRef.current) {
       for (const [lid, data] of Object.entries(pendingResizeDataRef.current)) {
-        if (refs.pixelBuffers[lid]) refs.pixelBuffers[lid].set(data);
+        if (refs.doc.pixelBuffers[lid]) refs.doc.pixelBuffers[lid].set(data);
       }
       pendingResizeDataRef.current = null;
     }
@@ -909,23 +894,22 @@ function JellySpriteBody({ onRegisterCollector }) {
     // Apply resized mask buffers if a resize just happened
     if (pendingResizeMasksRef.current) {
       for (const [lid, data] of Object.entries(pendingResizeMasksRef.current)) {
-        refs.maskBuffers[lid] = data; // data is already a correctly-sized Uint8Array
+        refs.doc.maskBuffers[lid] = data; // data is already a correctly-sized Uint8Array
       }
       pendingResizeMasksRef.current = null;
     }
 
     pixelsRef.current =
-      refs.pixelBuffers[ss.activeLayerId] ??
-      (refs.pixelBuffers[ss.activeLayerId] = new Uint8ClampedArray(size));
+      refs.doc.pixelBuffers[ss.activeLayerId] ??
+      (refs.doc.pixelBuffers[ss.activeLayerId] = new Uint8ClampedArray(size));
 
     const activeFrameId = framesRef.current[activeFrameIdxRef.current]?.id;
     if (activeFrameId) {
-      refs.frameSnapshots[activeFrameId] = {
+      refs.doc.frameSnapshots[activeFrameId] = {
         layers: [...layersRef.current],
         activeLayerId: activeLayerIdRef.current,
-        pixelBuffers: refs.pixelBuffers,
-        maskBuffers: refs.maskBuffers,
-        pixelData: refs.pixelBuffers,
+        pixelBuffers: refs.doc.pixelBuffers,
+        maskBuffers: refs.doc.maskBuffers,
       };
     }
 
@@ -959,12 +943,12 @@ function JellySpriteBody({ onRegisterCollector }) {
 
   // Sync pixelsRef when active layer changes
   useEffect(() => {
-    if (!refs.pixelBuffers[activeLayerId]) {
-      refs.pixelBuffers[activeLayerId] = new Uint8ClampedArray(
+    if (!refs.doc.pixelBuffers[activeLayerId]) {
+      refs.doc.pixelBuffers[activeLayerId] = new Uint8ClampedArray(
         canvasW * canvasH * 4,
       );
     }
-    pixelsRef.current = refs.pixelBuffers[activeLayerId];
+    pixelsRef.current = refs.doc.pixelBuffers[activeLayerId];
     redraw();
   }, [activeLayerId]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -1187,7 +1171,7 @@ function JellySpriteBody({ onRegisterCollector }) {
   function changeSize(nw, nh) {
     if (nw === canvasW && nh === canvasH) return;
     const hasContent =
-      (refs.historyStack?.length ?? 0) > 1 ||
+      (refs.doc.historyStack?.length ?? 0) > 1 ||
       pixelsRef.current?.some((v) => v !== 0);
     if (
       hasContent &&
@@ -1211,7 +1195,7 @@ function JellySpriteBody({ onRegisterCollector }) {
     const offX = Math.round((nw - canvasW) * ax);
     const offY = Math.round((nh - canvasH) * ay);
     const resized = {};
-    for (const [lid, data] of Object.entries(refs.pixelBuffers)) {
+    for (const [lid, data] of Object.entries(refs.doc.pixelBuffers)) {
       const buf = new Uint8ClampedArray(nw * nh * 4);
       for (let y = 0; y < canvasH; y++) {
         for (let x = 0; x < canvasW; x++) {
@@ -1232,7 +1216,7 @@ function JellySpriteBody({ onRegisterCollector }) {
 
     // Resize mask buffers for the current frame (single-channel Uint8Array, one byte per pixel)
     const resizedMasks = {};
-    for (const [lid, data] of Object.entries(refs.maskBuffers)) {
+    for (const [lid, data] of Object.entries(refs.doc.maskBuffers)) {
       const buf = new Uint8Array(nw * nh);
       for (let y = 0; y < canvasH; y++) {
         for (let x = 0; x < canvasW; x++) {
@@ -1277,14 +1261,14 @@ function JellySpriteBody({ onRegisterCollector }) {
       }
       return buf;
     }
-    for (const [fid, snap] of Object.entries(refs.frameSnapshots ?? {})) {
+    for (const [fid, snap] of Object.entries(refs.doc.frameSnapshots ?? {})) {
       const rpx = {};
       for (const [lid, data] of Object.entries(snap.pixelBuffers ?? {}))
         rpx[lid] = resizeBuffer(data);
       const rmsk = {};
       for (const [lid, data] of Object.entries(snap.maskBuffers ?? {}))
         rmsk[lid] = resizeMaskBuffer(data);
-      refs.frameSnapshots[fid] = {
+      refs.doc.frameSnapshots[fid] = {
         ...snap,
         pixelBuffers: rpx,
         maskBuffers: rmsk,
@@ -1314,20 +1298,20 @@ function JellySpriteBody({ onRegisterCollector }) {
     }
 
     // Crop active frame pixel + mask buffers
-    for (const lid of Object.keys(refs.pixelBuffers))
-      refs.pixelBuffers[lid] = cropBuf(refs.pixelBuffers[lid]);
-    for (const [lid, buf] of Object.entries(refs.maskBuffers ?? {}))
-      if (buf) refs.maskBuffers[lid] = cropBuf(buf);
+    for (const lid of Object.keys(refs.doc.pixelBuffers))
+      refs.doc.pixelBuffers[lid] = cropBuf(refs.doc.pixelBuffers[lid]);
+    for (const [lid, buf] of Object.entries(refs.doc.maskBuffers ?? {}))
+      if (buf) refs.doc.maskBuffers[lid] = cropBuf(buf);
 
     // Crop all stored frame snapshots so frame-switching stays consistent
-    for (const [fid, snap] of Object.entries(refs.frameSnapshots ?? {})) {
+    for (const [fid, snap] of Object.entries(refs.doc.frameSnapshots ?? {})) {
       const rpx = {};
       for (const [lid, data] of Object.entries(snap.pixelBuffers ?? {}))
         rpx[lid] = cropBuf(data);
       const rmsk = {};
       for (const [lid, data] of Object.entries(snap.maskBuffers ?? {}))
         rmsk[lid] = data ? cropBuf(data) : data;
-      refs.frameSnapshots[fid] = {
+      refs.doc.frameSnapshots[fid] = {
         ...snap,
         pixelBuffers: rpx,
         maskBuffers: rmsk,

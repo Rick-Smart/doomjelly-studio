@@ -4,7 +4,7 @@ export function copySelection(refs) {
   const sel = refs.selection;
   if (!sel) return;
   const st = refs.stateRef.current;
-  const buf = refs.pixelBuffers[st.activeLayerId];
+  const buf = refs.doc.pixelBuffers[st.activeLayerId];
   if (!buf) return;
   refs.clipboard = copyRegion(
     buf,
@@ -22,7 +22,7 @@ export function copySelection(refs) {
 export function pasteSelection(refs, setSelection) {
   if (!refs.clipboard) return;
   const st = refs.stateRef.current;
-  const buf = refs.pixelBuffers[st.activeLayerId];
+  const buf = refs.doc.pixelBuffers[st.activeLayerId];
   if (!buf) return;
   const { canvasW: w, canvasH: h } = st;
   const px = Math.max(0, Math.floor(w / 2 - refs.clipboardW / 2));
@@ -46,7 +46,7 @@ export function deleteSelectionContents(refs) {
   const sel = refs.selection;
   if (!sel) return;
   const st = refs.stateRef.current;
-  const buf = refs.pixelBuffers[st.activeLayerId];
+  const buf = refs.doc.pixelBuffers[st.activeLayerId];
   if (!buf) return;
   const { canvasW: w, canvasH: h } = st;
   for (let dy = 0; dy < sel.h; dy++) {
