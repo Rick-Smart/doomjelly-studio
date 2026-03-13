@@ -19,8 +19,8 @@
 | Sprint 6  | Unified Document Model             | ✅ Complete (`5be735c`) |
 | Sprint 7  | JellySprite PixelDocument Refactor | ✅ Complete (`15ee57a`) |
 | Sprint 8a | Rule Violation Fixes               | ✅ Complete (`dc32ace`) |
-| Sprint 8  | TypeScript Migration               | ✅ Complete (TBD)       |
-| Sprint 9  | Zustand State Management           | 🔲 Not started          |
+| Sprint 8  | TypeScript Migration               | ✅ Complete (`d302053`) |
+| Sprint 9  | Zustand State Management           | ✅ Complete (TBD)       |
 
 ---
 
@@ -1458,7 +1458,7 @@ signatures typed; base64 helpers typed; `tsc --noEmit` passes with zero errors.
 
 ---
 
-## 🔲 Sprint 9 — Zustand State Management
+## ✅ Sprint 9 — Zustand State Management
 
 ### Why Zustand, and why after TypeScript
 
@@ -1529,15 +1529,60 @@ export const usePixelDocumentStore = create((set, get) => ({
 Identity fields (`id`, `name`, `projectId`, `spriteId`) become a Zustand slice.
 Remove the `DocumentProvider` from `App.jsx`.
 
+### Sprint 9 — What was done
+
+**Governance decisions:**
+
+- `usePixelDocumentStore` (spec 9c) deferred to Sprint 10 — JellySpriteProvider is feature-internal,
+  `refs.doc` is already non-React (plain class). Cost/risk of this migration outweighs the benefit at
+  this stage.
+- Order change from spec: DocumentStore created before AnimatorStore so AnimatorStore can call
+  `useDocumentStore.getState()` for cross-store animation→tags sync with no bridge component.
+
+**Files created:**
+
+- `src/features/jelly-sprite/store/useToolStore.js` — Zustand + persist, wraps `toolReducer`,
+  persists 20 tool fields to `dj-tool-state` in localStorage.
+- `src/contexts/useDocumentStore.js` — Zustand + persist, nested `state` field preserving
+  `useDocument()` API, version 1 with custom merge, persists slim identity only.
+- `src/contexts/useAnimatorStore.js` — Zustand (no persist), nested `state` field preserving
+  `useAnimator()` API, full undo/redo history (max 50 entries), cross-store sync for
+  animations→tags via `useDocumentStore.getState().dispatch(...)`.
+
+**Files modified:**
+
+- `src/features/jelly-sprite/store/ToolContext.jsx` — removed React imports + localStorage logic;
+  `ToolProvider` is a no-op; `useToolContext()` is a backward-compat shim over `useToolStore()`.
+- `src/contexts/AnimatorContext.jsx` — exported `animatorReducer`; removed Provider + undo/redo
+  machinery; `useAnimator()` re-exported from `useAnimatorStore.js`.
+- `src/contexts/DocumentContext.jsx` — exported `documentReducer`; removed Provider + localStorage
+  effect; `useDocument()` re-exported from `useDocumentStore.js`.
+- `src/App.jsx` — removed `DocumentProvider` and `AnimatorProvider` wrappers (now no-ops).
+- `src/features/jelly-sprite/JellySprite.jsx` — removed `ToolProvider` wrapper (now a no-op).
+
+**Rule audit:**
+
+- Rule 11 (one store per domain): ✅ — `useToolStore`, `useDocumentStore`, `useAnimatorStore`
+- Rule 13 (cross-store via getState, not hooks): ✅ — AnimatorStore uses `useDocumentStore.getState()`
+- Rule 15 (no blobs in persist): ✅ — DocumentStore persists only slim identity; ToolStore excludes image data
+- Rule 16 (undo coverage): ✅ — UNDOABLE_ACTIONS matches original; sheet operations excluded
+  because sheets contain large binary dataUrls
+- Rule 17 (backward compat): ✅ — all 13 animator consumers, 8 document consumers, 2 tool consumers
+  continue to work without modification via alias exports
+- Rule 18 (build clean): ✅ — `npm run build` 236 modules, 0 errors
+
 ### Sprint 9 commit order
 
 ```
 1. Install zustand
-2. useToolStore (replace ToolContext)
-3. useAnimatorStore (replace AnimatorContext + useAnimator hook)
-4. usePixelDocumentStore (wrap PixelDocument)
-5. useDocumentStore (replace DocumentContext)
-6. Remove all Provider wrappers from App.jsx
-7. Verify: npm run build + full smoke test
-8. Commit: "refactor: Sprint 9 — Zustand state management"
+2. useToolStore (replace ToolContext internal logic)
+3. ToolContext — no-op Provider, useToolContext shim
+4. useDocumentStore (replace DocumentContext internal logic)
+5. useAnimatorStore (replace AnimatorContext + animation→tags cross-store sync)
+6. AnimatorContext — no-op Provider, re-export useAnimator
+7. DocumentContext — no-op Provider, re-export useDocument
+8. App.jsx — remove DocumentProvider + AnimatorProvider wrappers
+9. JellySprite.jsx — remove ToolProvider wrapper
+10. Verify: npm run build ✅ — 0 errors
+11. Commit: "refactor: Sprint 9 — Zustand state management"
 ```

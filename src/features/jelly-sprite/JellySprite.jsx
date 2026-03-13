@@ -5,7 +5,7 @@ import * as A from "./store/jellySpriteActions";
 import { makeLayer, makeFrame, MAX_ZOOM } from "./jellySprite.constants";
 import { JellySpriteCtx } from "./JellySpriteContext";
 import { JellySpriteProvider } from "./store/JellySpriteProvider";
-import { ToolProvider, useToolContext } from "./store/ToolContext";
+import { useToolContext } from "./store/ToolContext";
 import { useJellySpriteStore } from "./store/useJellySpriteStore";
 import { LeftToolbar } from "./panels/LeftToolbar";
 import { CanvasArea } from "./panels/CanvasArea";
@@ -28,11 +28,9 @@ const CURSOR_PRECISION = `url("data:image/svg+xml,${_cursorSvg}") 12 12, crossha
 // function so the workspace can pull the full state before saving.
 export function JellySprite({ onRegisterCollector }) {
   return (
-    <ToolProvider>
-      <JellySpriteProvider>
-        <JellySpriteBody onRegisterCollector={onRegisterCollector} />
-      </JellySpriteProvider>
-    </ToolProvider>
+    <JellySpriteProvider>
+      <JellySpriteBody onRegisterCollector={onRegisterCollector} />
+    </JellySpriteProvider>
   );
 }
 

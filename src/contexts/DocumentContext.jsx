@@ -1,18 +1,7 @@
-import {
-  createContext,
-  useContext,
-  useReducer,
-  useEffect,
-  useState,
-  useCallback,
-} from "react";
-
-// ---------------------------------------------------------------------------
-// Persists only slim identity — no blobs, no pixel data.
-// Uses the same key as the old ProjectContext so existing sessions are
-// preserved after the migration.
-// ---------------------------------------------------------------------------
-const STORAGE_KEY = "dj-project-identity";
+// DocumentContext.jsx
+// Provider is a no-op since Sprint 9 — state lives in useDocumentStore.
+// Reducer + initial state are exported for the store to import.
+// useDocument() is re-exported from useDocumentStore for backward compat.
 
 // ---------------------------------------------------------------------------
 // Initial state
@@ -40,9 +29,9 @@ export const initialDocumentState = {
 };
 
 // ---------------------------------------------------------------------------
-// Reducer
+// Reducer — exported for use by useDocumentStore (Sprint 9)
 // ---------------------------------------------------------------------------
-function reducer(state, action) {
+export function documentReducer(state, action) {
   switch (action.type) {
     // LOAD_DOCUMENT (canonical) — LOAD_PROJECT is a backward-compat alias
     case "LOAD_DOCUMENT":
@@ -105,77 +94,11 @@ function reducer(state, action) {
 }
 
 // ---------------------------------------------------------------------------
-// Context + Provider
+// Provider (no-op) + hook re-export — Sprint 9
 // ---------------------------------------------------------------------------
-const DocumentContext = createContext(null);
-
+/** @deprecated Wrap is a no-op since Sprint 9; state lives in useDocumentStore. */
 export function DocumentProvider({ children }) {
-  const [state, rawDispatch] = useReducer(
-    reducer,
-    initialDocumentState,
-    (init) => {
-      try {
-        const saved = localStorage.getItem(STORAGE_KEY);
-        if (!saved) return init;
-        // Merge only slim identity fields — never rehydrate blobs from storage
-        const { id, name, projectId, spriteId } = JSON.parse(saved);
-        return { ...init, id, name, projectId, spriteId };
-      } catch {
-        return init;
-      }
-    },
-  );
-
-  const [isDirty, setIsDirty] = useState(false);
-
-  const dispatch = useCallback((action) => {
-    if (
-      action.type === "SET_DOCUMENT_NAME" ||
-      action.type === "SET_PROJECT_NAME"
-    ) {
-      setIsDirty(true);
-    } else if (
-      action.type === "LOAD_DOCUMENT" ||
-      action.type === "LOAD_PROJECT" ||
-      action.type === "RESET_DOCUMENT" ||
-      action.type === "RESET_PROJECT"
-    ) {
-      setIsDirty(false);
-    }
-    rawDispatch(action);
-  }, []);
-
-  const markSaved = useCallback(() => setIsDirty(false), []);
-
-  // Persist slim identity slice to localStorage (no blobs)
-  useEffect(() => {
-    try {
-      localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({
-          id: state.id,
-          name: state.name,
-          projectId: state.projectId,
-          spriteId: state.spriteId,
-        }),
-      );
-    } catch {
-      // QuotaExceededError — non-fatal; identity survives via URL
-    }
-  }, [state.id, state.name, state.projectId, state.spriteId]);
-
-  return (
-    <DocumentContext.Provider value={{ state, dispatch, isDirty, markSaved }}>
-      {children}
-    </DocumentContext.Provider>
-  );
+  return children;
 }
 
-// ---------------------------------------------------------------------------
-// Hooks
-// ---------------------------------------------------------------------------
-export function useDocument() {
-  const ctx = useContext(DocumentContext);
-  if (!ctx) throw new Error("useDocument must be used within DocumentProvider");
-  return ctx;
-}
+export { useDocument, useDocumentStore } from "./useDocumentStore.js";

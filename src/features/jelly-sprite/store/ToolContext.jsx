@@ -10,13 +10,6 @@
  * unchanged after migrating their import.
  */
 
-import {
-  createContext,
-  useContext,
-  useReducer,
-  useEffect,
-  useCallback,
-} from "react";
 import { BUILTIN_PALETTES } from "../../../ui/PaletteManager";
 import * as A from "./jellySpriteActions";
 import { MAX_COLOUR_HISTORY, MAX_ZOOM } from "../jellySprite.constants";
@@ -70,30 +63,6 @@ export const toolInitialState = {
   customW: 128,
   customH: 128,
 };
-
-// Fields persisted to localStorage (omit large blobs and session-only state)
-const PERSIST_FIELDS = new Set([
-  "tool",
-  "brushType",
-  "brushSize",
-  "brushOpacity",
-  "brushHardness",
-  "fgColor",
-  "bgColor",
-  "fgAlpha",
-  "colorHistory",
-  "relatedColors",
-  "palettes",
-  "activePalette",
-  "gridVisible",
-  "frameGridVisible",
-  "frameConfig",
-  "refOpacity",
-  "refVisible",
-  "tileCount",
-  "panelTab",
-  "zoom",
-]);
 
 // ── Reducer ──────────────────────────────────────────────────────────────────
 
@@ -281,59 +250,23 @@ export function toolReducer(state, action) {
   }
 }
 
-// ── Context + Provider ────────────────────────────────────────────────────────
+// ── Sprint 9: Provider replaced by useToolStore ───────────────────────────────
+// ToolProvider is kept as a no-op so existing JSX doesn't hard-error if any
+// stale import survives. Remove usages in JellySprite.jsx (Sprint 9).
 
-const ToolCtx = createContext(null);
+import { useToolStore } from "./useToolStore.js";
 
+/** @deprecated — wrap removed in Sprint 9. Children render without a provider. */
 export function ToolProvider({ children }) {
-  const [state, rawDispatch] = useReducer(
-    toolReducer,
-    toolInitialState,
-    (init) => {
-      try {
-        const saved = localStorage.getItem(STORAGE_KEY);
-        if (!saved) return init;
-        const parsed = JSON.parse(saved);
-        // Only restore persisted fields — never bring back refImage blobs
-        const restored = { ...init };
-        for (const key of PERSIST_FIELDS) {
-          if (key in parsed) restored[key] = parsed[key];
-        }
-        return restored;
-      } catch {
-        return init;
-      }
-    },
-  );
-
-  const dispatch = useCallback((action) => rawDispatch(action), []);
-
-  // Persist a slim subset to localStorage (no blobs, no per-session state)
-  useEffect(() => {
-    try {
-      const slim = {};
-      for (const key of PERSIST_FIELDS) {
-        slim[key] = state[key];
-      }
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(slim));
-    } catch {
-      // Quota or serialization error — ignore
-    }
-  }, [state]);
-
-  return (
-    <ToolCtx.Provider value={{ state, dispatch }}>{children}</ToolCtx.Provider>
-  );
+  return children;
 }
 
 /**
- * useToolContext() — returns { state, dispatch } for tool/brush/color/view state.
- * Must be used inside a <ToolProvider>.
+ * useToolContext() — backward-compat shim. Returns { state, dispatch } from
+ * useToolStore so callers see the same API as before Sprint 9.
+ * Migrate callers to useToolStore() directly in Sprint 10.
  */
 export function useToolContext() {
-  const ctx = useContext(ToolCtx);
-  if (!ctx) {
-    throw new Error("useToolContext must be used inside ToolProvider");
-  }
-  return ctx;
+  const { dispatch, ...state } = useToolStore();
+  return { state, dispatch };
 }

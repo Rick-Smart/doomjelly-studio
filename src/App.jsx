@@ -1,8 +1,6 @@
 import { BrowserRouter } from "react-router-dom";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { AuthProvider } from "./contexts/AuthContext";
-import { DocumentProvider } from "./contexts/DocumentContext";
-import { AnimatorProvider } from "./contexts/AnimatorContext";
 import { NotificationProvider } from "./contexts/NotificationContext";
 import { AppRoutes } from "./router/routes";
 import { ErrorBoundary } from "./ui/ErrorBoundary/ErrorBoundary";
@@ -15,11 +13,7 @@ export default function App() {
         <ThemeProvider>
           <NotificationProvider>
             <AuthProvider>
-              <DocumentProvider>
-                <AnimatorProvider>
-                  <AppRoutes />
-                </AnimatorProvider>
-              </DocumentProvider>
+              <AppRoutes />
             </AuthProvider>
           </NotificationProvider>
         </ThemeProvider>

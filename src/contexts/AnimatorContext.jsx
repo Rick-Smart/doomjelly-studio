@@ -1,13 +1,7 @@
-import {
-  createContext,
-  useContext,
-  useReducer,
-  useRef,
-  useState,
-  useCallback,
-  useEffect,
-} from "react";
-import { useDocument } from "./DocumentContext";
+// AnimatorContext.jsx
+// Provider is a no-op since Sprint 9 — state lives in useAnimatorStore.
+// Reducer + initial state are exported for the store to import.
+// useAnimator() is re-exported from useAnimatorStore for backward compat.
 
 // ---------------------------------------------------------------------------
 // Initial state — all animator-owned fields.
@@ -33,7 +27,7 @@ export const initialAnimatorState = {
 // ---------------------------------------------------------------------------
 // Reducer
 // ---------------------------------------------------------------------------
-function reducer(state, action) {
+export function animatorReducer(state, action) {
   switch (action.type) {
     case "LOAD_PROJECT": {
       const payload = action.payload;
@@ -250,122 +244,11 @@ function reducer(state, action) {
 }
 
 // ---------------------------------------------------------------------------
-// Undo/redo helpers
+// Provider (no-op) + hook re-export — Sprint 9
 // ---------------------------------------------------------------------------
-const UNDOABLE_ACTIONS = new Set([
-  "ADD_ANIMATION",
-  "DELETE_ANIMATION",
-  "DUPLICATE_ANIMATION",
-  "RENAME_ANIMATION",
-  "UPDATE_ANIMATION",
-  "SET_FRAME_CONFIG",
-]);
-
-function snapshot(state) {
-  return {
-    animations: state.animations,
-    activeAnimationId: state.activeAnimationId,
-    frameConfig: { ...state.frameConfig },
-  };
-}
-
-// ---------------------------------------------------------------------------
-// Context + Provider
-// ---------------------------------------------------------------------------
-const AnimatorContext = createContext(null);
-
+/** @deprecated Wrap is a no-op since Sprint 9; state lives in useAnimatorStore. */
 export function AnimatorProvider({ children }) {
-  const [state, rawDispatch] = useReducer(reducer, initialAnimatorState);
-
-  const stateRef = useRef(state);
-  stateRef.current = state;
-
-  const histRef = useRef({ past: [], future: [] });
-  const [canUndo, setCanUndo] = useState(false);
-  const [canRedo, setCanRedo] = useState(false);
-  const [isDirty, setIsDirty] = useState(false);
-
-  const dispatch = useCallback((action) => {
-    if (UNDOABLE_ACTIONS.has(action.type)) {
-      const h = histRef.current;
-      histRef.current = {
-        past: [...h.past.slice(-49), snapshot(stateRef.current)],
-        future: [],
-      };
-      setCanUndo(true);
-      setCanRedo(false);
-      setIsDirty(true);
-    } else if (
-      action.type === "LOAD_PROJECT" ||
-      action.type === "RESET_PROJECT"
-    ) {
-      histRef.current = { past: [], future: [] };
-      setCanUndo(false);
-      setCanRedo(false);
-      setIsDirty(false);
-    } else if (action.type === "SET_SPRITE_SHEET") {
-      setIsDirty(true);
-    }
-    rawDispatch(action);
-  }, []);
-
-  const markSaved = useCallback(() => setIsDirty(false), []);
-
-  // --- Sprint 6c: sync animations to DocumentContext as tags ---
-  // DocumentContext.tags = named frame ranges; the Animator's animations[]
-  // represent the same concept. Push on every change so any consumer of
-  // useDocument() always sees the up-to-date animation list.
-  const { dispatch: docDispatch } = useDocument();
-  useEffect(() => {
-    docDispatch({ type: "SET_TAGS", payload: state.animations });
-  }, [state.animations, docDispatch]);
-
-  const undo = useCallback(() => {
-    const h = histRef.current;
-    if (h.past.length === 0) return;
-    const prev = h.past[h.past.length - 1];
-    histRef.current = {
-      past: h.past.slice(0, -1),
-      future: [snapshot(stateRef.current), ...h.future.slice(0, 49)],
-    };
-    setCanUndo(h.past.length > 1);
-    setCanRedo(true);
-    rawDispatch({ type: "RESTORE_SNAPSHOT", payload: prev });
-  }, []);
-
-  const redo = useCallback(() => {
-    const h = histRef.current;
-    if (h.future.length === 0) return;
-    const next = h.future[0];
-    histRef.current = {
-      past: [...h.past.slice(-49), snapshot(stateRef.current)],
-      future: h.future.slice(1),
-    };
-    setCanUndo(true);
-    setCanRedo(h.future.length > 1);
-    rawDispatch({ type: "RESTORE_SNAPSHOT", payload: next });
-  }, []);
-
-  return (
-    <AnimatorContext.Provider
-      value={{
-        state,
-        dispatch,
-        undo,
-        redo,
-        canUndo,
-        canRedo,
-        isDirty,
-        markSaved,
-      }}
-    >
-      {children}
-    </AnimatorContext.Provider>
-  );
+  return children;
 }
 
-export function useAnimator() {
-  const ctx = useContext(AnimatorContext);
-  if (!ctx) throw new Error("useAnimator must be used within AnimatorProvider");
-  return ctx;
-}
+export { useAnimator, useAnimatorStore } from "./useAnimatorStore.js";
