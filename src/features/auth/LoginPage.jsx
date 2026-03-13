@@ -11,10 +11,13 @@ export function LoginPage() {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  if (isAuthenticated) {
-    navigate("/projects", { replace: true });
-    return null;
-  }
+  // Redirect inside an effect — calling navigate() during render triggers a
+  // BrowserRouter state update while rendering, which React 18 disallows.
+  useEffect(() => {
+    if (isAuthenticated) navigate("/projects", { replace: true });
+  }, [isAuthenticated, navigate]);
+
+  if (isAuthenticated) return null;
 
   async function handleSubmit(e) {
     e.preventDefault();

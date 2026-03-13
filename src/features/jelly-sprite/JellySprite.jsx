@@ -216,6 +216,9 @@ function JellySpriteBody() {
   // Stub refs — break circular hook dependencies
   const pushHistoryEntryStubRef = useRef(() => {});
   const redrawStubRef = useRef(() => {});
+  // collectSaveDataRef: always points at the latest render's collectSaveData so
+  // the mount-only setCollectFn registration never captures a stale closure.
+  const collectSaveDataRef = useRef(null);
 
   // Restore refs — used by the two-phase full-state restore
   // pendingRestoreRef: decoded restore payload from jellySpritePersistence,
@@ -282,8 +285,9 @@ function JellySpriteBody() {
   }
 
   function generateFrameThumbnail(frameId) {
-    const w = canvasW,
-      h = canvasH;
+    // Read dimensions from the store at call time — not from the React render
+    // closure, which is stale when called through the mount-only setCollectFn.
+    const { canvasW: w, canvasH: h } = usePixelDocumentStore.getState();
     const tmp = document.createElement("canvas");
     tmp.width = w;
     tmp.height = h;
@@ -536,8 +540,8 @@ function JellySpriteBody() {
 
     // Assemble a horizontal sprite sheet from the per-frame flat images.
     // Layout: all frames in a single row (cols = frameCount, rows = 1).
-    const w = ss.canvasW;
-    const h = ss.canvasH;
+    // Read from store (not stale closure ss) so dimensions are always current.
+    const { canvasW: w, canvasH: h } = usePixelDocumentStore.getState();
     const cols = data.frames.length;
     let spriteSheet = null;
     if (cols > 0 && w > 0 && h > 0) {
@@ -571,10 +575,16 @@ function JellySpriteBody() {
     return { data, thumbnail, spriteSheet };
   }
 
+  // Keep collectSaveDataRef pointing at the latest render's closure so that
+  // the mount-only setCollectFn registration always calls fresh code.
+  collectSaveDataRef.current = collectSaveData;
+
   // Register the collector in the store on mount so JellySpriteWorkspace can
   // call usePixelDocumentStore.getState().collect() without a callback prop.
   useEffect(() => {
-    usePixelDocumentStore.getState().setCollectFn(() => collectSaveData());
+    usePixelDocumentStore
+      .getState()
+      .setCollectFn(() => collectSaveDataRef.current?.());
     return () => usePixelDocumentStore.getState().setCollectFn(null);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
