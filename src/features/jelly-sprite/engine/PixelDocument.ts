@@ -1,5 +1,5 @@
 /**
- * PixelDocument — plain JS class, zero React imports.
+ * PixelDocument — plain TypeScript class, zero React imports.
  *
  * Owns all mutable pixel state for a JellySprite document:
  *  • pixel/mask buffers for the active frame
@@ -13,23 +13,71 @@
  *
  * Sprint 7a — class created (no consumers yet).
  * Sprint 7c — JellySprite.jsx + drawingEngine.js migrated to use this.
+ * Sprint 8  — converted to TypeScript.
  */
 
 import { MAX_HISTORY, makeLayer, makeFrame } from "../jellySprite.constants.js";
+import type { Layer, Frame } from "../../../services/types";
+
+// ── Internal types ────────────────────────────────────────────────────────────
+
+/** Immutable pixel/mask snapshot stored in the undo/redo history stack. */
+interface HistorySnapshot {
+  layers: Layer[];
+  activeLayerId: string | null;
+  pixelBuffers: Record<string, Uint8ClampedArray | null>;
+  maskBuffers: Record<string, Uint8Array | null>;
+}
+
+/** Per-frame saved state stored in frameSnapshots. */
+interface FrameSnapshot extends HistorySnapshot {
+  historyStack: HistorySnapshot[];
+  historyIndex: number;
+}
+
+/** Event object passed to onChange handlers. */
+export interface PixelDocumentEvent {
+  type: "history" | "frame-switch" | "frames-changed" | "layers-changed";
+  frameIdx?: number;
+}
+
+type ChangeHandler = (event: PixelDocumentEvent, doc: PixelDocument) => void;
+
+/** Serialized output of PixelDocument.serialize() (version 3). */
+export interface PixelDocumentData {
+  version: number;
+  canvasW: number;
+  canvasH: number;
+  activeFrameIdx: number;
+  frames: Array<{
+    id: string;
+    name: string;
+    layers: Layer[];
+    activeLayerId: string | null;
+    pixelBuffers: Record<string, string>;
+    maskBuffers: Record<string, string>;
+  }>;
+}
 
 // ── Internal base64 helpers (no outer imports needed) ────────────────────────
 
-function _uint8ToBase64(arr) {
+function _uint8ToBase64(
+  arr: Uint8ClampedArray | Uint8Array | null | undefined,
+): string {
   if (!arr || arr.length === 0) return "";
   const CHUNK = 0x8000;
   let binary = "";
   for (let i = 0; i < arr.length; i += CHUNK) {
-    binary += String.fromCharCode(...arr.subarray(i, i + CHUNK));
+    binary += String.fromCharCode(
+      ...(arr.subarray(i, i + CHUNK) as unknown as number[]),
+    );
   }
   return btoa(binary);
 }
 
-function _base64ToUint8Clamped(b64) {
+function _base64ToUint8Clamped(
+  b64: string | null | undefined,
+): Uint8ClampedArray | null {
   if (!b64) return null;
   const binary = atob(b64);
   const out = new Uint8ClampedArray(binary.length);
@@ -37,7 +85,7 @@ function _base64ToUint8Clamped(b64) {
   return out;
 }
 
-function _base64ToUint8(b64) {
+function _base64ToUint8(b64: string | null | undefined): Uint8Array | null {
   if (!b64) return null;
   const binary = atob(b64);
   const out = new Uint8Array(binary.length);
@@ -48,10 +96,26 @@ function _base64ToUint8(b64) {
 // ── PixelDocument ─────────────────────────────────────────────────────────────
 
 export class PixelDocument {
+  // ── Property declarations ──────────────────────────────────────────────────
+  canvasW: number;
+  canvasH: number;
+  frames: Frame[];
+  layers: Layer[];
+  activeLayerId: string | null;
+  activeFrameIdx: number;
+  pixelBuffers: Record<string, Uint8ClampedArray | null>;
+  maskBuffers: Record<string, Uint8Array | null>;
+  frameSnapshots: Record<string, FrameSnapshot>;
+  historyStack: HistorySnapshot[];
+  historyIndex: number;
+  private _handlers: ChangeHandler[];
   /**
-   * @param {{ canvasW?: number, canvasH?: number }} [opts]
+   * @param opts Optional canvas geometry.
    */
-  constructor({ canvasW = 32, canvasH = 32 } = {}) {
+  constructor({
+    canvasW = 32,
+    canvasH = 32,
+  }: { canvasW?: number; canvasH?: number } = {}) {
     this.canvasW = canvasW;
     this.canvasH = canvasH;
 
@@ -94,17 +158,17 @@ export class PixelDocument {
 
   /**
    * Register a change observer. Returns an unsubscribe function.
-   * @param {(event: {type: string}, doc: PixelDocument) => void} handler
-   * @returns {() => void}
+   * @param handler Called after every structural mutation.
+   * @returns Unsubscribe function.
    */
-  onChange(handler) {
+  onChange(handler: ChangeHandler): () => void {
     this._handlers.push(handler);
     return () => {
       this._handlers = this._handlers.filter((h) => h !== handler);
     };
   }
 
-  _notify(event) {
+  _notify(event: PixelDocumentEvent): void {
     for (const h of this._handlers) h(event, this);
   }
 
@@ -122,12 +186,12 @@ export class PixelDocument {
    * Snapshot the current drawing state and push it onto the history stack.
    * Call this after every completed stroke.
    */
-  pushHistory() {
-    const snapshot = {
+  pushHistory(): void {
+    const snapshot: HistorySnapshot = {
       layers: this.layers, // immutable metadata — safe to share
       activeLayerId: this.activeLayerId,
-      pixelBuffers: {},
-      maskBuffers: {},
+      pixelBuffers: {} as Record<string, Uint8ClampedArray | null>,
+      maskBuffers: {} as Record<string, Uint8Array | null>,
     };
 
     for (const [id, buf] of Object.entries(this.pixelBuffers)) {
@@ -152,12 +216,12 @@ export class PixelDocument {
    * Use after frame-switch or canvas initialisation when reducer state
    * may be stale inside closures.
    */
-  seedHistory(layers, activeLayerId) {
-    const snapshot = {
+  seedHistory(layers: Layer[], activeLayerId: string | null): void {
+    const snapshot: HistorySnapshot = {
       layers,
       activeLayerId,
-      pixelBuffers: {},
-      maskBuffers: {},
+      pixelBuffers: {} as Record<string, Uint8ClampedArray | null>,
+      maskBuffers: {} as Record<string, Uint8Array | null>,
     };
     for (const [id, buf] of Object.entries(this.pixelBuffers)) {
       snapshot.pixelBuffers[id] = buf ? new Uint8ClampedArray(buf) : null;
@@ -185,7 +249,7 @@ export class PixelDocument {
     return true;
   }
 
-  _applyHistorySnapshot(snapshot) {
+  _applyHistorySnapshot(snapshot: HistorySnapshot): void {
     for (const [id, buf] of Object.entries(snapshot.pixelBuffers)) {
       if (buf) {
         if (!this.pixelBuffers[id]) {
@@ -235,9 +299,9 @@ export class PixelDocument {
 
   /**
    * Switch to a different frame by index. Saves the current frame first.
-   * @param {number} frameIdx
+   * @param frameIdx Target frame index.
    */
-  switchFrame(frameIdx) {
+  switchFrame(frameIdx: number): void {
     this.saveCurrentFrame();
     this.activeFrameIdx = frameIdx;
 
@@ -270,10 +334,10 @@ export class PixelDocument {
 
   /**
    * Add a new blank frame and return it.
-   * @param {string} [name]
-   * @returns {{ id: string, name: string }}
+   * @param name Optional frame label.
+   * @returns The new frame metadata object.
    */
-  addFrame(name) {
+  addFrame(name?: string): Frame {
     const frame = makeFrame(name ?? `Frame ${this.frames.length + 1}`);
     this.frames = [...this.frames, frame];
     this._notify({ type: "frames-changed" });
@@ -282,9 +346,9 @@ export class PixelDocument {
 
   /**
    * Remove a frame by id. No-op if only one frame remains.
-   * @param {string} frameId
+   * @param frameId The id of the frame to remove.
    */
-  removeFrame(frameId) {
+  removeFrame(frameId: string): void {
     if (this.frames.length <= 1) return;
     const idx = this.frames.findIndex((f) => f.id === frameId);
     if (idx === -1) return;
@@ -304,10 +368,10 @@ export class PixelDocument {
 
   /**
    * Add a new blank layer and return it.
-   * @param {string} [name]
-   * @returns {{ id: string, name: string, ... }}
+   * @param name Optional layer name.
+   * @returns The new layer metadata object.
    */
-  addLayer(name) {
+  addLayer(name?: string): Layer {
     const layer = makeLayer(name ?? `Layer ${this.layers.length + 1}`);
     const size = this.canvasW * this.canvasH * 4;
     this.pixelBuffers[layer.id] = new Uint8ClampedArray(size);
@@ -318,9 +382,9 @@ export class PixelDocument {
 
   /**
    * Remove a layer by id. No-op if only one layer remains.
-   * @param {string} layerId
+   * @param layerId The id of the layer to remove.
    */
-  removeLayer(layerId) {
+  removeLayer(layerId: string): void {
     if (this.layers.length <= 1) return;
     delete this.pixelBuffers[layerId];
     delete this.maskBuffers[layerId];
@@ -333,9 +397,9 @@ export class PixelDocument {
 
   /**
    * Reorder layers to match the given ordered id array.
-   * @param {string[]} orderedIds
+   * @param orderedIds New layer order as an array of layer ids.
    */
-  reorderLayers(orderedIds) {
+  reorderLayers(orderedIds: string[]): void {
     const byId = Object.fromEntries(this.layers.map((l) => [l.id, l]));
     this.layers = orderedIds.map((id) => byId[id]).filter(Boolean);
     this._notify({ type: "layers-changed" });
@@ -347,9 +411,9 @@ export class PixelDocument {
    * Produce a JSON-serializable pixel-data snapshot.
    * Does NOT include tool/brush/color state (those live in ToolContext).
    *
-   * @returns {{ version: number, canvasW: number, canvasH: number, activeFrameIdx: number, frames: object[] }}
+   * @returns Serialized document data (version 3).
    */
-  serialize() {
+  serialize(): PixelDocumentData {
     // Flush active frame before snapshotting
     this.saveCurrentFrame();
 
@@ -358,12 +422,12 @@ export class PixelDocument {
         const snap = this.frameSnapshots[frame.id];
         if (!snap) return null;
 
-        const pixelBuffers = {};
+        const pixelBuffers: Record<string, string> = {};
         for (const [id, buf] of Object.entries(snap.pixelBuffers ?? {})) {
           pixelBuffers[id] = _uint8ToBase64(buf);
         }
 
-        const maskBuffers = {};
+        const maskBuffers: Record<string, string> = {};
         for (const [id, buf] of Object.entries(snap.maskBuffers ?? {})) {
           if (buf) maskBuffers[id] = _uint8ToBase64(buf);
         }
@@ -385,7 +449,7 @@ export class PixelDocument {
           maskBuffers,
         };
       })
-      .filter(Boolean);
+      .filter((f): f is NonNullable<typeof f> => f !== null);
 
     return {
       version: 3,
@@ -398,10 +462,12 @@ export class PixelDocument {
 
   /**
    * Restore a PixelDocument from a serialized snapshot.
-   * @param {object} data — must have { canvasW, canvasH, frames[] }
-   * @returns {PixelDocument | null}
+   * @param data Must have { canvasW, canvasH, frames[] }
+   * @returns A new PixelDocument instance, or null if data is invalid.
    */
-  static deserialize(data) {
+  static deserialize(
+    data: Partial<PixelDocumentData> | null | undefined,
+  ): PixelDocument | null {
     if (!data || !Array.isArray(data.frames) || data.frames.length === 0) {
       return null;
     }
@@ -418,14 +484,14 @@ export class PixelDocument {
       const frame = { id: frameData.id, name: frameData.name };
       doc.frames.push(frame);
 
-      const pixBufs = {};
+      const pixBufs: Record<string, Uint8ClampedArray | null> = {};
       for (const [lid, b64] of Object.entries(frameData.pixelBuffers ?? {})) {
         pixBufs[lid] =
           _base64ToUint8Clamped(b64) ??
           new Uint8ClampedArray(canvasW * canvasH * 4);
       }
 
-      const maskBufs = {};
+      const maskBufs: Record<string, Uint8Array | null> = {};
       for (const [lid, b64] of Object.entries(frameData.maskBuffers ?? {})) {
         const decoded = _base64ToUint8(b64);
         if (decoded) maskBufs[lid] = decoded;

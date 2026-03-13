@@ -18,8 +18,8 @@
 | Sprint 5  | State Finalization                 | ✅ Complete (`625e694`) |
 | Sprint 6  | Unified Document Model             | ✅ Complete (`5be735c`) |
 | Sprint 7  | JellySprite PixelDocument Refactor | ✅ Complete (`15ee57a`) |
-| Sprint 8  | TypeScript Migration               | 🔲 Not started          |
-| Sprint 8a | Rule Violation Fixes               | ⏳ In progress          |
+| Sprint 8a | Rule Violation Fixes               | ✅ Complete (`dc32ace`) |
+| Sprint 8  | TypeScript Migration               | ✅ Complete (TBD)       |
 | Sprint 9  | Zustand State Management           | 🔲 Not started          |
 
 ---
@@ -1362,7 +1362,7 @@ the `onRegisterCollector` prop, the `stateRef` mirror, and all function stubs.
 
 ---
 
-## 🔲 Sprint 8 — TypeScript Migration
+## ✅ Sprint 8 — TypeScript Migration
 
 ### Why TypeScript, and why now
 
@@ -1425,6 +1425,36 @@ stablest prop contracts.
 6. Verify: tsc --noEmit passes
 7. Commit: "chore: Sprint 8 — TypeScript migration"
 ```
+
+### Sprint 8 — What was done
+
+**Governance decision:** `allowJs: true` + `checkJs: false` preserves all existing
+`.jsx` files unmodified. `strict: true` applies only to the `.ts`/`.tsx` files
+we author. No mass `.jsx → .tsx` rename. Companion `.types.ts` files deliver type
+contracts at context + service boundaries without breaking the entire codebase.
+
+**Files created:**
+
+- `tsconfig.json` — `strict: true`, `allowJs: true`, `checkJs: false`, `noEmit: true`
+- `tsconfig.node.json` — composite config for `vite.config.ts`
+- `src/services/types.ts` — `Layer`, `Frame`, `FrameConfig`, `SheetRecord`,
+  `AnimationRecord`, `AnimatorBody`, `JellyBody`, `JellyFrameRecord`,
+  `ProjectRecord`, `SpriteRecord`, `DocumentRecord`
+- `src/contexts/document.types.ts` — `DocumentState`, `DocumentAction`, `DocumentContextValue`
+- `src/contexts/animator.types.ts` — `AnimatorState`, `AnimatorAction`, `AnimatorContextValue`
+- `src/features/jelly-sprite/store/tool.types.ts` — `ToolState`, `ToolAction`, `ToolContextValue`
+
+**Files renamed:**
+
+- `vite.config.js` → `vite.config.ts`
+- `src/main.jsx` → `src/main.tsx`
+- `src/features/jelly-sprite/engine/PixelDocument.js` → `PixelDocument.ts`
+
+**PixelDocument.ts additions:** explicit property declarations, `HistorySnapshot`,
+`FrameSnapshot`, `PixelDocumentEvent`, `PixelDocumentData` interfaces; all method
+signatures typed; base64 helpers typed; `tsc --noEmit` passes with zero errors.
+
+**Also fixed:** `flatted < 3.4.0` DoS vulnerability via `npm audit fix`.
 
 ---
 
