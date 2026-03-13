@@ -17,7 +17,7 @@
 | Sprint 4 | Context Decomposition              | ✅ Complete (`ac647ed`) |
 | Sprint 5 | State Finalization                 | ✅ Complete (`625e694`) |
 | Sprint 6 | Unified Document Model             | ✅ Complete (`5be735c`) |
-| Sprint 7 | JellySprite PixelDocument Refactor | ✅ Complete (`b6c78a8`) |
+| Sprint 7 | JellySprite PixelDocument Refactor | ✅ Complete (`15ee57a`) |
 | Sprint 8 | TypeScript Migration               | 🔲 Not started          |
 | Sprint 9 | Zustand State Management           | 🔲 Not started          |
 
@@ -618,30 +618,298 @@ data integrity hole.
 
 ## Architecture quick-reference
 
-See `ARCHITECTURE.md` for the full specification.
+See `ARCHITECTURE.md` for the full specification. This section is the **single
+source of truth** for rule compliance — full descriptions, current status, and
+known violations are tracked here so every session starts with accurate context.
 
-**18 Rules (summary):**
+**Status key:** ✅ Compliant · ⚠️ Partial · ❌ Violated
 
-| #   | Rule                                                                        |
-| --- | --------------------------------------------------------------------------- |
-| 1   | URL = identity. `/tool/:spriteId` always. No ID-less editor routes.         |
-| 2   | `dataUrl` canonical. `objectUrl` is a rebuild cache, never persisted.       |
-| 3   | No `state.spriteSheet`. Use `selectActiveSheet(state)` from `selectors.js`. |
-| 4   | `await handleSave()` before any navigation.                                 |
-| 5   | One canonical `animatorBody` format. No legacy fields in new saves.         |
-| 6   | Strip all binary data from localStorage. IDB holds binary.                  |
-| 7   | First-save always updates URL with `navigate(url, {replace:true})`.         |
-| 8   | `ProtectedRoute` always renders something. Never `null`.                    |
-| 9   | IDB is truth. localStorage index writes are non-throwing.                   |
-| 10  | `navigate('/tool')` without spriteId is banned.                             |
-| 11  | Features never import from other features.                                  |
-| 12  | Every feature exports through `index.js` only.                              |
-| 13  | Derived values used by 2+ components live in `selectors.js`.                |
-| 14  | `src/engine/` functions are pure — no React, no DOM.                        |
-| 15  | `src/services/` are I/O only — no hooks, no JSX.                            |
-| 16  | Undoable operations batch via transactions (one dispatch = one undo step).  |
-| 17  | Route-level lazy loading for all feature pages.                             |
-| 18  | CSS design tokens for all repeated values. No hardcoded color literals.     |
+---
+
+### Rule 1 — URL = identity
+
+Every editor URL must carry a `spriteId`. A route without one must never load
+an editor. Sharing or refreshing the URL must always work.
+
+```
+/animator/:spriteId      ✅
+/jelly-sprite/:spriteId  ✅
+/animator                ❌  (banned as a destination)
+```
+
+**Status:** ✅ Compliant  
+**Introduced:** Sprint 0 (`908ba2d`) — `routes.jsx`, `AnimatorPage.jsx`  
+**Notes:** Both tools load their document from the URL param on mount.
+
+---
+
+### Rule 2 — `dataUrl` is canonical; `objectUrl` is a transient cache
+
+`objectUrl` is created from `dataUrl` on mount via a single `useEffect`. It is
+never persisted. If `objectUrl` is missing but `dataUrl` exists, trigger the
+restore effect rather than crashing.
+
+**Status:** ✅ Compliant  
+**Introduced:** Sprint 0 (`908ba2d`) — `AnimatorPage.jsx`, `AnimatorContext.jsx`  
+**Notes:** `LOAD_PROJECT` normalises all sheets to `objectUrl: null`. The restore
+`useEffect` in `AnimatorPage.jsx` rebuilds them from `dataUrl`.
+
+---
+
+### Rule 3 — No `state.spriteSheet`; always `selectActiveSheet(state)`
+
+`state.spriteSheet` was a redundant derived mirror. It is removed. All consumers
+call `selectActiveSheet(state)` from `src/features/animator/selectors.js`.
+
+**Status:** ✅ Compliant  
+**Introduced:** Sprint 0 (`92997f7`), cleaned up in Sprint 5 (`625e694`)  
+**Notes:** `AnimatorContext` reducer has no `spriteSheet` field. `LOAD_PROJECT`
+retains a migration branch for old saves only.
+
+---
+
+### Rule 4 — `await handleSave()` before any navigation
+
+Any navigation that leaves an editor must `await` the save first. Fire-and-forget
+saves before `navigate()` are banned — they lose data on fast connections.
+
+**Status:** ✅ Compliant  
+**Introduced:** Sprint 0 (`92997f7`) — `AnimatorPage.jsx`  
+**Notes:** `handleEditInJellySprite`: `if (isDirty) await handleSave()` before
+`navigate()`. `JellySpriteWorkspace` saves before navigating to Animator.
+
+---
+
+### Rule 5 — One canonical `animatorBody` save format
+
+New saves never write a `spriteSheet` field. The shape is:
+`{ sheets[{id,filename,dataUrl,width,height,frameConfig}], activeSheetId, animations[], frameConfig }`.
+`LOAD_PROJECT` keeps a migration branch for old saves that had `spriteSheet`.
+
+**Status:** ✅ Compliant  
+**Introduced:** Sprint 0 (`92997f7`) — `AnimatorPage.jsx`, `AnimatorContext.jsx`
+
+---
+
+### Rule 6 — Strip all binary data from localStorage; IDB holds binary
+
+`localStorage` stores only metadata IDs. Before every localStorage write,
+`sheets[]` entries must have `dataUrl` and `objectUrl` stripped.
+`src/services/localIndex.js` writes only slim index records.
+
+**Status:** ✅ Compliant  
+**Introduced:** Sprint 0 (`908ba2d`) — `ProjectContext.jsx` → `localIndex.js`
+
+---
+
+### Rule 7 — First-save always updates URL with `navigate(url, {replace:true})`
+
+When a new document is saved for the first time (no `spriteId` in the URL),
+the save handler must call `navigate('/tool/' + id, { replace: true })` so
+the current history entry reflects the real URL and refresh works.
+
+**Status:** ✅ Compliant  
+**Introduced:** Sprint 0 (`908ba2d`) — `JellySpriteWorkspace.jsx`, `AnimatorPage.jsx`  
+**Notes:** `JellySpriteWorkspace.jsx:59`, `AnimatorPage.jsx:211`.
+
+---
+
+### Rule 8 — `ProtectedRoute` always renders something; never `null`
+
+During the auth loading state, `ProtectedRoute` renders a loading indicator,
+not `null`. Returning `null` causes a blank-flash and breaks Suspense boundaries.
+
+**Status:** ✅ Compliant  
+**Introduced:** Sprint 0 (`908ba2d`) — `ProtectedRoute.jsx`  
+**Notes:** Currently renders a full-screen `div` with "Loading…" text.
+
+---
+
+### Rule 9 — IDB is truth; localStorage index writes are non-throwing
+
+IDB is the real persistence layer. `localStorage` index writes are a convenience
+cache only. All localStorage writes must be wrapped in `try/catch` so a quota
+error or private-browsing restriction never surfaces as a save failure.
+
+**Status:** ⚠️ Partial  
+**Introduced:** Sprint 0 (`92997f7`) — `projectService.js` / `localIndex.js`  
+**Violation:** `writeProjectsIndex()` and `writeSpritesIndex()` in
+`src/services/localIndex.js` call `localStorage.setItem` without `try/catch`.
+Read functions are protected; write functions are not.  
+**Fix target:** Sprint 8 — wrap both write functions in `try/catch`.
+
+---
+
+### Rule 10 — `navigate('/tool')` without spriteId is banned
+
+Every navigation to an editor must carry the spriteId. Code must not fall back
+to an ID-less editor route when the ID is unavailable — it should navigate to
+`/projects` or show an error instead.
+
+**Status:** ❌ Violated (2 callsites)  
+**Introduced:** Sprint 0 (`908ba2d`)  
+**Violations:**
+
+- `AnimatorPage.jsx:248` — `navigate(targetId ? '/jelly-sprite/${targetId}' : "/jelly-sprite")`  
+  The fallback path `"/jelly-sprite"` (no ID) is banned. Should navigate to
+  `/projects` if `targetId` is null.
+- `ProjectsPage.jsx:157` — `navigate(state.id ? '/animator/${state.id}' : "/animator")`  
+   Same issue. Fallback to `/animator` (no ID) is banned.  
+  **Fix target:** Sprint 8 — replace both fallbacks with `navigate("/projects")`.
+
+---
+
+### Rule 11 — Features never import from other features
+
+Cross-feature imports create circular dependency risk and prevent individual
+features from being tested or reused in isolation. All shared logic lives in
+`src/engine/`, `src/services/`, `src/hooks/`, or `src/ui/`.
+
+```js
+// BANNED:
+import { drawingEngine } from "../../jelly-sprite/engine/drawingEngine";
+// CORRECT — import from a shared layer:
+import { frameToRect } from "../../../engine/frameUtils";
+```
+
+**Status:** ✅ Compliant  
+**Introduced:** Sprint 3 (`86e3b26`)  
+**Notes:** Audit confirms no cross-feature imports in `src/features/**`.
+
+---
+
+### Rule 12 — Every feature exports through `index.js` only
+
+The `index.js` barrel is the public API of a feature. Routes and other files
+reference only the barrel, never internal paths.
+
+```js
+// CORRECT:
+import { AnimatorPage } from "../features/animator";
+// BANNED:
+import { AnimatorPage } from "../features/animator/AnimatorPage/AnimatorPage";
+```
+
+**Status:** ⚠️ Partial  
+**Introduced:** Sprint 1 (`b5fda67`)  
+**Violation:** The `auth` feature has no `index.js` barrel. `routes.jsx:5`
+imports `LoginPage` directly: `import { LoginPage } from "../features/auth/LoginPage"`.
+This is also the reason `LoginPage` is not lazy-loaded (see Rule 17).  
+**Fix target:** Sprint 8 — add `src/features/auth/index.js`, convert to lazy import.
+
+---
+
+### Rule 13 — Derived values used by 2+ components live in `selectors.js`
+
+Any derived state computed identically by more than one component lives in
+`selectors.js` inside its feature. Components never duplicate `.find()` or
+`.filter()` logic for shared data.
+
+**Status:** ⚠️ Partial  
+**Introduced:** Sprint 1 (`b5fda67`) — `src/features/animator/selectors.js`  
+**Selectors that exist:** `selectActiveSheet`, `selectActiveAnimation`,
+`selectFrameCount`, `selectFrames`  
+**Violations — inline `.find()` duplicating `selectActiveSheet`:**
+
+- `AnimatorPage.jsx:44` and `:126`
+- `TracksPanel.jsx:121`
+- `useAnimatorKeyboard.js:77`
+- `SequenceBuilder.jsx:15`
+- `PreviewCanvas.jsx:56`
+
+**Violations — inline `.find()` duplicating `selectActiveAnimation`:**
+
+- `useAnimatorKeyboard.js:18`
+- `TimelineView.jsx:22`
+- `SheetViewerCanvas.jsx:236`, `:397`, `:430`, `:526`
+- `SequenceBuilder.jsx:16`
+- `PreviewCanvas.jsx:57`
+
+**Fix target:** Sprint 8 — replace all inline duplicates with selector calls.
+
+---
+
+### Rule 14 — `src/engine/` functions are pure
+
+Functions in `src/engine/` accept plain JS objects and return plain JS objects.
+No `useRef`, no `document`, no `window`, no DOM access, no React imports.
+Currently `src/engine/` contains only `frameUtils.js`. Note: `src/features/*/engine/`
+subdirectories (e.g. `jelly-sprite/engine/`) are feature-internal and may use
+DOM APIs where required for canvas rendering — Rule 14 applies only to `src/engine/`.
+
+**Status:** ✅ Compliant  
+**Introduced:** Sprint 3 (`86e3b26`) — `src/engine/frameUtils.js`
+
+---
+
+### Rule 15 — `src/services/` are I/O only
+
+Nothing in `src/services/` uses React hooks, JSX, or `document` APIs. Services
+return `Promise`. Toast triggers happen in the calling component after the
+Promise resolves, never inside the service.
+
+**Status:** ✅ Compliant  
+**Introduced:** Sprint 2 (`d8033f9`)  
+**Notes:** Audit confirms no React imports in any `src/services/*.js` file.
+
+---
+
+### Rule 16 — Undoable operations batch via transactions
+
+Any user action that should produce a single undo step batches all its
+sub-dispatches so history captures before/after the full operation, never a
+partial intermediate state.
+
+**Status:** ⚠️ Partial — audit pending  
+**Introduced:** Sprint 7 (`15ee57a`) — `PixelDocument.pushHistory()` / `undo()` / `redo()`  
+**Notes:** JellySprite pixel operations go through `PixelDocument` which owns
+the history stack — single-operation batching is enforced there. Animator
+undo/redo history is managed by `AnimatorContext`. Full audit of whether every
+multi-step Animator dispatch is properly batched has not been completed.  
+**Fix target:** Sprint 8 investigation item.
+
+---
+
+### Rule 17 — Route-level lazy loading for all feature pages
+
+Every feature page is wrapped in `React.lazy()` in `routes.jsx`. This keeps
+the initial bundle size constant as features grow.
+
+**Status:** ⚠️ Partial  
+**Introduced:** Sprint 1 (`b5fda67`) — `routes.jsx`  
+**Compliant:** `AnimatorPage`, `JellySpriteWorkspace`, `ProjectsPage`, `SettingsPage`  
+**Violation:** `LoginPage` is not lazy — it is eagerly imported at
+`routes.jsx:5`. Blocked by missing `auth/index.js` barrel (Rule 12).  
+**Fix target:** Sprint 8 — add `auth/index.js` barrel (Rule 12 fix) then
+convert `LoginPage` to `React.lazy()`.
+
+---
+
+### Rule 18 — CSS design tokens for all repeated values
+
+No component CSS file contains raw `color-mix()` literals or magic pixel
+values that duplicate existing design tokens. Repeated patterns become named
+tokens in `src/index.css`.
+
+**Tokens in `src/index.css`:** `--accent-tint-soft` (10%), `--accent-tint-mid`
+(14%), `--accent-tint-strong` (22%), `--cell-min-w` (44px), `--track-label-w`
+(130px), `--danger`, `--danger-hover`.
+
+**Status:** ⚠️ Partial  
+**Introduced:** Sprint 1 (`b5fda67`)  
+**Violations:**
+
+- `TracksPanel.css` — 4 inline `color-mix()` calls not using existing tokens
+  (5%/transparent, 8%/surface2, 14%/transparent, 10%/transparent)
+- `SplitButton.css` — `color: #fff` (×2), `background: #fff`, inline
+  `color-mix(in srgb, #fff 25%, var(--accent))`
+- `Toast.css` — `#22c55e` (success green) and `color-mix(in srgb, #22c55e ...)`
+  — needs a `--success` token
+- `SheetList.css` — `#222`, `#555`, `#f59e0b` used as var fallbacks
+
+**Fix target:** Sprint 8 — add `--success` token; replace color-mix literals in
+TracksPanel.css and Toast.css with tokens; evaluate `#fff` usages for
+`--color-on-accent` token.
 
 ---
 
