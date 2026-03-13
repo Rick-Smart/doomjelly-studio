@@ -66,8 +66,7 @@ export function JellySpriteProvider({ children }) {
     redoHistory: () => {},
   }).current; // .current so we get the plain object, not the ref wrapper
 
-  // Keep stateRef always current so closures (renderer, drawing engine) never go stale
-  refs.stateRef.current = state;
+  // Note: stateRef is now merged in JellySpriteBody as { ...ss, ...ts } to include ToolContext state.
 
   return (
     <JellySpriteStoreCtx.Provider value={{ state, dispatch, refs }}>

@@ -5,6 +5,7 @@ import * as A from "./store/jellySpriteActions";
 import { makeLayer, makeFrame, MAX_ZOOM } from "./jellySprite.constants";
 import { JellySpriteCtx } from "./JellySpriteContext";
 import { JellySpriteProvider } from "./store/JellySpriteProvider";
+import { ToolProvider, useToolContext } from "./store/ToolContext";
 import { useJellySpriteStore } from "./store/useJellySpriteStore";
 import { LeftToolbar } from "./panels/LeftToolbar";
 import { CanvasArea } from "./panels/CanvasArea";
@@ -27,9 +28,11 @@ const CURSOR_PRECISION = `url("data:image/svg+xml,${_cursorSvg}") 12 12, crossha
 // function so the workspace can pull the full state before saving.
 export function JellySprite({ onRegisterCollector }) {
   return (
-    <JellySpriteProvider>
-      <JellySpriteBody onRegisterCollector={onRegisterCollector} />
-    </JellySpriteProvider>
+    <ToolProvider>
+      <JellySpriteProvider>
+        <JellySpriteBody onRegisterCollector={onRegisterCollector} />
+      </JellySpriteProvider>
+    </ToolProvider>
   );
 }
 
@@ -37,11 +40,27 @@ export function JellySprite({ onRegisterCollector }) {
 function JellySpriteBody({ onRegisterCollector }) {
   const { state, dispatch } = useDocument();
   const { refs, state: ss, dispatch: sd } = useJellySpriteStore();
+  const { state: ts, dispatch: td } = useToolContext();
 
-  // Store state (M4)
+  // Document state (JellySpriteStore)
   const {
     canvasW,
     canvasH,
+    layers,
+    activeLayerId,
+    editingMaskId,
+    frames,
+    activeFrameIdx,
+    frameThumbnails,
+    isPlaying,
+    fps,
+    onionSkinning,
+    canUndo,
+    canRedo,
+  } = ss;
+
+  // Tool / view state (ToolContext)
+  const {
     zoom,
     tool,
     fillShapes,
@@ -72,72 +91,64 @@ function JellySpriteBody({ onRegisterCollector }) {
     refVisible,
     tileVisible,
     tileCount,
-    layers,
-    activeLayerId,
-    editingMaskId,
-    frames,
-    activeFrameIdx,
-    frameThumbnails,
-    isPlaying,
-    fps,
-    onionSkinning,
-    canUndo,
-    canRedo,
-  } = ss;
+  } = ts;
+
+  // Merge stateRef every render so drawingEngine / canvasRenderer closures see all fields
+  refs.stateRef.current = { ...ss, ...ts };
 
   // Dispatch wrappers — keep the same setter names so all callers are unchanged
   const setZoom = (v) =>
-    sd({ type: A.SET_ZOOM, payload: typeof v === "function" ? v(zoom) : v });
-  const setTool = (v) => sd({ type: A.SET_TOOL, payload: v });
-  const setFillShapes = (v) => sd({ type: A.SET_FILL_SHAPES, payload: v });
+    td({ type: A.SET_ZOOM, payload: typeof v === "function" ? v(zoom) : v });
+  const setTool = (v) => td({ type: A.SET_TOOL, payload: v });
+  const setFillShapes = (v) => td({ type: A.SET_FILL_SHAPES, payload: v });
   const setSymmetryH = (v) =>
-    sd({
+    td({
       type: A.SET_SYMMETRY_H,
       payload: typeof v === "function" ? v(symmetryH) : v,
     });
   const setSymmetryV = (v) =>
-    sd({
+    td({
       type: A.SET_SYMMETRY_V,
       payload: typeof v === "function" ? v(symmetryV) : v,
     });
   const setWandTolerance = (v) =>
-    sd({ type: A.SET_WAND_TOLERANCE, payload: v });
+    td({ type: A.SET_WAND_TOLERANCE, payload: v });
   const setWandContiguous = (v) =>
-    sd({ type: A.SET_WAND_CONTIGUOUS, payload: v });
+    td({ type: A.SET_WAND_CONTIGUOUS, payload: v });
   const setGridVisible = (v) =>
-    sd({
+    td({
       type: A.SET_GRID_VISIBLE,
       payload: typeof v === "function" ? v(gridVisible) : v,
     });
   const setFrameGridVisible = (v) =>
-    sd({
+    td({
       type: A.SET_FRAME_GRID_VISIBLE,
       payload: typeof v === "function" ? v(frameGridVisible) : v,
     });
-  const setFrameConfig = (v) => sd({ type: A.SET_FRAME_CONFIG, payload: v });
-  const setBrushType = (v) => sd({ type: A.SET_BRUSH_TYPE, payload: v });
-  const setBrushSize = (v) => sd({ type: A.SET_BRUSH_SIZE, payload: v });
-  const setBrushOpacity = (v) => sd({ type: A.SET_BRUSH_OPACITY, payload: v });
+  const setFrameConfig = (v) => td({ type: A.SET_FRAME_CONFIG, payload: v });
+  const setBrushType = (v) => td({ type: A.SET_BRUSH_TYPE, payload: v });
+  const setBrushSize = (v) => td({ type: A.SET_BRUSH_SIZE, payload: v });
+  const setBrushOpacity = (v) => td({ type: A.SET_BRUSH_OPACITY, payload: v });
   const setBrushHardness = (v) =>
-    sd({ type: A.SET_BRUSH_HARDNESS, payload: v });
-  const setFgColor = (v) => sd({ type: A.SET_FG_COLOR, payload: v });
-  const setBgColor = (v) => sd({ type: A.SET_BG_COLOR, payload: v });
-  const setFgAlpha = (v) => sd({ type: A.SET_FG_ALPHA, payload: v });
+    td({ type: A.SET_BRUSH_HARDNESS, payload: v });
+  const setFgColor = (v) => td({ type: A.SET_FG_COLOR, payload: v });
+  const setBgColor = (v) => td({ type: A.SET_BG_COLOR, payload: v });
+  const setFgAlpha = (v) => td({ type: A.SET_FG_ALPHA, payload: v });
   // commitColor: called on mouseUp from ColorPicker; tones is string[] with
   // the selected color first followed by related shades. Adds the group to
   // history without flooding it on every drag event.
-  const commitColor = (tones) => sd({ type: A.COMMIT_COLOR, payload: tones });
+  const commitColor = (tones) => td({ type: A.COMMIT_COLOR, payload: tones });
   const setActivePalette = (v) =>
-    sd({ type: A.SET_ACTIVE_PALETTE, payload: v });
-  const setPanelTab = (v) => sd({ type: A.SET_PANEL_TAB, payload: v });
-  const setRefImage = (v) => sd({ type: A.SET_REF_IMAGE, payload: v });
-  const setRefOpacity = (v) => sd({ type: A.SET_REF_OPACITY, payload: v });
-  const setRefVisible = (v) => sd({ type: A.SET_REF_VISIBLE, payload: v });
-  const setTileVisible = (v) => sd({ type: A.SET_TILE_VISIBLE, payload: v });
-  const setTileCount = (v) => sd({ type: A.SET_TILE_COUNT, payload: v });
-  const setResizeAnchor = (v) => sd({ type: A.SET_RESIZE_ANCHOR, payload: v });
-  const setCustomW = (v) => sd({ type: A.SET_CUSTOM_W, payload: v });
-  const setCustomH = (v) => sd({ type: A.SET_CUSTOM_H, payload: v });
+    td({ type: A.SET_ACTIVE_PALETTE, payload: v });
+  const setPanelTab = (v) => td({ type: A.SET_PANEL_TAB, payload: v });
+  const setRefImage = (v) => td({ type: A.SET_REF_IMAGE, payload: v });
+  const setRefOpacity = (v) => td({ type: A.SET_REF_OPACITY, payload: v });
+  const setRefVisible = (v) => td({ type: A.SET_REF_VISIBLE, payload: v });
+  const setTileVisible = (v) => td({ type: A.SET_TILE_VISIBLE, payload: v });
+  const setTileCount = (v) => td({ type: A.SET_TILE_COUNT, payload: v });
+  const setResizeAnchor = (v) => td({ type: A.SET_RESIZE_ANCHOR, payload: v });
+  const setCustomW = (v) => td({ type: A.SET_CUSTOM_W, payload: v });
+  const setCustomH = (v) => td({ type: A.SET_CUSTOM_H, payload: v });
   // Canvas size — dispatches both w and h together
   const setCanvasW = (v) =>
     sd({ type: A.SET_CANVAS_SIZE, payload: { w: v, h: canvasH } });
@@ -495,7 +506,11 @@ function JellySpriteBody({ onRegisterCollector }) {
   // frame. JellySpriteWorkspace calls this right before writing to storage.
   function collectSaveData() {
     saveCurrentFrameToSnapshot();
-    const data = serializeJellySprite(refs, ss, framesRef.current);
+    const data = serializeJellySprite(
+      refs,
+      { ...ss, ...ts },
+      framesRef.current,
+    );
 
     // Inject a flatImage (composited PNG data URL) into every serialised frame.
     // The Animator uses these as its source; they also let us reconstruct the
@@ -756,7 +771,7 @@ function JellySpriteBody({ onRegisterCollector }) {
 
   // Colour helpers
   function pickColor(hex) {
-    sd({ type: A.PICK_COLOR, payload: hex });
+    td({ type: A.PICK_COLOR, payload: hex });
   }
 
   // Phase-1 restore: decode saved state before the init effect runs
@@ -798,6 +813,8 @@ function JellySpriteBody({ onRegisterCollector }) {
 
       // Dispatch the full JellySprite state atomically (frames + layers + scalars)
       sd({ type: A.LOAD_JELLY_STATE, payload: restore });
+      // Restore tool/view state into ToolContext
+      td({ type: A.LOAD_TOOL_STATE, payload: restore.storeState });
 
       // Seed history then redraw with the restored dimensions
       wireHistoryEngine(refs, sd);
@@ -1326,26 +1343,26 @@ function JellySpriteBody({ onRegisterCollector }) {
 
   // Palette management
   function paletteAddColor(hex) {
-    sd({ type: A.PALETTE_ADD_COLOR, payload: hex });
+    td({ type: A.PALETTE_ADD_COLOR, payload: hex });
   }
   function paletteRemoveColor(idx) {
     const hex = (palettes[activePalette] ?? [])[idx];
-    if (hex !== undefined) sd({ type: A.PALETTE_REMOVE_COLOR, payload: hex });
+    if (hex !== undefined) td({ type: A.PALETTE_REMOVE_COLOR, payload: hex });
   }
   function paletteSetColors(colors) {
-    sd({
+    td({
       type: A.PALETTE_SET_COLORS,
       payload: { name: activePalette, colors },
     });
   }
   function paletteAddNew(name) {
-    sd({ type: A.PALETTE_ADD_NEW, payload: { name } });
+    td({ type: A.PALETTE_ADD_NEW, payload: { name } });
   }
   function paletteDelete(name) {
-    sd({ type: A.PALETTE_DELETE, payload: name });
+    td({ type: A.PALETTE_DELETE, payload: name });
   }
   function paletteRename(oldName, newName) {
-    sd({ type: A.PALETTE_RENAME, payload: { oldName, newName } });
+    td({ type: A.PALETTE_RENAME, payload: { oldName, newName } });
   }
 
   // Tile preview

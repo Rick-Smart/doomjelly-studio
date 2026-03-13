@@ -82,7 +82,8 @@ export const SET_TILE_VISIBLE = "SET_TILE_VISIBLE"; // boolean
 export const SET_TILE_COUNT = "SET_TILE_COUNT"; // number
 
 // Persistence
-export const LOAD_JELLY_STATE = "LOAD_JELLY_STATE"; // full serialized state (from jellySpritePersistence)
+export const LOAD_JELLY_STATE = "LOAD_JELLY_STATE"; // document state restore (from jellySpritePersistence)
+export const LOAD_TOOL_STATE = "LOAD_TOOL_STATE"; // tool state restore (into ToolContext)
 
 // UI
 export const SET_PANEL_TAB = "SET_PANEL_TAB"; // tab id string

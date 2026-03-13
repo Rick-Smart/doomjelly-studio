@@ -1,10 +1,12 @@
 ﻿import { useRef, useEffect } from "react";
 import { useJellySpriteStore } from "../store/useJellySpriteStore.js";
+import { useToolContext } from "../store/ToolContext";
 import { createRenderer } from "../engine/canvasRenderer.js";
 import { createDrawingEngine } from "../engine/drawingEngine.js";
 
 export function useCanvas() {
   const { refs, state, dispatch } = useJellySpriteStore();
+  const { state: ts } = useToolContext();
   const canvasRef = useRef(null);
 
   // On mount: create offscreen, init pixel buffers, wire all engines
@@ -57,20 +59,21 @@ export function useCanvas() {
     refs.offscreenEl.height = state.canvasH;
   }, [state.canvasW, state.canvasH]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Redraw on visual-only metadata changes
+  // Redraw on visual-only metadata changes (view fields come from ToolContext, doc fields from JellySpriteStore)
   useEffect(() => {
     refs.redraw?.();
   }, [
     // eslint-disable-line react-hooks/exhaustive-deps
-    state.zoom,
-    state.gridVisible,
-    state.frameGridVisible,
+    ts.zoom,
+    ts.gridVisible,
+    ts.frameGridVisible,
+    ts.frameConfig,
+    ts.refVisible,
+    ts.refOpacity,
+    ts.tileVisible,
+    ts.tileCount,
     state.onionSkinning,
     state.activeFrameIdx,
-    state.refVisible,
-    state.refOpacity,
-    state.tileVisible,
-    state.tileCount,
     state.selection,
   ]);
 

@@ -1,25 +1,29 @@
-﻿import { BUILTIN_PALETTES } from "../../../ui/PaletteManager";
-import { makeLayer, makeFrame } from "../jellySprite.constants";
+﻿import { makeLayer, makeFrame } from "../jellySprite.constants";
 
 const _initLayer = makeLayer("Layer 1");
 const _initFrame = makeFrame("Frame 1");
 
+/**
+ * JellySpriteStore initial state — document / playback state only.
+ *
+ * Tool, brush, color, palette, and view state have been extracted to
+ * ToolContext (Sprint 7b). Everything here is document-level:
+ * canvas geometry, layers/frames structure, playback, history flags.
+ */
 export const jellySpriteInitialState = {
   // Canvas geometry
   canvasW: 32,
   canvasH: 32,
-  zoom: 4, // overridden on mount by fill-zoom calculation
 
   // Layers
-  // The active frame's layer metadata array. Changes when switching frames.
   layers: [_initLayer],
   activeLayerId: _initLayer.id,
-  editingMaskId: null, // non-null when user is painting into a layer mask
+  editingMaskId: null,
 
   // Frames
   frames: [_initFrame],
   activeFrameIdx: 0,
-  frameThumbnails: {}, // { [frameId]: dataUrl string }
+  frameThumbnails: {},
 
   // Playback
   isPlaying: false,
@@ -27,57 +31,12 @@ export const jellySpriteInitialState = {
   playbackFrameIdx: 0,
   onionSkinning: false,
 
-  // Tools
-  tool: "pencil",
-  fillShapes: false, // outline vs filled for rect/ellipse
-  symmetryH: false, // mirror paint horizontally
-  symmetryV: false, // mirror paint vertically
-  wandTolerance: 15, // 0–255 per-channel color distance for magic wand
-  wandContiguous: true, // true = flood-fill, false = select all matching pixels
-
-  // Brush
-  brushType: "round", // round | square | diamond | cross | pixel | dither | dither2 | star | ring | slash | bslash
-  brushSize: 1, // 1–32
-  brushOpacity: 100, // 1–100 (percentage)
-  brushHardness: 100, // 0–100 (100 = hard edge, lower = feathered/soft)
-
-  // Color
-  fgColor: "#000000",
-  bgColor: "#ffffff",
-  fgAlpha: 1, // 0–1, separate from brushOpacity
-  relatedColors: [], // tones from the last committed color pick
-  colorHistory: [], // last MAX_COLOUR_HISTORY individually selected colors
-
-  // Palettes
-  palettes: { ...BUILTIN_PALETTES },
-  activePalette: "DoomJelly 32",
-
   // Selection (metadata only — pixel mask lives in refs.selectionMask)
-  selection: null, // null | { x, y, w, h, poly? }
+  selection: null,
 
-  // History availability
-  // The actual stack lives in refs — these are just UI flags.
+  // History availability (actual stack lives in refs)
   canUndo: false,
   canRedo: false,
-
-  // Canvas resize helpers
-  resizeAnchor: "mc", // tl | tc | tr | ml | mc | mr | bl | bc | br
-  customW: 128,
-  customH: 128,
-
-  // View
-  gridVisible: true,
-  frameGridVisible: false,
-  // Custom overlay grid — cell dimensions in pixels. null disables drawing.
-  frameConfig: { frameW: 16, frameH: 16 },
-  refImage: null, // data URL of reference image, or null
-  refOpacity: 0.5,
-  refVisible: true,
-  tileVisible: false,
-  tileCount: 2,
-
-  // UI state
-  panelTab: "palette",
 };
 
 // Export seed values so the Provider can initialize refs consistently
