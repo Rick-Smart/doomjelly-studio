@@ -1,0 +1,110 @@
+/* ── Sheet List (read-only, managed from Projects) ────────── */
+
+.sheet-list {
+  padding: 6px 8px;
+}
+
+.sheet-list__empty {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin: 4px 0 0;
+}
+
+.sheet-list__link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--accent);
+  font-size: 11px;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.sheet-list__link:hover {
+  color: var(--accent-hover, var(--accent));
+}
+
+.sheet-list__items {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.sheet-list__row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 6px;
+  border-radius: 5px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition:
+    background 0.1s,
+    border-color 0.1s;
+}
+
+.sheet-list__row:hover {
+  background: var(--hover-bg, rgba(255, 255, 255, 0.06));
+}
+
+.sheet-list__row--active {
+  background: var(--accent-subtle, rgba(99, 102, 241, 0.15));
+  border-color: var(--accent);
+  cursor: default;
+}
+
+.sheet-list__thumb-wrap {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 3px;
+  overflow: hidden;
+  background: var(--surface-alt, #222);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sheet-list__thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+.sheet-list__thumb-placeholder {
+  font-size: 18px;
+  color: var(--text-disabled, #555);
+  line-height: 1;
+}
+
+.sheet-list__info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.sheet-list__name {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 140px;
+}
+
+.sheet-list__dims {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.sheet-list__stale {
+  font-size: 10px;
+  color: var(--warning, #f59e0b);
+}

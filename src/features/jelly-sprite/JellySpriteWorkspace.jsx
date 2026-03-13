@@ -10,52 +10,7 @@ import {
 } from "../../services/projectService";
 import { JellySprite } from "./JellySprite";
 import { ErrorBoundary } from "../../ui/ErrorBoundary/ErrorBoundary";
-
-function EditableTitle({ value, onChange }) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState("");
-  const inputRef = useRef(null);
-
-  function start() {
-    setDraft(value);
-    setEditing(true);
-    setTimeout(() => inputRef.current?.select(), 0);
-  }
-
-  function commit() {
-    const trimmed = draft.trim();
-    if (trimmed && trimmed !== value) onChange(trimmed);
-    setEditing(false);
-  }
-
-  function onKey(e) {
-    if (e.key === "Enter") commit();
-    if (e.key === "Escape") setEditing(false);
-  }
-
-  if (editing) {
-    return (
-      <input
-        ref={inputRef}
-        className="editor-title-input"
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        onBlur={commit}
-        onKeyDown={onKey}
-      />
-    );
-  }
-
-  return (
-    <span
-      className="editor-title-text"
-      onClick={start}
-      title="Click to rename project"
-    >
-      {value}
-    </span>
-  );
-}
+import { EditableTitle } from "../../ui/EditableTitle";
 
 export function JellySpriteWorkspace() {
   const { state, dispatch } = useProject();
