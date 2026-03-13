@@ -1,9 +1,10 @@
 ﻿import { useState, useMemo } from "react";
 import JSZip from "jszip";
 import { useAnimatorStore } from "../../../contexts/useAnimatorStore.js";
+import { useDocumentStore } from "../../../contexts/useDocumentStore.js";
 import { Modal } from "../../../ui/Modal";
 import { EXPORT_FORMATS } from "../../../services/exportService";
-import { serialiseProject } from "../../../services/projectService";
+import { serialiseSprite } from "../../../services/serialization";
 import {
   loadImage,
   buildPackedAtlas,
@@ -35,14 +36,13 @@ function pickSelected(animations, target, activeAnimationId) {
  */
 export function ExportPanel({ isOpen, onClose }) {
   const state = useAnimatorStore();
+  const { animations, activeAnimationId, frameConfig, activeSheetId, sheets } =
+    state;
   const {
-    animations,
-    activeAnimationId,
-    frameConfig,
-    activeSheetId,
-    sheets,
+    id: docId,
+    projectId: docProjectId,
     name: projectName,
-  } = state;
+  } = useDocumentStore();
   const activeSheet = sheets.find((s) => s.id === activeSheetId) ?? null;
 
   const [exportType, setExportType] = useState("json");
@@ -204,7 +204,11 @@ export function ExportPanel({ isOpen, onClose }) {
       const zip = new JSZip();
 
       // Always include the project JSON
-      const data = serialiseProject(state);
+      const data = serialiseSprite(null, {
+        id: docId,
+        projectId: docProjectId,
+        name: projectName,
+      });
       zip.file(
         `${slugify(projectName)}.doomjelly.json`,
         JSON.stringify(data, null, 2),
