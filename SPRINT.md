@@ -23,7 +23,7 @@
 | Sprint 9  | Zustand State Management           | ✅ Complete (`388f043`) |
 | Sprint 10 | Store Consumer Migration           | ✅ Complete (`8ed4bd7`) |
 | Sprint 11 | PixelDocument Store + 7e Cleanup   | ✅ Complete (`806493b`) |
-| Sprint 12 | Service Layer Cleanup              | � In progress           |
+| Sprint 12 | Service Layer Cleanup              | ✅ Complete (`fb89db4`) |
 
 ---
 
@@ -2154,7 +2154,7 @@ captures). No change needed to frame-switch logic.
 
 ---
 
-## 🔲 Sprint 12 — Service Layer Cleanup
+## ✅ Sprint 12 — Service Layer Cleanup (`fb89db4`)
 
 ### What remains in the service layer
 
