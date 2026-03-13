@@ -122,10 +122,9 @@ export function ProjectsPage() {
     }
     try {
       const data = await loadSprite(sprite.id);
-      const as = data.animatorState;
-      // Prefer first entry from multi-sheet format, then legacy single-sheet
+      const as = data.animatorBody;
       const sheetEntry = as?.sheets?.[0] ?? null;
-      const dataUrl = sheetEntry?.dataUrl ?? as?.spriteSheet?.dataUrl ?? null;
+      const dataUrl = sheetEntry?.dataUrl ?? null;
       if (!dataUrl) {
         showToast(
           `"${sprite.name}" has no sheet image. Open it in the Animator and save it first.`,
@@ -133,8 +132,8 @@ export function ProjectsPage() {
         );
         return;
       }
-      const width = sheetEntry?.width ?? as?.spriteSheet?.width;
-      const height = sheetEntry?.height ?? as?.spriteSheet?.height;
+      const width = sheetEntry?.width;
+      const height = sheetEntry?.height;
       const filename = sheetEntry?.filename ?? sprite.name + ".png";
       // Convert dataUrl → live objectUrl
       const blob = await fetch(dataUrl).then((r) => r.blob());
@@ -265,7 +264,7 @@ export function ProjectsPage() {
           gutterX: 0,
           gutterY: 0,
         },
-        jellySpriteState: null,
+        jellyBody: null,
       },
     });
     setAddSpriteProjectId(null);
@@ -320,11 +319,11 @@ export function ProjectsPage() {
     const name = exportTarget?.name || "sprite";
     try {
       if (type === "jelly") {
-        await exportJellySheet(name, exportFullData.jellySpriteState);
+        await exportJellySheet(name, exportFullData.jellyBody);
       } else if (type === "animator") {
-        await exportAnimatorSheet(name, exportFullData.animatorState);
+        await exportAnimatorSheet(name, exportFullData.animatorBody);
       } else if (type === "gif") {
-        await exportGif(name, exportFullData.jellySpriteState);
+        await exportGif(name, exportFullData.jellyBody);
       }
     } catch (err) {
       setExportError(err.message);
@@ -388,15 +387,31 @@ export function ProjectsPage() {
     } catch {
       // thumbnail stays null
     }
-    const spriteSheet = {
-      dataUrl,
-      width: uploadImgDims.w,
-      height: uploadImgDims.h,
+    const sheetId = crypto.randomUUID();
+    const uploadFrameConfig = {
       frameW: uploadFrameW,
       frameH: uploadFrameH,
-      cols,
-      rows,
-      frameCount,
+      scale: 2,
+      offsetX: 0,
+      offsetY: 0,
+      gutterX: 0,
+      gutterY: 0,
+    };
+    const uploadedAnimatorBody = {
+      sheets: [
+        {
+          id: sheetId,
+          dataUrl,
+          width: uploadImgDims.w,
+          height: uploadImgDims.h,
+          frameConfig: uploadFrameConfig,
+          filename: (uploadName.trim() || "sheet") + ".png",
+          objectUrl: null,
+        },
+      ],
+      animations: [],
+      frameConfig: uploadFrameConfig,
+      activeSheetId: sheetId,
     };
     const { projectId, spriteId } = uploadSheetTarget;
     try {
@@ -407,8 +422,8 @@ export function ProjectsPage() {
             ...existing,
             id: spriteId,
             projectId,
-            jellyBody: existing.jellySpriteState ?? null,
-            animatorBody: { spriteSheet },
+            jellyBody: existing.jellyBody ?? null,
+            animatorBody: uploadedAnimatorBody,
           },
           existing.thumbnail ?? thumbnail ?? undefined,
         );
@@ -427,7 +442,7 @@ export function ProjectsPage() {
             canvasW: uploadFrameW,
             canvasH: uploadFrameH,
             jellyBody: null,
-            animatorBody: { spriteSheet },
+            animatorBody: uploadedAnimatorBody,
           },
           thumbnail ?? undefined,
         );
@@ -438,7 +453,7 @@ export function ProjectsPage() {
             id: newId,
             projectId,
             name,
-            animatorState: { spriteSheet },
+            animatorBody: uploadedAnimatorBody,
           },
         });
         closeUploadModal();
@@ -832,11 +847,10 @@ export function ProjectsPage() {
             ) : (
               <div className="projects-export-options">
                 {(() => {
-                  const jellyFrames =
-                    exportFullData?.jellySpriteState?.frames ?? [];
+                  const jellyFrames = exportFullData?.jellyBody?.frames ?? [];
                   const hasFlat = jellyFrames.some((f) => f.flatImage);
                   const hasAnimator =
-                    !!exportFullData?.animatorState?.spriteSheet?.dataUrl;
+                    !!exportFullData?.animatorBody?.sheets?.[0]?.dataUrl;
                   const gifFrames = jellyFrames.filter(
                     (f) => f.flatImage,
                   ).length;

@@ -1,6 +1,6 @@
 const SCHEMA_VERSION = 2;
 
-export function serialiseSprite(jellySpriteState, meta) {
+export function serialiseSprite(jellyBody, meta) {
   return {
     version: SCHEMA_VERSION,
     id: meta.id,
@@ -8,12 +8,12 @@ export function serialiseSprite(jellySpriteState, meta) {
     name: meta.name,
     savedAt: new Date().toISOString(),
     type: "jelly-sprite",
-    jellySpriteState: jellySpriteState ?? null,
+    jellyBody: jellyBody ?? null,
   };
 }
 
-export function downloadSpriteJson(jellySpriteState, meta) {
-  const data = serialiseSprite(jellySpriteState, meta);
+export function downloadSpriteJson(jellyBody, meta) {
+  const data = serialiseSprite(jellyBody, meta);
   const blob = new Blob([JSON.stringify(data, null, 2)], {
     type: "application/json",
   });

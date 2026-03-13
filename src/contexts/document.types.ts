@@ -34,11 +34,7 @@ export interface DocumentState {
    */
   tags: AnimationRecord[];
 
-  /**
-   * Legacy JellySprite blob — present in old saves loaded from disk.
-   * Consumed by JellySpriteWorkspace on restore; null after first re-save.
-   */
-  jellySpriteState: unknown | null;
+  jellyBody: unknown | null;
 }
 
 // ── Actions ────────────────────────────────────────────────────────────────────

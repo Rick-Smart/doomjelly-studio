@@ -19,7 +19,7 @@ const initialDocumentState = {
   frames: [],
   layers: [],
   tags: [],
-  jellySpriteState: null,
+  jellyBody: null,
 };
 
 // ── Document reducer (inlined from DocumentContext.jsx — Sprint 12) ──────────
@@ -41,7 +41,7 @@ function documentReducer(state, action) {
           action.payload.tags ??
           action.payload.animations ??
           initialDocumentState.tags,
-        jellySpriteState: action.payload.jellySpriteState ?? null,
+        jellyBody: action.payload.jellyBody ?? null,
       };
 
     case "RESET_DOCUMENT":

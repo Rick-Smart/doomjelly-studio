@@ -48,3 +48,72 @@ export async function buildAnimatorBody(st) {
     frameConfig: st.frameConfig,
   };
 }
+
+/**
+ * Build a synthetic animatorBody from a JellyBody when the animator workspace
+ * has never been saved for this sprite.  Composites the per-frame flatImage
+ * data-URLs into a horizontal sprite sheet so the Animator has something to
+ * show immediately on first open.
+ *
+ * @param {object} jellyBody
+ * @returns {Promise<object|null>}  animatorBody, or null if no flatImages found
+ */
+export async function buildSheetFromJellyBody(jellyBody) {
+  const frames = jellyBody?.frames;
+  if (!frames?.length) return null;
+
+  const flatFrames = frames.filter((f) => f.flatImage);
+  if (!flatFrames.length) return null;
+
+  const frameW = jellyBody.canvasW ?? 32;
+  const frameH = jellyBody.canvasH ?? 32;
+
+  const images = await Promise.all(
+    flatFrames.map(
+      (f) =>
+        new Promise((resolve, reject) => {
+          const img = new Image();
+          img.onload = () => resolve(img);
+          img.onerror = reject;
+          img.src = f.flatImage;
+        }),
+    ),
+  );
+
+  const canvas = document.createElement("canvas");
+  canvas.width = frameW * flatFrames.length;
+  canvas.height = frameH;
+  const ctx = canvas.getContext("2d");
+  images.forEach((img, i) => {
+    if (img) ctx.drawImage(img, i * frameW, 0);
+  });
+
+  const dataUrl = canvas.toDataURL("image/png");
+  const sheetId = crypto.randomUUID();
+  const frameConfig = {
+    frameW,
+    frameH,
+    scale: 2,
+    offsetX: 0,
+    offsetY: 0,
+    gutterX: 0,
+    gutterY: 0,
+  };
+
+  return {
+    sheets: [
+      {
+        id: sheetId,
+        dataUrl,
+        objectUrl: null,
+        width: canvas.width,
+        height: canvas.height,
+        frameConfig,
+        filename: "sheet.png",
+      },
+    ],
+    animations: [],
+    frameConfig,
+    activeSheetId: sheetId,
+  };
+}

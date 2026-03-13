@@ -81,20 +81,23 @@ export async function sbSaveSprite(sprite) {
     data: { user },
   } = await supabase.auth.getUser();
   const now = new Date().toISOString();
-  const jellyBody = sprite.jellyBody ?? null;
-  const animatorBody = sprite.animatorBody ?? null;
-  const frameCount = sprite.frameCount ?? jellyBody?.frames?.length ?? 0;
+  // Use raw values — undefined means "don't touch this column" (partial update).
+  const jellyBodyRaw = sprite.jellyBody;
+  const animatorBodyRaw = sprite.animatorBody;
+  // For dimension/count calculations, fall back to null safely.
+  const jellyBodyMeta = jellyBodyRaw ?? null;
+  const frameCount = sprite.frameCount ?? jellyBodyMeta?.frames?.length ?? 0;
   const animCount = sprite.animCount ?? 0;
-  const canvasW = sprite.canvasW ?? jellyBody?.canvasW ?? 32;
-  const canvasH = sprite.canvasH ?? jellyBody?.canvasH ?? 32;
+  const canvasW = sprite.canvasW ?? jellyBodyMeta?.canvasW ?? 32;
+  const canvasH = sprite.canvasH ?? jellyBodyMeta?.canvasH ?? 32;
   const row = {
     id: sprite.id,
     project_id: sprite.projectId,
     user_id: user.id,
     name: sprite.name,
     body: sprite.body ?? {},
-    jelly_body: jellyBody,
-    animator_body: animatorBody,
+    ...(jellyBodyRaw !== undefined && { jelly_body: jellyBodyRaw }),
+    ...(animatorBodyRaw !== undefined && { animator_body: animatorBodyRaw }),
     thumbnail: sprite.thumbnail ?? null,
     frame_count: frameCount,
     anim_count: animCount,
@@ -123,13 +126,14 @@ export async function sbLoadSprite(id) {
     .single();
   if (error) throw error;
   const meta = sbSpriteRow(data);
+  // Normalise — legacy rows may have stored data in body before migration 003.
   const jellyBody =
     data.jelly_body ??
     (data.body?.frames ? data.body : (data.body?.jellySpriteState ?? null));
   return {
     ...meta,
-    jellySpriteState: jellyBody,
-    animatorState: data.animator_body ?? null,
+    jellyBody,
+    animatorBody: data.animator_body ?? null,
   };
 }
 

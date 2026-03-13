@@ -51,13 +51,11 @@ export function JellySpriteWorkspace() {
       const collected = usePixelDocumentStore.getState().collect();
       const jellyBody = collected?.data ?? null;
       const thumbnail = collected?.thumbnail ?? null;
-      const spriteSheet = collected?.spriteSheet ?? null;
 
       const { id } = await saveDocument(
         { ...state, id: spriteId ?? state.id },
         {
           jellyBody,
-          animatorBody: spriteSheet ? { spriteSheet } : null,
           thumbnail,
         },
       );

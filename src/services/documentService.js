@@ -20,10 +20,9 @@ export async function loadDocument(spriteId) {
   return {
     ...data,
     id: spriteId,
-    // Normalise to consistent field names regardless of which storage path
-    // or legacy schema wrote the record.
-    jellySpriteState: data.jellySpriteState ?? null,
-    animatorState: data.animatorState ?? null,
+    // Both storage paths (IDB + Supabase) now normalise to jellyBody/animatorBody.
+    jellyBody: data.jellyBody ?? null,
+    animatorBody: data.animatorBody ?? null,
   };
 }
 
@@ -39,7 +38,7 @@ export async function loadDocument(spriteId) {
  */
 export async function saveDocument(
   docState,
-  { jellyBody = null, animatorBody = null, thumbnail = null } = {},
+  { jellyBody = undefined, animatorBody = undefined, thumbnail = null } = {},
 ) {
   const id = docState.id ?? crypto.randomUUID();
 

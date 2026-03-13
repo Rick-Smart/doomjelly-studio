@@ -19,12 +19,12 @@ function triggerDownload(url, filename) {
 }
 
 // Export all frames from jelly_body as a horizontal PNG sprite sheet.
-export async function exportJellySheet(spriteName, jellySpriteState) {
-  const frames = jellySpriteState?.frames;
+export async function exportJellySheet(spriteName, jellyBody) {
+  const frames = jellyBody?.frames;
   if (!frames?.length) throw new Error("No frame data to export");
 
-  const frameW = jellySpriteState.canvasW;
-  const frameH = jellySpriteState.canvasH;
+  const frameW = jellyBody.canvasW;
+  const frameH = jellyBody.canvasH;
 
   const images = await Promise.all(
     frames.map((f) =>
@@ -46,29 +46,37 @@ export async function exportJellySheet(spriteName, jellySpriteState) {
 }
 
 // Export the animator sprite sheet PNG and its JSON metadata.
-export async function exportAnimatorSheet(spriteName, animatorState) {
-  const sh = animatorState?.spriteSheet;
-  if (!sh?.dataUrl) throw new Error("No animator sprite sheet saved yet");
+export async function exportAnimatorSheet(spriteName, animatorBody) {
+  const sheet = animatorBody?.sheets?.[0];
+  if (!sheet?.dataUrl) throw new Error("No animator sprite sheet saved yet");
 
-  const resp = await fetch(sh.dataUrl);
+  const resp = await fetch(sheet.dataUrl);
   const blob = await resp.blob();
   triggerDownload(URL.createObjectURL(blob), `${spriteName}_animator.png`);
+
+  const fc = sheet.frameConfig ?? {};
+  const frameW = fc.frameW ?? 32;
+  const frameH = fc.frameH ?? 32;
+  const cols = sheet.width ? Math.max(1, Math.floor(sheet.width / frameW)) : 1;
+  const rows = sheet.height
+    ? Math.max(1, Math.floor(sheet.height / frameH))
+    : 1;
 
   const meta = {
     name: spriteName,
     format: "doomjelly-animator",
     version: 1,
     spriteSheet: {
-      filename: `${spriteName}_animator.png`,
-      width: sh.width,
-      height: sh.height,
-      frameW: sh.frameW,
-      frameH: sh.frameH,
-      cols: sh.cols,
-      rows: sh.rows,
-      frameCount: sh.frameCount,
+      filename: sheet.filename ?? `${spriteName}_animator.png`,
+      width: sheet.width,
+      height: sheet.height,
+      frameW,
+      frameH,
+      cols,
+      rows,
+      frameCount: cols * rows,
     },
-    animations: animatorState.animations ?? [],
+    animations: animatorBody.animations ?? [],
   };
   const jsonBlob = new Blob([JSON.stringify(meta, null, 2)], {
     type: "application/json",
@@ -77,13 +85,13 @@ export async function exportAnimatorSheet(spriteName, animatorState) {
 }
 
 // Export an animated GIF from jelly_body frame flat images.
-export async function exportGif(spriteName, jellySpriteState) {
-  const frames = jellySpriteState?.frames;
+export async function exportGif(spriteName, jellyBody) {
+  const frames = jellyBody?.frames;
   if (!frames?.length) throw new Error("No frames to export");
 
-  const w = jellySpriteState.canvasW;
-  const h = jellySpriteState.canvasH;
-  const fps = jellySpriteState.fps ?? 12;
+  const w = jellyBody.canvasW;
+  const h = jellyBody.canvasH;
+  const fps = jellyBody.fps ?? 12;
   const delay = Math.round(1000 / Math.max(1, fps));
 
   const encoder = GIFEncoder();

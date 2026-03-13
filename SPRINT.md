@@ -22,24 +22,25 @@
 
 ## Sprint Status Dashboard
 
-| Sprint    | Name                                 | Status                  |
-| --------- | ------------------------------------ | ----------------------- |
-| Sprint 0  | Data Stability                       | ✅ Complete (`92997f7`) |
-| Sprint 1  | Foundation Cleanup                   | ✅ Complete (`b5fda67`) |
-| Sprint 2  | Monolith Decomposition               | ✅ Complete (`d8033f9`) |
-| Sprint 3  | Feature Contract Enforcement         | ✅ Complete (`86e3b26`) |
-| Sprint 4  | Context Decomposition                | ✅ Complete (`ac647ed`) |
-| Sprint 5  | State Finalization                   | ✅ Complete (`625e694`) |
-| Sprint 6  | Unified Document Model               | ✅ Complete (`5be735c`) |
-| Sprint 7  | JellySprite PixelDocument Refactor   | ✅ Complete (`15ee57a`) |
-| Sprint 8a | Rule Violation Fixes                 | ✅ Complete (`dc32ace`) |
-| Sprint 8  | TypeScript Migration                 | ✅ Complete (`d302053`) |
-| Sprint 9  | Zustand State Management             | ✅ Complete (`388f043`) |
-| Sprint 10 | Store Consumer Migration             | ✅ Complete (`8ed4bd7`) |
-| Sprint 11 | PixelDocument Store + 7e Cleanup     | ✅ Complete (`806493b`) |
-| Sprint 12 | Service Layer Cleanup                | ✅ Complete (`fb89db4`) |
-| Sprint 13 | Navigation Integrity + Creative Flow | ✅ Complete (`aaa3e58`) |
-| Sprint 14 | Full Ruleset Compliance Pass         | 🔴 Not started          |
+| Sprint    | Name                                 | Status                      |
+| --------- | ------------------------------------ | --------------------------- |
+| Sprint 0  | Data Stability                       | ✅ Complete (`92997f7`)     |
+| Sprint 1  | Foundation Cleanup                   | ✅ Complete (`b5fda67`)     |
+| Sprint 2  | Monolith Decomposition               | ✅ Complete (`d8033f9`)     |
+| Sprint 3  | Feature Contract Enforcement         | ✅ Complete (`86e3b26`)     |
+| Sprint 4  | Context Decomposition                | ✅ Complete (`ac647ed`)     |
+| Sprint 5  | State Finalization                   | ✅ Complete (`625e694`)     |
+| Sprint 6  | Unified Document Model               | ✅ Complete (`5be735c`)     |
+| Sprint 7  | JellySprite PixelDocument Refactor   | ✅ Complete (`15ee57a`)     |
+| Sprint 8a | Rule Violation Fixes                 | ✅ Complete (`dc32ace`)     |
+| Sprint 8  | TypeScript Migration                 | ✅ Complete (`d302053`)     |
+| Sprint 9  | Zustand State Management             | ✅ Complete (`388f043`)     |
+| Sprint 10 | Store Consumer Migration             | ✅ Complete (`8ed4bd7`)     |
+| Sprint 11 | PixelDocument Store + 7e Cleanup     | ✅ Complete (`806493b`)     |
+| Sprint 12 | Service Layer Cleanup                | ✅ Complete (`fb89db4`)     |
+| Sprint 13 | Navigation Integrity + Creative Flow | ✅ Complete (`aaa3e58`)     |
+| Sprint 14 | Full Ruleset Compliance Pass (CSS)   | 🔴 Queued (after Sprint 15) |
+| Sprint 15 | Data Model Normalization             | 🔄 In progress              |
 
 ---
 
@@ -275,6 +276,116 @@ Before a store consumer migration is declared complete: (1) grep all references 
 Extract a UI pattern into `src/ui/` when it appears identically in two or more distinct files. The first usage is a prototype; the second reveals the correct shared API. Do not extract speculatively. Feature-internal patterns stay in the feature directory.
 
 Every `src/ui/` component requires: `ComponentName.jsx`, `ComponentName.css` (tokens only — Rule 18), `index.js` barrel with named exports.
+
+---
+
+## Sprint 15 — Data Model Normalization
+
+**Status:** 🔄 In progress  
+**Origin:** Data model audit — naming schism between save and load paths causes broken exports, overwritten data, and dead legacy code.
+
+### Design assumptions challenged
+
+| Assumption                                                                      | Verdict                                                                                                                                                            |
+| ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| JellySprite should generate and save `animatorBody` (spritesheet) on every save | ❌ Wrong. JellySprite owns `jellyBody`. The Animator owns `animatorBody`. Cross-tool writes destroy the other tool's data (e.g. Animator's animations get erased). |
+| `saveSprite` can always write both body columns                                 | ❌ Wrong. Each tool should only update what it owns. `undefined` = "don't touch existing data"; `null` = "explicit clear".                                         |
+| `jellySpriteState`/`animatorState` are fine as load-path names                  | ❌ Wrong. Save path uses `jellyBody`/`animatorBody` (matching DB columns). Every boundary crossing requires a rename. One canonical name everywhere.               |
+| `AnimatorContext.jsx` and `DocumentContext.jsx` should exist                    | ❌ Both were supposed to be deleted in Sprint 12. Their logic was inlined into the stores. They are dead files.                                                    |
+| `body` column in Supabase is needed                                             | ❌ Migration 003 added `jelly_body`/`animator_body`. The `body` column is now dead.                                                                                |
+| When the Animator has no `animatorBody`, it shows nothing                       | ❌ The Animator can construct its initial spritesheet from `jellyBody.frames[].flatImage` (frame composite PNGs already stored in jellyBody).                      |
+
+### Bugs fixed
+
+| #   | Description                                                              | Root cause                                                                                              |
+| --- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------- |
+| B1  | `exportAnimatorSheet` always throws "No animator sprite sheet saved yet" | Reads `animatorState?.spriteSheet` (Sprint-2-era field); real data is in `animatorBody.sheets[]`        |
+| B2  | Export animator button always disabled in ProjectsPage                   | Checks `animatorState?.spriteSheet?.dataUrl` — same dead field                                          |
+| B3  | Animator save nulls out `jellyBody` in DB                                | `saveDocument` defaults: `jellyBody = null` wipes existing pixel data on every Animator save            |
+| B4  | JellySprite save overwrites Animator's animations with `[]`              | JellySprite writes `animatorBody: { spriteSheet }` — wrong shape AND nukes animations set in Animator   |
+| B5  | Upload-new-sprite writes old `animatorBody` shape                        | Passes `animatorBody: { spriteSheet }` (old format) instead of `{ sheets: [...], animations: [], ... }` |
+| B6  | `handleAddSheetToAnimator` reads dead field                              | Reads `data.animatorState` (legacy name) — should be `data.animatorBody`                                |
+
+### Tasks
+
+#### 15a — Rename load-path fields throughout (jellySpriteState→jellyBody, animatorState→animatorBody)
+
+- `services/sprites.js:loadSprite` — return `jellyBody`, `animatorBody`
+- `services/supabaseApi.js:sbLoadSprite` — same
+- `services/documentService.js:loadDocument` — pass through canonical names
+- `contexts/useDocumentStore.js` — rename state field and all reducer references
+- `contexts/useAnimatorStore.js` — read `payload.animatorBody` in LOAD_PROJECT
+- `features/jelly-sprite/JellySprite.jsx` — read `state.jellyBody`
+- `services/types.ts` + `contexts/document.types.ts` — update `DocumentRecord` / `DocumentState`
+- `services/serialization.js` — rename exported JSON field `jellySpriteState` → `jellyBody`
+
+#### 15b — Partial update: `undefined` = "don't touch" in saveSprite / sbSaveSprite / saveDocument
+
+- `saveDocument` params: `jellyBody = undefined, animatorBody = undefined` (was `null`)
+- `saveSprite` / `sbSaveSprite`: if `jellyBody`/`animatorBody` is `undefined` (not in payload), load existing record and merge before writing
+- IDB: read-modify-write merge. Supabase: only include changed columns in upsert row.
+
+#### 15c — JellySprite never writes animatorBody
+
+- `JellySpriteWorkspace.jsx:handleSave` — remove `animatorBody` from `saveDocument` call
+- `collectSaveData()` still generates the spritesheet (used by export), but it is no longer saved to storage
+
+#### 15d — Animator constructs initial sheet from jellyBody when animatorBody is absent
+
+- `animatorSerializer.js` — add `buildSheetFromJellyBody(jellyBody)` async helper: composites `frames[].flatImage` into a horizontal spritesheet, returns a proper `animatorBody` object
+- `AnimatorPage.jsx` load effect — if loaded data has no `animatorBody.sheets` but has `jellyBody.frames`, call `buildSheetFromJellyBody`, inject result into LOAD_PROJECT payload
+
+#### 15e — Fix exportAnimatorSheet + ProjectsPage export enable check
+
+- `spriteExport.js:exportAnimatorSheet` — read `animatorBody.sheets?.[0]` not `animatorState?.spriteSheet`
+- `ProjectsPage.jsx` — fix export enable: `animatorBody?.sheets?.length > 0`
+- `ProjectsPage.jsx:handleAddSheetToAnimator` — read `data.animatorBody` not `data.animatorState`
+- `ProjectsPage.jsx` LOAD_PROJECT dispatch — write correct `animatorBody` shape for upload path
+- `ProjectsPage.jsx` other `jellySpriteState`/`animatorState` references — rename
+
+#### 15f — Delete dead context files
+
+- Delete `src/contexts/AnimatorContext.jsx` (logic inlined in useAnimatorStore.js since Sprint 12)
+- Delete `src/contexts/DocumentContext.jsx` (logic inlined in useDocumentStore.js since Sprint 12)
+
+#### 15g — Migration 004: drop body column
+
+- `supabase/migrations/004_drop_body_column.sql`
+
+### Rules compliance
+
+| Rule                                 | Impact                                                                                                        |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
+| 3 — no state.spriteSheet             | Sprint 15d removes the legacy `as.spriteSheet` read path from LOAD_PROJECT                                    |
+| 11 — no cross-feature imports        | JellySprite no longer writes Animator-format data. Clean tool separation.                                     |
+| 13 — selectors for shared derivation | No new duplications introduced                                                                                |
+| 14 — engine pure                     | `buildSheetFromJellyBody` uses DOM canvas — goes in `animatorSerializer.js` (feature file), not `src/engine/` |
+| 15 — services I/O only               | `saveSprite` read-modify-write is pure I/O                                                                    |
+| 19 — migration completeness          | Grep `jellySpriteState` and `animatorState` across `src/` → 0 after this sprint                               |
+
+### Enforcement greps (run before close)
+
+```bash
+# 0 results expected for all:
+grep -rn "jellySpriteState" src/
+grep -rn "animatorState" src/
+grep -rn "spriteSheet" src/services/ src/features/animator/
+grep -rn "AnimatorContext\|DocumentContext" src/
+```
+
+### Commit order
+
+```
+1. Rename jellySpriteState/animatorState throughout (15a)
+2. Partial update in saveSprite + saveDocument (15b)
+3. JellySprite stops writing animatorBody (15c)
+4. buildSheetFromJellyBody + AnimatorPage load path (15d)
+5. Fix exportAnimatorSheet + ProjectsPage export/upload (15e)
+6. Delete AnimatorContext.jsx + DocumentContext.jsx (15f)
+7. Migration 004 (15g)
+8. npm run build + enforcement greps
+9. Commit: "fix: Sprint 15 — data model normalization"
+```
 
 ---
 

@@ -26,13 +26,14 @@ export async function loadSprite(id) {
   if (isSupabaseEnabled) return sbLoadSprite(id);
   const data = await idbGet(SPRITES_STORE, id);
   if (!data) return null;
-  const jellySpriteState =
+  // Normalise — legacy IDB records may have stored data under old field names.
+  const jellyBody =
     data.jellyBody ??
     (data.body?.frames ? data.body : (data.body?.jellySpriteState ?? null));
   return {
     ...data,
-    jellySpriteState,
-    animatorState: data.animatorBody ?? null,
+    jellyBody,
+    animatorBody: data.animatorBody ?? null,
   };
 }
 
@@ -54,6 +55,31 @@ export async function saveSprite(sprite, thumbnail) {
     return autoAssigned
       ? { ...result, projectId, _autoAssigned: true }
       : result;
+  }
+
+  // Partial-update: when jellyBody/animatorBody is undefined, preserve existing IDB data.
+  if (sprite.jellyBody === undefined || sprite.animatorBody === undefined) {
+    const existing = await idbGet(SPRITES_STORE, sprite.id).catch(() => null);
+    if (existing) {
+      sprite = {
+        ...existing,
+        ...sprite,
+        jellyBody:
+          sprite.jellyBody !== undefined
+            ? sprite.jellyBody
+            : (existing.jellyBody ?? null),
+        animatorBody:
+          sprite.animatorBody !== undefined
+            ? sprite.animatorBody
+            : (existing.animatorBody ?? null),
+      };
+    } else {
+      sprite = {
+        ...sprite,
+        jellyBody: sprite.jellyBody ?? null,
+        animatorBody: sprite.animatorBody ?? null,
+      };
+    }
   }
 
   const now = new Date().toISOString();

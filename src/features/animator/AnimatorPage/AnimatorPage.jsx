@@ -12,7 +12,10 @@ import { AnimationSidebar } from "../AnimationSidebar";
 import { SequenceBuilder } from "../SequenceBuilder";
 import { PreviewCanvas } from "../PreviewCanvas";
 import { loadDocument, saveDocument } from "../../../services/documentService";
-import { buildAnimatorBody } from "../animatorSerializer";
+import {
+  buildAnimatorBody,
+  buildSheetFromJellyBody,
+} from "../animatorSerializer";
 import { selectActiveSheet } from "../selectors";
 import { KeyboardHelp } from "../KeyboardHelp";
 import { TracksPanel } from "../TracksPanel";
@@ -69,8 +72,17 @@ export function AnimatorPage() {
     )
       return;
     loadDocument(urlSpriteId)
-      .then((data) => {
+      .then(async (data) => {
         if (data) {
+          // Bridge: if this sprite has pixel frames but no animator workspace yet,
+          // synthesise a sheet from the frame flatImages so the Animator isn't blank.
+          if (
+            !data.animatorBody &&
+            data.jellyBody?.frames?.some((f) => f.flatImage)
+          ) {
+            const synth = await buildSheetFromJellyBody(data.jellyBody);
+            if (synth) data = { ...data, animatorBody: synth };
+          }
           projectDispatch({ type: "LOAD_PROJECT", payload: data });
           dispatch({ type: "LOAD_PROJECT", payload: data });
         } else {

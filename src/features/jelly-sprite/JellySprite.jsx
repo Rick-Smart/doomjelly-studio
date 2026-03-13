@@ -844,7 +844,7 @@ function JellySpriteBody() {
   // NOTE: This effect must appear in code BEFORE the [canvasW, canvasH]
   // effect so React fires it first on initial mount.
   useEffect(() => {
-    const saved = state.jellySpriteState;
+    const saved = state.jellyBody;
     if (!saved) return;
     const restored = deserializeJellySprite(saved, refs);
     if (restored) pendingRestoreRef.current = restored;

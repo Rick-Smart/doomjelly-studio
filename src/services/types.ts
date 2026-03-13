@@ -144,8 +144,4 @@ export interface SpriteRecord {
 export interface DocumentRecord extends SpriteRecord {
   jellyBody: JellyBody | null;
   animatorBody: AnimatorBody | null;
-  /** Legacy field — kept for backward-compat deserialization. */
-  jellySpriteState?: unknown;
-  /** Legacy field — kept for backward-compat deserialization. */
-  animatorState?: unknown;
 }

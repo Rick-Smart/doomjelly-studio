@@ -25,26 +25,12 @@ function animatorReducer(state, action) {
   switch (action.type) {
     case "LOAD_PROJECT": {
       const payload = action.payload;
-      const as = payload.animatorState;
+      const as = payload.animatorBody;
 
       let sheets = payload.sheets ?? [];
       let activeSheetId = payload.activeSheetId ?? null;
-      if (sheets.length === 0 && as) {
-        if (as.sheets?.length) {
-          sheets = as.sheets.map((s) => ({ ...s, objectUrl: null }));
-        } else if (as.spriteSheet?.dataUrl) {
-          sheets = [
-            {
-              id: `${payload.id ?? "sheet"}-0`,
-              filename: as.spriteSheet.filename ?? "sheet.png",
-              objectUrl: null,
-              dataUrl: as.spriteSheet.dataUrl,
-              width: as.spriteSheet.width,
-              height: as.spriteSheet.height,
-              frameConfig: as.frameConfig ?? null,
-            },
-          ];
-        }
+      if (sheets.length === 0 && as?.sheets?.length) {
+        sheets = as.sheets.map((s) => ({ ...s, objectUrl: null }));
       }
       if (!activeSheetId && sheets.length > 0) activeSheetId = sheets[0].id;
 
@@ -53,13 +39,7 @@ function animatorReducer(state, action) {
         payload.frameConfig ??
         activeSheet?.frameConfig ??
         as?.frameConfig ??
-        (as?.spriteSheet?.frameW && as?.spriteSheet?.frameH
-          ? {
-              ...DEFAULT_FRAME_CONFIG,
-              frameW: as.spriteSheet.frameW,
-              frameH: as.spriteSheet.frameH,
-            }
-          : DEFAULT_FRAME_CONFIG);
+        DEFAULT_FRAME_CONFIG;
 
       return {
         ...initialAnimatorState,
