@@ -1,26 +1,17 @@
-import { useNavigate } from "react-router-dom";
 import { useAnimatorStore } from "../../../contexts/useAnimatorStore.js";
 import { sheetGridDims } from "../../../engine/frameUtils";
+import { SpritePicker } from "../SpritePicker/SpritePicker";
 import "./SheetList.css";
 
 export function SheetList() {
   const { dispatch, ...state } = useAnimatorStore();
-  const navigate = useNavigate();
   const { sheets, activeSheetId, frameConfig } = state;
 
   if (!sheets.length) {
     return (
       <div className="sheet-list">
         <div className="panel-heading">Sprite Sheets</div>
-        <p className="sheet-list__empty">
-          No sheets loaded.{" "}
-          <button
-            className="sheet-list__link"
-            onClick={() => navigate("/projects")}
-          >
-            Open a sprite from Projects ↗
-          </button>
-        </p>
+        <SpritePicker />
       </div>
     );
   }

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDocumentStore } from "../../contexts/useDocumentStore.js";
+import { useAnimatorStore } from "../../contexts/useAnimatorStore.js";
 import { useNotification } from "../../contexts/NotificationContext";
 import { Page } from "../../ui/Page";
 import { ConfirmDialog } from "../../ui/ConfirmDialog";
@@ -31,6 +32,7 @@ export function ProjectsPage() {
     markSaved: _ms,
     ...state
   } = useDocumentStore();
+  const { dispatch: animatorDispatch } = useAnimatorStore();
   const { showToast } = useNotification();
   const navigate = useNavigate();
 
@@ -99,25 +101,15 @@ export function ProjectsPage() {
   }
 
   async function handleOpenSprite(spriteId) {
-    try {
-      const data = await loadSprite(spriteId);
-      dispatch({ type: "LOAD_PROJECT", payload: { ...data, id: spriteId } });
-      navigate(`/jelly-sprite/${spriteId}`);
-    } catch (err) {
-      console.error(err);
-      showToast("Failed to open sprite.", "error");
-    }
+    // Editors self-load from URL params (Rule 1). Just navigate.
+    navigate(`/jelly-sprite/${spriteId}`);
   }
 
   async function handleOpenInAnimator(spriteId) {
-    try {
-      const data = await loadSprite(spriteId);
-      dispatch({ type: "LOAD_PROJECT", payload: { ...data, id: spriteId } });
-      navigate(`/animator/${spriteId}`);
-    } catch (err) {
-      console.error(err);
-      showToast("Failed to open sprite in Animator.", "error");
-    }
+    // Editors self-load from URL params (Rule 1). Just navigate.
+    // AnimatorPage's load effect reads the spriteId from the URL and loads
+    // both documentStore + animatorStore itself.
+    navigate(`/animator/${spriteId}`);
   }
 
   async function handleAddSheetToAnimator(sprite) {
@@ -147,7 +139,8 @@ export function ProjectsPage() {
       // Convert dataUrl → live objectUrl
       const blob = await fetch(dataUrl).then((r) => r.blob());
       const objectUrl = URL.createObjectURL(blob);
-      dispatch({
+      // Dispatch ADD_SHEET to the animator store (documentStore has no ADD_SHEET case)
+      animatorDispatch({
         type: "ADD_SHEET",
         payload: {
           id: crypto.randomUUID(),

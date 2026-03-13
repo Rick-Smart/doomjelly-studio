@@ -60,7 +60,14 @@ export function AnimatorPage() {
   const imageUrl = activeSheet?.objectUrl ?? null;
   useEffect(() => {
     if (!urlSpriteId) return;
-    if (projectState.id === urlSpriteId) return; // already loaded
+    // Guard: only skip if documentStore identity matches AND animatorStore has data.
+    // documentStore.id is persisted to localStorage — checking it alone causes a
+    // false positive on refresh, leaving the animator store empty (blank screen).
+    if (
+      projectState.id === urlSpriteId &&
+      (state.sheets.length > 0 || state.animations.length > 0)
+    )
+      return;
     loadDocument(urlSpriteId)
       .then((data) => {
         if (data) {

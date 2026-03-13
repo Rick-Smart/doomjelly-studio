@@ -8,22 +8,23 @@
 
 ## Sprint status
 
-| Sprint    | Name                               | Status                  |
-| --------- | ---------------------------------- | ----------------------- |
-| Sprint 0  | Data Stability                     | ✅ Complete (`92997f7`) |
-| Sprint 1  | Foundation Cleanup                 | ✅ Complete (`b5fda67`) |
-| Sprint 2  | Monolith Decomposition             | ✅ Complete (`d8033f9`) |
-| Sprint 3  | Feature Contract Enforcement       | ✅ Complete (`86e3b26`) |
-| Sprint 4  | Context Decomposition              | ✅ Complete (`ac647ed`) |
-| Sprint 5  | State Finalization                 | ✅ Complete (`625e694`) |
-| Sprint 6  | Unified Document Model             | ✅ Complete (`5be735c`) |
-| Sprint 7  | JellySprite PixelDocument Refactor | ✅ Complete (`15ee57a`) |
-| Sprint 8a | Rule Violation Fixes               | ✅ Complete (`dc32ace`) |
-| Sprint 8  | TypeScript Migration               | ✅ Complete (`d302053`) |
-| Sprint 9  | Zustand State Management           | ✅ Complete (`388f043`) |
-| Sprint 10 | Store Consumer Migration           | ✅ Complete (`8ed4bd7`) |
-| Sprint 11 | PixelDocument Store + 7e Cleanup   | ✅ Complete (`806493b`) |
-| Sprint 12 | Service Layer Cleanup              | ✅ Complete (`fb89db4`) |
+| Sprint    | Name                                 | Status                  |
+| --------- | ------------------------------------ | ----------------------- |
+| Sprint 0  | Data Stability                       | ✅ Complete (`92997f7`) |
+| Sprint 1  | Foundation Cleanup                   | ✅ Complete (`b5fda67`) |
+| Sprint 2  | Monolith Decomposition               | ✅ Complete (`d8033f9`) |
+| Sprint 3  | Feature Contract Enforcement         | ✅ Complete (`86e3b26`) |
+| Sprint 4  | Context Decomposition                | ✅ Complete (`ac647ed`) |
+| Sprint 5  | State Finalization                   | ✅ Complete (`625e694`) |
+| Sprint 6  | Unified Document Model               | ✅ Complete (`5be735c`) |
+| Sprint 7  | JellySprite PixelDocument Refactor   | ✅ Complete (`15ee57a`) |
+| Sprint 8a | Rule Violation Fixes                 | ✅ Complete (`dc32ace`) |
+| Sprint 8  | TypeScript Migration                 | ✅ Complete (`d302053`) |
+| Sprint 9  | Zustand State Management             | ✅ Complete (`388f043`) |
+| Sprint 10 | Store Consumer Migration             | ✅ Complete (`8ed4bd7`) |
+| Sprint 11 | PixelDocument Store + 7e Cleanup     | ✅ Complete (`806493b`) |
+| Sprint 12 | Service Layer Cleanup                | ✅ Complete (`fb89db4`) |
+| Sprint 13 | Navigation Integrity + Creative Flow | 🔄 In progress          |
 
 ---
 
@@ -2264,4 +2265,176 @@ then delete `ToolContext.jsx`, `AnimatorContext.jsx`, `DocumentContext.jsx`
 5. Inline reducers into store files + delete context shells (12d)
 6. Verify: npm run build — 0 errors
 7. Commit: "refactor: Sprint 12 — service layer cleanup, delete context shells"
+```
+
+---
+
+## 🔄 Sprint 13 — Navigation Integrity + Uninterrupted Creative Flow
+
+**Last updated:** March 13, 2026
+
+### Design assumptions challenged
+
+**"Editors are self-loading via URL param (Rule 1)"** — Kept. But the load guard
+in `AnimatorPage` was checking `useDocumentStore.id === urlSpriteId`, which is
+the wrong store. `useDocumentStore` persists its `id` to localStorage; so on any
+refresh, or after any navigation that touches that store, the guard fires and the
+animator store (which is NOT persisted) stays empty → blank screen. The guard must
+check animator-specific state.
+
+**"ProjectsPage should pre-dispatch LOAD_PROJECT before navigating"** — Rejected.
+Editors own their own loading. ProjectsPage dispatching to `useDocumentStore`
+before navigating poisons the AnimatorPage guard. Removed. Editors self-load per
+Rule 1 and Rule 7.
+
+**"Users should start at Projects to open anything"** — Rejected. The creative
+loop JellySprite → Animator → JellySprite must be navigable with one click at
+every step. Forcing a Projects detour disrupts the editing flow entirely.
+
+---
+
+### Bugs fixed
+
+| #   | Description                                                  | Root cause                                                                                                   |
+| --- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ |
+| B1  | Animator shows blank screen after "Animator →" from Projects | `AnimatorPage` guard checks `documentStore.id` only; animator store stays empty                              |
+| B1b | Animator blank on browser refresh at `/animator/:id`         | `documentStore` persists `id` to localStorage; guard fires on fresh mount before animator store is populated |
+| B2  | JellySprite blank canvas until Save is clicked               | Render condition requires `state.id` to be set, but new-sprite mode has no id yet                            |
+| B3  | `handleAddSheetToAnimator` silently broken                   | Dispatches `ADD_SHEET` to `useDocumentStore` which has no such case                                          |
+
+---
+
+### 13a — Fix `AnimatorPage` load guard
+
+**File:** `src/features/animator/AnimatorPage/AnimatorPage.jsx`
+
+The guard `if (projectState.id === urlSpriteId) return` was designed to avoid
+a redundant IDB read when the sprite is already loaded. But `projectState` comes
+from `useDocumentStore` (persisted) while the actual sprite data lives in
+`useAnimatorStore` (not persisted). The guard must also verify the animator store
+has data before skipping the load.
+
+```js
+// Before
+if (projectState.id === urlSpriteId) return; // already loaded
+
+// After
+if (
+  projectState.id === urlSpriteId &&
+  (state.sheets.length > 0 || state.animations.length > 0)
+)
+  return;
+```
+
+---
+
+### 13b — Fix `ProjectsPage` navigation handlers
+
+**File:** `src/features/projects/ProjectsPage.jsx`
+
+Three functions need correction:
+
+**`handleOpenInAnimator`** — Remove the pre-dispatch to `useDocumentStore`. Just
+navigate. `AnimatorPage` self-loads via its load effect (Rule 1). The pre-dispatch
+was setting `documentStore.id = spriteId` which triggered the (broken) guard in
+AnimatorPage, short-circuiting the load entirely.
+
+**`handleOpenSprite`** — Remove the pre-dispatch. `JellySpriteWorkspace` self-loads.
+The pre-dispatch was unnecessary (the workspace's own load effect correctly gates
+`<JellySprite />` mounting until after LOAD_PROJECT is dispatched).
+
+**`handleAddSheetToAnimator`** — Import `useAnimatorStore` and dispatch `ADD_SHEET`
+to the animator store, not the document store. `documentReducer` has no `ADD_SHEET`
+case — the dispatch was silently ignored, meaning no sheet was ever added.
+
+---
+
+### 13c — Fix `JellySpriteWorkspace` blank canvas + new-sprite reset
+
+**File:** `src/features/jelly-sprite/JellySpriteWorkspace.jsx`
+
+Two changes:
+
+**Render condition:** The current condition `state.id === spriteId || (!spriteId && state.id)`
+requires `state.id` to be populated even for new sprites. Since `useDocumentStore`
+is persisted but the pixel state is not, a user with an empty persisted state
+(`id: null`) sees "Loading sprite…" indefinitely. Fix: render `<JellySprite />` any
+time there is no spriteId in the URL.
+
+```js
+// Before
+{
+  state.id === spriteId || (!spriteId && state.id) ? (
+    <JellySprite />
+  ) : (
+    <div>Loading…</div>
+  );
+}
+
+// After
+{
+  state.id === spriteId || !spriteId ? <JellySprite /> : <div>Loading…</div>;
+}
+```
+
+**New-sprite reset:** When arriving at `/jelly-sprite` (no param), dispatch
+`RESET_DOCUMENT` so the title shows "Untitled" and identity is clean — avoiding
+stale names from the last persisted session being shown on a blank canvas.
+
+---
+
+### 13d — Fix `AppShell` Animator nav link
+
+**File:** `src/layout/AppShell.jsx`
+
+The "Jelly Sprite" nav link already uses `stateId` to go to `/jelly-sprite/:id`
+when a sprite is loaded. The "Animator" link does not — it always goes to
+`/animator`, which has no URL param, so `AnimatorPage` never loads anything.
+Apply the same `stateId` pattern.
+
+---
+
+### 13e — Add "Open in Animator" to `JellySpriteWorkspace` toolbar
+
+**File:** `src/features/jelly-sprite/JellySpriteWorkspace.jsx`
+
+`AnimatorPage` has "Edit in JellySprite ↗" but `JellySpriteWorkspace` has no
+reciprocal link. Add "Open in Animator ↗" button that navigates to
+`/animator/${spriteId ?? state.id}` when a sprite ID is available. Save before
+navigating if dirty (Rule 4).
+
+---
+
+### 13f — Inline `SpritePicker` in `AnimatorPage` / `SheetList`
+
+**Files:** New `src/features/animator/SpritePicker/SpritePicker.jsx`,
+`src/features/animator/SheetList/SheetList.jsx`
+
+When the animator has no sheets, the empty state currently shows "Open a sprite
+from Projects ↗" — a link that navigates the user away from the animator entirely.
+
+Replace with an inline collapsible project/sprite tree (`SpritePicker`). On
+sprite selection, the picker loads the document and dispatches `LOAD_PROJECT` to
+both `useDocumentStore` and `useAnimatorStore` before navigating to
+`/animator/:spriteId`. No Projects page visit required.
+
+`SpritePicker` pre-populates both stores before navigating, so when the new
+`AnimatorPage` mounts at the new URL:
+
+- The restore `[]` effect sees sheets with `dataUrl` but no `objectUrl` → creates objectUrls ✓
+- The load `[urlSpriteId]` effect's new guard (`sheets.length > 0`) fires → skips redundant IDB read ✓
+
+---
+
+### Sprint 13 commit order
+
+```
+1. Fix AnimatorPage guard (13a)
+2. Fix ProjectsPage handlers (13b)
+3. Fix JellySprite blank canvas + reset (13c)
+4. Fix AppShell nav link (13d)
+5. Add "Open in Animator" button (13e)
+6. Create SpritePicker + wire into SheetList (13f)
+7. npm run build — 0 errors
+8. Commit: "fix: Sprint 13 — navigation integrity + creative flow"
 ```

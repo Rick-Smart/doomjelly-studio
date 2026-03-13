@@ -24,7 +24,12 @@ export function JellySpriteWorkspace() {
 
   // Load sprite from URL param on mount (or when URL changes)
   useEffect(() => {
-    if (!spriteId) return;
+    if (!spriteId) {
+      // New-sprite mode: reset document identity so title shows "Untitled"
+      // instead of a stale name from the previously-persisted session.
+      dispatch({ type: "RESET_DOCUMENT" });
+      return;
+    }
     // Don't reload if context already has this sprite loaded
     if (state.id === spriteId) return;
     loadDocument(spriteId)
@@ -73,6 +78,16 @@ export function JellySpriteWorkspace() {
     }
   }
 
+  async function handleOpenInAnimator() {
+    const targetId = spriteId ?? state.id;
+    if (!targetId) {
+      // Sprite hasn't been saved yet — save first so Animator can load it
+      await handleSave();
+      return;
+    }
+    navigate(`/animator/${targetId}`);
+  }
+
   return (
     <Page
       title={
@@ -84,20 +99,31 @@ export function JellySpriteWorkspace() {
         />
       }
       actions={
-        <button
-          className="editor-toolbar__btn editor-toolbar__btn--primary"
-          onClick={handleSave}
-          disabled={saving}
-          title="Save project"
-        >
-          {saving ? "Saving\u2026" : saved ? "Saved \u2713" : "Save"}
-        </button>
+        <>
+          {(spriteId ?? state.id) && (
+            <button
+              className="editor-toolbar__btn"
+              onClick={handleOpenInAnimator}
+              title="Open this sprite in the Animator"
+            >
+              Open in Animator ↗
+            </button>
+          )}
+          <button
+            className="editor-toolbar__btn editor-toolbar__btn--primary"
+            onClick={handleSave}
+            disabled={saving}
+            title="Save project"
+          >
+            {saving ? "Saving\u2026" : saved ? "Saved \u2713" : "Save"}
+          </button>
+        </>
       }
       scrollable={false}
       padding={false}
     >
       <ErrorBoundary>
-        {state.id === spriteId || (!spriteId && state.id) ? (
+        {state.id === spriteId || !spriteId ? (
           <JellySprite />
         ) : (
           <div

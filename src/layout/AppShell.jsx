@@ -16,7 +16,11 @@ export function AppShell() {
       label: "Jelly Sprite",
       base: "/jelly-sprite",
     },
-    { to: "/animator", label: "Animator", base: "/animator" },
+    {
+      to: stateId ? `/animator/${stateId}` : "/animator",
+      label: "Animator",
+      base: "/animator",
+    },
     { to: "/projects", label: "Projects", base: "/projects" },
     { to: "/settings", label: "Settings", base: "/settings" },
   ];
