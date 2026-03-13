@@ -2,7 +2,7 @@
 
 **Branch:** `feature/jelly-sprite-improvements`  
 **Architecture reference:** `ARCHITECTURE.md` — read this first before starting any sprint.  
-**Last updated:** March 13, 2026
+**Last updated:** March 14, 2026
 
 ---
 
@@ -24,7 +24,7 @@
 | Sprint 10 | Store Consumer Migration             | ✅ Complete (`8ed4bd7`) |
 | Sprint 11 | PixelDocument Store + 7e Cleanup     | ✅ Complete (`806493b`) |
 | Sprint 12 | Service Layer Cleanup                | ✅ Complete (`fb89db4`) |
-| Sprint 13 | Navigation Integrity + Creative Flow | ✅ Complete (`6a7bbd1`) |
+| Sprint 13 | Navigation Integrity + Creative Flow | ✅ Complete (`aaa3e58`) |
 
 ---
 
@@ -76,8 +76,73 @@ This process must be followed at the **start and end of every sprint**:
 2. Record the commit hash in the sprint section header
 3. Update `**Last updated:**` in the file header
 4. Run the Rule 19 completeness checklist for every file touched (build gate + smoke test)
-5. Run each rule's enforcement `grep` for every rule whose scope was touched
+5. **Run the full Rules 1–20 enforcement checklist below** — not just rules whose scope was touched
 6. Log any deferred items as named line items in the next sprint section
+
+---
+
+### Sprint close — Rules 1–20 enforcement checklist
+
+Run every grep below from the repo root before marking a sprint complete.
+A sprint is not done until all checks are green.
+
+```bash
+# Rule 1 — URL = identity: no bare /animator or /jelly-sprite destination
+grep -rn "navigate('/animator')\|navigate(\"/animator\")\|navigate('/jelly-sprite')\|navigate(\"/jelly-sprite\")" src/
+
+# Rule 3 — No state.spriteSheet access
+grep -rn "state\.spriteSheet" src/
+
+# Rule 4 — await save before navigate (manual review required)
+# Find all navigate() calls in editor files and confirm each is preceded by await handleSave():
+grep -n "navigate(" src/features/animator/AnimatorPage/AnimatorPage.jsx
+grep -n "navigate(" src/features/jelly-sprite/JellySpriteWorkspace.jsx
+
+# Rule 5 — No legacy spriteSheet field written by services
+grep -rn "\"spriteSheet\"" src/services/
+
+# Rule 6 — No dataUrl/objectUrl in localStorage index
+grep -n "dataUrl\|objectUrl" src/services/storage.js
+
+# Rule 10 — No bare /animator or /jelly-sprite navigate (broader)
+grep -rn "navigate.*['\"/]animator['\"/]\|navigate.*['\"/]jelly-sprite['\"/]" src/
+
+# Rule 11 — No cross-feature imports (features never import from sibling features)
+grep -rn "from.*features/animator.*" src/features/jelly-sprite/
+grep -rn "from.*features/jelly-sprite.*" src/features/animator/
+grep -rn "from.*features/projects.*" src/features/animator/ src/features/jelly-sprite/
+
+# Rule 12 — No deep-path imports in router / layout / App
+grep -rn "features/[a-z-]*/[A-Z][A-Za-z/]*" src/router/ src/layout/ src/App.jsx
+
+# Rule 13 — No duplicate derived logic (manual: check new selectors/derivations)
+# Run this to surface any duplicate find/filter patterns:
+grep -rn "\.find(\|\.filter(" src/features/ | grep -v "node_modules" | grep -v ".test."
+
+# Rule 14 — src/engine pure: no React or DOM imports
+grep -rn "from 'react'\|from \"react\"\|document\.\|window\." src/features/jelly-sprite/engine/
+
+# Rule 15 — services are I/O only: no React hooks
+grep -rn "useState\|useEffect\|useCallback\|showToast" src/services/
+
+# Rule 18 — No raw hex colors in src/ui/ component CSS
+grep -rn "color-mix\|#[0-9a-fA-F]\{3,6\}" src/ui/
+# Also check new feature-dir CSS files (spirit of the rule):
+grep -rn "#[0-9a-fA-F]\{3,6\}" src/features/ --include="*.css"
+
+# Rule 20 — New src/ui/ components have an index.js barrel
+# (manual: check any new directories added under src/ui/ have index.js)
+find src/ui -type d | while read d; do [ ! -f "$d/index.js" ] && echo "MISSING index.js: $d"; done
+
+# Build gate — must pass with 0 errors before close
+npm run build
+```
+
+> **Note on Rule 4:** This rule requires manual logic review — grep can find
+> `navigate(` calls but cannot verify the async await chain. For every
+> `navigate(` found in an editor file, trace the call site and confirm it
+> is either: (a) preceded by `await handleSave()` in the same code path, or
+> (b) a programmatic internal redirect that cannot lose user work.
 
 ---
 
@@ -2269,7 +2334,7 @@ then delete `ToolContext.jsx`, `AnimatorContext.jsx`, `DocumentContext.jsx`
 
 ---
 
-## ✅ Sprint 13 — Navigation Integrity + Uninterrupted Creative Flow
+## ✅ Sprint 13 — Navigation Integrity + Uninterrupted Creative Flow (`aaa3e58`)
 
 **Last updated:** March 13, 2026
 
@@ -2437,4 +2502,55 @@ both `useDocumentStore` and `useAnimatorStore` before navigating to
 6. Create SpritePicker + wire into SheetList (13f)
 7. npm run build — 0 errors
 8. Commit: "fix: Sprint 13 — navigation integrity + creative flow"
+9. Run full Rules 1–20 enforcement audit
+10. Patch Rule 4 + Rule 18 violations — commit `aaa3e58`
 ```
+
+### Rule 1–20 enforcement audit (Sprint 13)
+
+Ran after Sprint 13 initial commit (`6a7bbd1`) per the full-audit policy
+established in this sprint.
+
+| Rule                                 | Result                  | Notes                                                                    |
+| ------------------------------------ | ----------------------- | ------------------------------------------------------------------------ |
+| 1 — URL = identity                   | ✅                      | All navigates carry `:spriteId`; no bare `/animator` destinations        |
+| 2 — dataUrl canonical                | ✅                      | Not touched                                                              |
+| 3 — no state.spriteSheet             | ✅                      | grep returns 0 matches                                                   |
+| **4 — await save before navigate**   | **was ❌ → patched ✅** | Two violations in `handleOpenInAnimator` (see below)                     |
+| 5 — canonical save format            | ✅                      | grep `"spriteSheet"` in services = 0                                     |
+| 6 — no binary in localStorage        | ✅                      | localIndex.js has no dataUrl/objectUrl                                   |
+| 7 — first-save URL update            | ✅                      | handleSave navigates with replace:true unchanged                         |
+| 8 — ProtectedRoute renders UI        | ✅                      | Not touched                                                              |
+| 9 — localStorage try/catch           | ✅                      | Not touched                                                              |
+| 10 — no bare /tool navigate          | ✅                      | All navigates include spriteId                                           |
+| 11 — no cross-feature imports        | ✅                      | SpritePicker only imports from contexts/services                         |
+| 12 — barrel exports                  | ✅                      | SpritePicker is internal to animator feature                             |
+| 13 — selectors for shared derivation | ✅                      | No new duplicate derived logic                                           |
+| 14 — src/engine pure                 | ✅                      | grep returns 0 React/DOM imports in engine/                              |
+| 15 — services are I/O only           | ✅                      | grep returns 0 React hooks in services/                                  |
+| 16 — undoable operations             | ✅                      | No new undoable actions added                                            |
+| 17 — lazy loading                    | ✅                      | No new pages; SpritePicker is a component                                |
+| **18 — CSS design tokens**           | **was ⚠️ → patched ✅** | SpritePicker.css had raw hex fallbacks in var() (see below)              |
+| 19 — store migration completeness    | ✅                      | animatorDispatch used in one place only; no whole-object pass-through    |
+| 20 — UI extraction threshold         | ✅                      | SpritePicker used in 1 place → correctly lives in src/features/animator/ |
+
+**Rule 4 violations found and patched (`aaa3e58`):**
+
+- **Violation A** — `handleOpenInAnimator` when `!targetId`: called
+  `await handleSave()` then immediately `return`, so the user saved and
+  _stayed in JellySprite_ — navigation to Animator never happened.
+- **Violation B** — `handleOpenInAnimator` when `targetId` exists: called
+  `navigate()` with no save guard. Unsaved pixel work in-memory was abandoned.
+  A subsequent Animator save would write `jellyBody: null`, permanently
+  wiping the pixel layer.
+
+Fix: `handleSave()` now returns the persisted id (or `null` on failure).
+`handleOpenInAnimator` always calls `handleSave()` first, then navigates
+to `/animator/:savedId` only on success.
+
+**Rule 18 partial violation found and patched (`aaa3e58`):**
+
+`SpritePicker.css` (in `src/features/`, outside the `src/ui/` enforcement
+grep scope) contained raw hex fallbacks — `#888`, `#ddd`, `#ccc` — inside
+`var()` expressions. The tokens (`--text-muted`, `--text-primary`) are
+defined in `src/index.css`, so the fallbacks were dead code. Removed.
