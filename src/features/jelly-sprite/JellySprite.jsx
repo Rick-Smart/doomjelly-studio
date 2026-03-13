@@ -196,6 +196,8 @@ function JellySpriteBody({ onRegisterCollector }) {
   refs.doc.activeLayerId = ss.activeLayerId;
   refs.doc.frames = framesRef.current;
   refs.doc.activeFrameIdx = ss.activeFrameIdx;
+  refs.doc.canvasW = canvasW;
+  refs.doc.canvasH = canvasH;
 
   // playIntervalRef: holds setInterval id for playback (not in React state)
   const playIntervalRef = useRef(null);
@@ -253,6 +255,8 @@ function JellySpriteBody({ onRegisterCollector }) {
       refs.doc.pixelBuffers = pb;
       refs.doc.maskBuffers = {};
       pixelsRef.current = pb[newLayer.id];
+      refs.doc.layers = [newLayer]; // Sprint 7d
+      refs.doc.activeLayerId = newLayer.id; // Sprint 7d
       sd({ type: A.SET_LAYERS, payload: [newLayer] });
       sd({ type: A.SET_ACTIVE_LAYER, payload: newLayer.id });
       refs.doc.seedHistory([newLayer], newLayer.id);
@@ -261,6 +265,8 @@ function JellySpriteBody({ onRegisterCollector }) {
     refs.doc.pixelBuffers = snap.pixelBuffers;
     refs.doc.maskBuffers = snap.maskBuffers ?? {};
     pixelsRef.current = refs.doc.pixelBuffers[snap.activeLayerId] ?? null;
+    refs.doc.layers = [...snap.layers]; // Sprint 7d
+    refs.doc.activeLayerId = snap.activeLayerId; // Sprint 7d
     sd({ type: A.SET_LAYERS, payload: [...snap.layers] });
     sd({ type: A.SET_ACTIVE_LAYER, payload: snap.activeLayerId });
     // Restore per-frame history; seed fresh (with correct layers) if none saved
@@ -316,7 +322,8 @@ function JellySpriteBody({ onRegisterCollector }) {
     saveCurrentFrameToSnapshot();
     const newFrameId = framesRef.current[newIdx]?.id;
     if (!newFrameId) return;
-    loadFrameFromSnapshot(newFrameId);
+    loadFrameFromSnapshot(newFrameId); // sets refs.doc.layers (Sprint 7d)
+    refs.doc._notify({ type: "frame-switch", frameIdx: newIdx }); // Sprint 7d
     sd({
       type: A.SWITCH_FRAME,
       payload: {
@@ -345,7 +352,11 @@ function JellySpriteBody({ onRegisterCollector }) {
     refs.doc.pixelBuffers = pb;
     refs.doc.maskBuffers = {};
     pixelsRef.current = pb[newLayer.id];
+    refs.doc.frames = [...framesRef.current, newFrame]; // Sprint 7d
+    refs.doc.layers = [newLayer]; // Sprint 7d
+    refs.doc.activeLayerId = newLayer.id; // Sprint 7d
     sd({ type: A.ADD_FRAME, payload: { frame: newFrame, layer: newLayer } });
+    refs.doc._notify({ type: "frames-changed" }); // Sprint 7d
     refs.doc.seedHistory([newLayer], newLayer.id);
     refs.redraw?.();
   }
@@ -387,6 +398,11 @@ function JellySpriteBody({ onRegisterCollector }) {
     refs.doc.maskBuffers = newMB;
     pixelsRef.current = newPB[newActiveLayerId];
     const newIdx = idx + 1;
+    const insertedFrames = [...framesRef.current];
+    insertedFrames.splice(newIdx, 0, newFrame);
+    refs.doc.frames = insertedFrames; // Sprint 7d
+    refs.doc.layers = newLayers; // Sprint 7d
+    refs.doc.activeLayerId = newActiveLayerId; // Sprint 7d
     sd({
       type: A.DUPLICATE_FRAME,
       payload: {
@@ -396,6 +412,7 @@ function JellySpriteBody({ onRegisterCollector }) {
         activeLayerId: newActiveLayerId,
       },
     });
+    refs.doc._notify({ type: "frames-changed" }); // Sprint 7d
     const dupThumb = generateFrameThumbnail(newFrame.id);
     if (dupThumb)
       sd({
@@ -412,7 +429,8 @@ function JellySpriteBody({ onRegisterCollector }) {
     delete refs.doc.frameSnapshots[delId];
     const remaining = framesRef.current.filter((_, i) => i !== idx);
     const newIdx = Math.min(idx, remaining.length - 1);
-    loadFrameFromSnapshot(remaining[newIdx].id);
+    loadFrameFromSnapshot(remaining[newIdx].id); // sets refs.doc.layers (Sprint 7d)
+    refs.doc.frames = remaining; // Sprint 7d
     sd({
       type: A.DELETE_FRAME,
       payload: {
@@ -427,6 +445,7 @@ function JellySpriteBody({ onRegisterCollector }) {
           activeLayerIdRef.current,
       },
     });
+    refs.doc._notify({ type: "frames-changed" }); // Sprint 7d
     refs.redraw?.();
   }
 
@@ -462,7 +481,13 @@ function JellySpriteBody({ onRegisterCollector }) {
   }
 
   function renameFrame(frameId, name) {
+    refs.doc.frames = framesRef.current.map(
+      (
+        f, // Sprint 7d
+      ) => (f.id === frameId ? { ...f, name } : f),
+    );
     sd({ type: A.RENAME_FRAME, payload: { frameId, name } });
+    refs.doc._notify({ type: "frames-changed" }); // Sprint 7d
   }
 
   // useDrawingTools removed (Phase G)
@@ -565,7 +590,10 @@ function JellySpriteBody({ onRegisterCollector }) {
     refs.doc.pixelBuffers[newLayer.id] = new Uint8ClampedArray(
       canvasW * canvasH * 4,
     );
+    refs.doc.layers = [...layersRef.current, newLayer]; // Sprint 7d
+    refs.doc.activeLayerId = newLayer.id; // Sprint 7d
     sd({ type: A.ADD_LAYER, payload: { layer: newLayer } });
+    refs.doc._notify({ type: "layers-changed" }); // Sprint 7d
   }
   function deleteLayer(id) {
     if (ss.layers.length <= 1) return;
@@ -576,6 +604,8 @@ function JellySpriteBody({ onRegisterCollector }) {
       id === ss.activeLayerId
         ? remaining[remaining.length - 1].id
         : ss.activeLayerId;
+    refs.doc.layers = remaining; // Sprint 7d
+    refs.doc.activeLayerId = newActive; // Sprint 7d
     sd({
       type: A.DELETE_LAYER,
       payload: {
@@ -584,6 +614,7 @@ function JellySpriteBody({ onRegisterCollector }) {
         newActiveLayerId: newActive,
       },
     });
+    refs.doc._notify({ type: "layers-changed" }); // Sprint 7d
   }
   function duplicateLayer(id) {
     const src = ss.layers.find((l) => l.id === id);
@@ -599,10 +630,15 @@ function JellySpriteBody({ onRegisterCollector }) {
       dup.hasMask = true;
     }
     const insertAfterIndex = ss.layers.findIndex((l) => l.id === id);
+    const newLayers = [...layersRef.current];
+    newLayers.splice(insertAfterIndex + 1, 0, dup);
+    refs.doc.layers = newLayers; // Sprint 7d
+    refs.doc.activeLayerId = dup.id; // Sprint 7d
     sd({
       type: A.DUPLICATE_LAYER,
       payload: { newLayer: dup, insertAfterIndex },
     });
+    refs.doc._notify({ type: "layers-changed" }); // Sprint 7d
   }
   function mergeLayerDown(id) {
     const idx = ss.layers.findIndex((l) => l.id === id);
@@ -634,6 +670,8 @@ function JellySpriteBody({ onRegisterCollector }) {
     delete refs.doc.pixelBuffers[id];
     pushHistoryEntryStubRef.current();
     refs.redraw?.();
+    refs.doc.layers = layersRef.current.filter((l) => l.id !== id); // Sprint 7d
+    refs.doc.activeLayerId = below.id; // Sprint 7d
     sd({
       type: A.MERGE_LAYER_DOWN,
       payload: { survivingLayerId: below.id, removedLayerId: id },
@@ -663,31 +701,63 @@ function JellySpriteBody({ onRegisterCollector }) {
     const baseLayer = makeLayer("Flattened");
     refs.doc.pixelBuffers = { [baseLayer.id]: flat };
     refs.doc.maskBuffers = {};
+    refs.doc.layers = [baseLayer]; // Sprint 7d
+    refs.doc.activeLayerId = baseLayer.id; // Sprint 7d
     pushHistoryEntryStubRef.current();
     refs.redraw?.();
     sd({ type: A.FLATTEN_ALL, payload: { newLayer: baseLayer } });
   }
   function moveLayerUp(id) {
+    const idx = layersRef.current.findIndex((l) => l.id === id);
+    if (idx >= layersRef.current.length - 1) return;
+    const next = [...layersRef.current];
+    [next[idx], next[idx + 1]] = [next[idx + 1], next[idx]];
+    refs.doc.layers = next; // Sprint 7d
     sd({ type: A.MOVE_LAYER_UP, payload: id });
+    refs.doc._notify({ type: "layers-changed" }); // Sprint 7d
     refs.redraw?.();
   }
   function moveLayerDown(id) {
+    const idx = layersRef.current.findIndex((l) => l.id === id);
+    if (idx <= 0) return;
+    const next = [...layersRef.current];
+    [next[idx], next[idx - 1]] = [next[idx - 1], next[idx]];
+    refs.doc.layers = next; // Sprint 7d
     sd({ type: A.MOVE_LAYER_DOWN, payload: id });
+    refs.doc._notify({ type: "layers-changed" }); // Sprint 7d
     refs.redraw?.();
   }
   function updateLayer(id, patch) {
+    refs.doc.layers = layersRef.current.map(
+      (
+        l, // Sprint 7d
+      ) => (l.id === id ? { ...l, ...patch } : l),
+    );
     sd({ type: A.UPDATE_LAYER, payload: { layerId: id, patch } });
+    refs.doc._notify({ type: "layers-changed" }); // Sprint 7d
     if ("visible" in patch || "opacity" in patch || "blendMode" in patch)
       refs.redraw?.();
   }
   function addLayerMask(layerId) {
     refs.doc.maskBuffers[layerId] = new Uint8Array(canvasW * canvasH).fill(255);
+    refs.doc.layers = layersRef.current.map(
+      (
+        l, // Sprint 7d
+      ) => (l.id === layerId ? { ...l, hasMask: true } : l),
+    );
     sd({ type: A.ADD_LAYER_MASK, payload: layerId });
+    refs.doc._notify({ type: "layers-changed" }); // Sprint 7d
     refs.redraw?.();
   }
   function removeLayerMask(layerId) {
     delete refs.doc.maskBuffers[layerId];
+    refs.doc.layers = layersRef.current.map(
+      (
+        l, // Sprint 7d
+      ) => (l.id === layerId ? { ...l, hasMask: false } : l),
+    );
     sd({ type: A.REMOVE_LAYER_MASK, payload: layerId });
+    refs.doc._notify({ type: "layers-changed" }); // Sprint 7d
     refs.redraw?.();
   }
 
@@ -970,19 +1040,21 @@ function JellySpriteBody({ onRegisterCollector }) {
     refVisibleRef.current = refVisible;
   }, [refVisible]);
 
-  // --- Sprint 6b: push document metadata into DocumentContext ---
-  // Pixel data stays in refs; only the slim metadata layer (frame/layer
-  // identity + canvas dimensions) is pushed so the Animator and other
-  // consumers can read the document structure without touching pixel buffers.
+  // --- Sprint 7d: push document metadata into DocumentContext via PixelDocument.onChange ---
+  // Subscribe once on mount; whenever doc notifies any structural change, push
+  // the current frames[], layers[], and canvas dimensions into DocumentContext
+  // so the Animator and other consumers stay in sync.
+  // canvasW/H also dispatched on every onChange because refs.doc.canvasW/H
+  // is kept current by the every-render sync block above.
   useEffect(() => {
     dispatch({ type: "SET_CANVAS_SIZE", payload: { w: canvasW, h: canvasH } });
   }, [canvasW, canvasH]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
-    dispatch({ type: "SET_FRAMES", payload: ss.frames });
-  }, [ss.frames]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    dispatch({ type: "SET_LAYERS", payload: ss.layers });
-  }, [ss.layers]); // eslint-disable-line react-hooks/exhaustive-deps
+    return refs.doc.onChange((_evt, doc) => {
+      dispatch({ type: "SET_FRAMES", payload: doc.frames });
+      dispatch({ type: "SET_LAYERS", payload: doc.layers });
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Keep refs.tileCanvasEl in sync — the canvas DOM element is conditionally
   // rendered (only when tileVisible), so we need a post-commit effect.
