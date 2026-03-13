@@ -41,7 +41,7 @@
 | Sprint 13 | Navigation Integrity + Creative Flow | ✅ Complete (`aaa3e58`) |
 | Sprint 14 | Full Ruleset Compliance Pass (CSS)   | ✅ Complete (`81bd5ec`) |
 | Sprint 15 | Data Model Normalization             | ✅ Complete (`1d6f081`) |
-| Sprint 16 | Crash Fix, Dead Code & Rough Edges   | ✅ Complete             |
+| Sprint 16 | Crash Fix, Dead Code & Rough Edges   | ✅ Complete (`536a1f4`) |
 
 ---
 
@@ -377,6 +377,12 @@ npm run build
 7. npm run build + enforcement greps
 8. Commit: "fix: Sprint 16 — crash fix, dead code & rough edges"
 ```
+
+### Push record
+
+| Date           | Branch                              | Commits pushed | Range              | Remote                                         |
+| -------------- | ----------------------------------- | -------------- | ------------------ | ---------------------------------------------- |
+| March 13, 2026 | `feature/jelly-sprite-improvements` | 19             | `e7332ae..536a1f4` | `origin` (GitHub: Rick-Smart/doomjelly-studio) |
 
 ---
 
