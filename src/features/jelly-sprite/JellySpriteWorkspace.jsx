@@ -70,22 +70,24 @@ export function JellySpriteWorkspace() {
       setSaved(true);
       showToast("Sprite saved.", "success", 2500);
       setTimeout(() => setSaved(false), 2000);
+      return id; // callers (e.g. handleOpenInAnimator) may need the persisted id
     } catch (err) {
       console.error("Failed to save sprite:", err);
       showToast("Failed to save sprite.", "error");
+      return null;
     } finally {
       setSaving(false);
     }
   }
 
+  // Rule 4: always save before navigating away from an editor.
+  // Also handles the first-save case where no spriteId exists yet.
   async function handleOpenInAnimator() {
-    const targetId = spriteId ?? state.id;
-    if (!targetId) {
-      // Sprite hasn't been saved yet — save first so Animator can load it
-      await handleSave();
-      return;
-    }
-    navigate(`/animator/${targetId}`);
+    // Save unconditionally — pixel work lives in-memory and would be lost if
+    // the Animator overwrites the record with jellyBody:null on its next save.
+    const savedId = await handleSave();
+    if (!savedId) return; // save failed — do not navigate
+    navigate(`/animator/${savedId}`);
   }
 
   return (

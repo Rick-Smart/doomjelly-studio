@@ -4,7 +4,7 @@
 
 .sprite-picker__hint {
   font-size: 0.75rem;
-  color: var(--text-muted, #888);
+  color: var(--text-muted);
   margin: 0 0 8px 0;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -12,7 +12,7 @@
 
 .sprite-picker__status {
   font-size: 0.8rem;
-  color: var(--text-muted, #888);
+  color: var(--text-muted);
   padding: 6px 12px;
   margin: 0;
 }
@@ -54,7 +54,7 @@
   border-radius: 4px;
   font-size: 0.82rem;
   font-weight: 600;
-  color: var(--text-primary, #ddd);
+  color: var(--text-primary);
   text-align: left;
   transition: background 0.1s;
 }
@@ -67,7 +67,7 @@
 .sprite-picker__arrow {
   font-size: 0.65rem;
   flex-shrink: 0;
-  color: var(--text-muted, #888);
+  color: var(--text-muted);
 }
 
 .sprite-picker__sprites {
@@ -84,7 +84,7 @@
   padding: 4px 8px;
   border-radius: 4px;
   font-size: 0.8rem;
-  color: var(--text-primary, #ccc);
+  color: var(--text-primary);
   text-align: left;
   transition: background 0.1s;
 }
