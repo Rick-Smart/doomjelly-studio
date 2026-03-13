@@ -25,6 +25,42 @@ explicit command in a reversible history.
 
 ---
 
+### Assumption-First Development
+
+**Major refactors are always on the table.** The goal is the best version of
+this app — not the version with the least amount of changed code. Every design
+decision carries assumptions, and those assumptions should be challenged
+explicitly before each sprint begins.
+
+**Before writing code, ask:**
+
+1. **Is the abstraction right?** Does the component/context/service boundary
+   actually map to the problem, or did we inherit it from an earlier design?
+
+2. **Is this the correct layer?** State that belongs in `engine/` shouldn't
+   live in a context. I/O that belongs in `services/` shouldn't live in a hook.
+
+3. **Would a rewrite be faster than a migration?** If a file has accumulated
+   enough legacy compat code that the migration path is longer than a clean
+   rewrite, prefer the rewrite. Compat shims are acceptable for one sprint,
+   then they must be resolved.
+
+4. **Does the UX model match the data model?** If the user experience implies
+   a different data shape than what exists, update the data model first. Don't
+   contort UX around a bad data model.
+
+5. **Are we moving toward or away from the unified document model?** See the
+   Long-Term section below. Every sprint should leave the codebase closer to
+   that target, not further from it.
+
+**Challenging a design assumption is not scope creep.** It is the job. Leave a
+note in the sprint doc (`SPRINT.md`) when an assumption is challenged and record
+the outcome — whether the original design was kept or replaced, and why.
+
+The constraint is quality of reasoning, not quantity of changes.
+
+---
+
 ## Layer Architecture
 
 Layers are strictly ordered. **Each layer may only import from layers below
@@ -404,32 +440,49 @@ Every component in `src/ui/` follows this contract:
 
 ## State Shape Reference
 
-### `ProjectContext` normalized state
+### `DocumentContext` normalized state (Sprint 6+)
 
 ```js
 {
+  // Identity
   id: string | null,
-  projectId: string | null,
   name: string,
+  projectId: string | null,
+  spriteId: string | null,
 
-  // Multi-sheet support
-  sheets: [{ id, filename, objectUrl, width, height, frameConfig }],
-  // Note: dataUrl is present in memory but stripped from localStorage
-  activeSheetId: string | null,
+  // Canvas geometry (populated by JellySprite; read by Animator for frame sizing)
+  canvasW: number,
+  canvasH: number,
 
-  // NO spriteSheet field — use selectActiveSheet(state) from selectors.js
+  // Document structure — the unified model target
+  // Populated incrementally across Sprint 6b (JellySprite) + 6c (Animator)
+  frames:  [{ id, label }],
+  layers:  [{ id, name, visible, opacity }],
+  tags:    [{ id, name, from, to, loop }],  // = Animator "animations"
 
-  // JellySprite pixel state (set by JellySprite, read by save flow)
+  // JellySprite restoration blob (phase-out target in Sprint 6e)
+  jellySpriteState:  object | null,
   jellySpriteDataUrl: string | null,
-  jellySpriteState: object | null,
-  animatorState: object | null,
-
-  // Animator state
-  frameConfig: { frameW, frameH, scale, offsetX, offsetY, gutterX, gutterY },
-  animations: [{ id, name, frames: [{ col, row, ticks }] }],
-  activeAnimationId: string | null,
 }
 ```
+
+> `ProjectContext` is now a 2-line re-export shim pointing at `DocumentContext`.
+> All `useProject()` callers continue to work. Migrate to `useDocument()` in Sprint 6b+.
+
+### `AnimatorContext` normalized state
+
+```js
+{
+  sheets:            [{ id, filename, objectUrl, dataUrl, width, height, frameConfig }],
+  activeSheetId:     string | null,
+  frameConfig:       { frameW, frameH, scale, offsetX, offsetY, gutterX, gutterY },
+  animations:        [{ id, name, frames: [{ col, row, ticks }] }],
+  activeAnimationId: string | null,
+  // undo / redo managed by AnimatorProvider
+}
+```
+
+> No `spriteSheet` field — use `selectActiveSheet(state)` from `selectors.js`.
 
 ### `animatorBody` canonical save format
 

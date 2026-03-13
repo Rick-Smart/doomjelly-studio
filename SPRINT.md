@@ -20,6 +20,39 @@
 
 ---
 
+## Sprint Governance
+
+### On refactors
+
+Major refactors are always on the table. A sprint can replace a subsystem
+entirely if that produces a better result than an incremental migration. The
+goal is the best version of the app, not the version with the least code
+changed.
+
+Before each sprint, explicitly challenge the design assumptions it rests on:
+
+- Is the abstraction this sprint builds on top of actually correct?
+- Would a clean rewrite be shorter than the migration path?
+- Does the planned work move toward or away from the unified document model?
+
+Record the outcome: which assumptions were challenged, which were kept, which
+were replaced, and why. This history is as valuable as the code.
+
+### On compatibility shims
+
+Shims (re-export wrappers, legacy action aliases, backward-compat dispatch
+paths) are permitted for **one sprint cycle** while consumers migrate. They
+must be resolved the next sprint. An unresolved shim that survives two sprints
+becomes a design debt line item.
+
+### On scope
+
+Sprints can be as large or as small as the problem demands. Feature complexity
+is the scope signal, not time or line count. A sprint that replaces one file
+is as valid as one that restructures five contexts.
+
+---
+
 ## ✅ Sprint 0 — Data Stability (COMPLETE)
 
 **Why it existed:** Every new feature was fighting the same class of bugs: blank
