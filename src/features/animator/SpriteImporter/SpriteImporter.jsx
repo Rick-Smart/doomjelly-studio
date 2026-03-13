@@ -1,5 +1,6 @@
 import { useCallback, useRef } from "react";
 import { useAnimator } from "../../../contexts/AnimatorContext";
+import { selectActiveSheet } from "../selectors";
 import { FileDropZone } from "../../../ui/FileDropZone";
 import "./SpriteImporter.css";
 
@@ -37,7 +38,8 @@ function loadSheetFile(file) {
 
 export function SpriteImporter() {
   const { state, dispatch } = useAnimator();
-  const { sheets, activeSheetId, spriteSheet, frameConfig } = state;
+  const { sheets, activeSheetId, frameConfig } = state;
+  const activeSheet = selectActiveSheet(state);
   const addInputRef = useRef(null);
   const replaceInputRef = useRef(null);
 
@@ -64,14 +66,14 @@ export function SpriteImporter() {
     async (file) => {
       try {
         const { objectUrl, width, height } = await loadSheetFile(file);
-        if (spriteSheet?.objectUrl) URL.revokeObjectURL(spriteSheet.objectUrl);
+        if (activeSheet?.objectUrl) URL.revokeObjectURL(activeSheet.objectUrl);
         dispatch({
           type: "SET_SPRITE_SHEET",
           payload: { objectUrl, filename: file.name, width, height },
         });
       } catch {}
     },
-    [dispatch, spriteSheet],
+    [dispatch, activeSheet],
   );
 
   // No sheets yet — show drop zone

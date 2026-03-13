@@ -23,8 +23,6 @@ const DEFAULT_FRAME_CONFIG = {
 export const initialAnimatorState = {
   sheets: [],
   activeSheetId: null,
-  /** @deprecated — kept for components still reading state.spriteSheet; derived from activeSheet. */
-  spriteSheet: null,
   frameConfig: { ...DEFAULT_FRAME_CONFIG },
   animations: [],
   activeAnimationId: null,
@@ -74,20 +72,10 @@ function reducer(state, action) {
             }
           : DEFAULT_FRAME_CONFIG);
 
-      const spriteSheet = activeSheet
-        ? {
-            objectUrl: activeSheet.objectUrl,
-            filename: activeSheet.filename,
-            width: activeSheet.width,
-            height: activeSheet.height,
-          }
-        : null;
-
       return {
         ...initialAnimatorState,
         sheets,
         activeSheetId,
-        spriteSheet,
         frameConfig,
         animations:
           payload.animations ??
@@ -115,7 +103,7 @@ function reducer(state, action) {
               }
             : s,
         );
-        return { ...state, spriteSheet: payload, sheets };
+        return { ...state, sheets };
       }
       const newId = crypto.randomUUID();
       const newSheet = {
@@ -125,7 +113,6 @@ function reducer(state, action) {
       };
       return {
         ...state,
-        spriteSheet: payload,
         sheets: [newSheet],
         activeSheetId: newId,
       };
@@ -159,7 +146,6 @@ function reducer(state, action) {
         ...state,
         sheets: [...state.sheets, newSheet],
         activeSheetId: newSheet.id,
-        spriteSheet: { objectUrl, filename, width, height },
       };
     }
 
@@ -174,16 +160,6 @@ function reducer(state, action) {
         ...state,
         sheets: remaining,
         activeSheetId: nextActiveId,
-        spriteSheet: nextActive
-          ? {
-              objectUrl: nextActive.objectUrl,
-              filename: nextActive.filename,
-              width: nextActive.width,
-              height: nextActive.height,
-            }
-          : remaining.length === 0
-            ? null
-            : state.spriteSheet,
         frameConfig: nextActive?.frameConfig ?? state.frameConfig,
       };
     }
@@ -194,12 +170,6 @@ function reducer(state, action) {
       return {
         ...state,
         activeSheetId: action.payload,
-        spriteSheet: {
-          objectUrl: sheet.objectUrl,
-          filename: sheet.filename,
-          width: sheet.width,
-          height: sheet.height,
-        },
         frameConfig: sheet.frameConfig ?? state.frameConfig,
       };
     }
@@ -211,14 +181,7 @@ function reducer(state, action) {
       const sheets = state.sheets.map((s) =>
         urlMap.has(s.id) ? { ...s, objectUrl: urlMap.get(s.id) } : s,
       );
-      const activeSheet = sheets.find((s) => s.id === state.activeSheetId);
-      return {
-        ...state,
-        sheets,
-        spriteSheet: activeSheet
-          ? { ...state.spriteSheet, objectUrl: activeSheet.objectUrl }
-          : state.spriteSheet,
-      };
+      return { ...state, sheets };
     }
 
     case "ADD_ANIMATION": {

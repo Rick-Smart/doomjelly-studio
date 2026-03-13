@@ -14,7 +14,7 @@
 | Sprint 1 | Foundation Cleanup           | ✅ Complete (`b5fda67`) |
 | Sprint 2 | Monolith Decomposition       | ✅ Complete (`d8033f9`) |
 | Sprint 3 | Feature Contract Enforcement | ✅ Complete (`86e3b26`) |
-| Sprint 4 | Context Decomposition        | 🔲 Ready to start       |
+| Sprint 4 | Context Decomposition        | ✅ `ac647ed`            |
 
 ---
 
@@ -406,7 +406,7 @@ action — separate from creating/persisting a sprite. These are different jobs.
 
 ---
 
-## 🔲 Sprint 4 — Context Decomposition
+## ✅ Sprint 4 — Context Decomposition (`ac647ed`)
 
 **Goal:** Eliminate the god-context. Every re-render triggered by an animation
 timeline update currently propagates to AppShell, ProjectsPage, and the JellySprite
@@ -643,4 +643,203 @@ src/
   router/
     routes.jsx                    Lazy loading in Sprint 1f
     ProtectedRoute.jsx            ✅ Done (Rule 8)
+```
+
+---
+
+## 🔲 Sprint 5 — State Finalization
+
+**Goal:** Complete Rule 3 enforcement. `state.spriteSheet` is a redundant mirror
+of the active sheet that was kept during the Sprint 4 migration as a shim. Every
+component that needs the active sheet should call `selectActiveSheet(state)` from
+`selectors.js`. This sprint removes the extra field and all the bookkeeping code
+that kept it in sync.
+
+**Why now:** Sprint 4 established `AnimatorContext` as the clean owner of
+animator state. Before Sprint 6 layers on top, the reducer must be free of
+derived state mutations. A reducer that computes `spriteSheet` in 5+ case
+branches is deriving state eagerly — that belongs in a selector.
+
+---
+
+### Problem
+
+```js
+// AnimatorContext initialState (current)
+export const initialAnimatorState = {
+  sheets: [],
+  activeSheetId: null,
+  spriteSheet: null,   // ← @deprecated shim; = selectActiveSheet(state) fields
+  frameConfig: { ... },
+  animations: [],
+  activeAnimationId: null,
+};
+```
+
+Every sheet mutation case (`SET_SPRITE_SHEET`, `ADD_SHEET`, `REMOVE_SHEET`,
+`SET_ACTIVE_SHEET`, `RESTORE_SHEET_URLS`, `LOAD_PROJECT`) manually recomputes
+and stores `spriteSheet`. Two consumers (`SpriteImporter`, `TimelineView`)
+destructure it directly from state.
+
+---
+
+### 5a — Remove `spriteSheet` from `AnimatorContext`
+
+**File:** `src/contexts/AnimatorContext.jsx`
+
+1. Remove `spriteSheet: null` from `initialAnimatorState`.
+2. In each reducer case, delete the `spriteSheet:` field from the returned
+   object: `LOAD_PROJECT`, `SET_SPRITE_SHEET`, `ADD_SHEET`, `REMOVE_SHEET`,
+   `SET_ACTIVE_SHEET`, `RESTORE_SHEET_URLS`.
+3. Keep the `SET_SPRITE_SHEET` action — it still correctly updates `sheets[]`.
+
+---
+
+### 5b — Update consumers to use `selectActiveSheet`
+
+**File:** `src/features/animator/SpriteImporter/SpriteImporter.jsx`
+
+```js
+// Before
+const { sheets, activeSheetId, spriteSheet, frameConfig } = state;
+// ...
+if (spriteSheet?.objectUrl) URL.revokeObjectURL(spriteSheet.objectUrl);
+// dep array: [dispatch, spriteSheet]
+
+// After
+import { selectActiveSheet } from "../selectors";
+// ...
+const { sheets, activeSheetId, frameConfig } = state;
+const activeSheet = selectActiveSheet(state);
+// ...
+if (activeSheet?.objectUrl) URL.revokeObjectURL(activeSheet.objectUrl);
+// dep array: [dispatch, activeSheet]
+```
+
+**File:** `src/features/animator/TimelineView/TimelineView.jsx`
+
+```js
+// Before
+const { animations, activeAnimationId, spriteSheet, frameConfig } = state;
+const src = spriteSheet?.objectUrl ?? null;
+
+// After
+import { selectActiveSheet } from "../selectors";
+// ...
+const { animations, activeAnimationId, frameConfig } = state;
+const src = selectActiveSheet(state)?.objectUrl ?? null;
+```
+
+---
+
+### Sprint 5 commit order
+
+```
+1. AnimatorContext: remove spriteSheet from initialState + all reducer cases
+2. SpriteImporter + TimelineView: use selectActiveSheet
+3. Verify: npm run build
+4. Commit: "refactor: Sprint 5 — remove spriteSheet derived state (Rule 3)"
+```
+
+---
+
+## 🔲 Sprint 6 — Unified Document Model
+
+**Goal:** JellySprite and Animator stop being two separate editors that
+hand a save blob back and forth. Instead they become two live **views** of a
+single shared document. This is the Aseprite model: one `Sprite` object holds
+`frames[]`, `layers[]`, `cels[]`, and `tags[]`. The JellySprite panel renders
+it; the Animator panel sequences it. No save-and-reload handoff needed.
+
+**Prerequisite:** Sprint 5 complete (clean reducer).
+
+---
+
+### Motivation
+
+The current handoff:
+
+```
+JellySpriteWorkspace
+  → collectSaveData()
+  → serialiseProject() → { spriteSheet: <blob> }
+  → saveProjectToStorage()
+  → navigate('/animator/:id')
+  → AnimatorPage loads → LOAD_PROJECT → sheets[] restored
+```
+
+This means every "Edit in JellySprite" round-trip goes through IDB. Pixel changes
+in JellySprite are _invisible_ to the Animator until the user saves. There is no
+live connection.
+
+### The unified model
+
+```js
+// One shared document in a new DocumentContext (or merged AnimatorContext)
+{
+  id: string,
+  name: string,
+  // ---------- pixel data ----------
+  layers: [{ id, name, visible, cells: [{ frameIndex, pixels }] }],
+  // ---------- frames ----------
+  frames: [{ id, duration }],          // ordered
+  // ---------- sequences / tags ----------
+  tags: [{ id, name, from, to, loop }], // named frame ranges
+  // ---------- canvas config ----------
+  canvasWidth: number,
+  canvasHeight: number,
+}
+```
+
+`JellySprite` renders: `layers + frames + cells` → pixel canvas
+`Animator` renders: `tags + frames + sheets[]` → timeline + preview
+
+Both read from the same context. Mutations in either update the same state.
+No serialisation across an IDB fence to switch views.
+
+---
+
+### Migration path (incremental — no big bang)
+
+**6a — Add `DocumentContext`**
+
+- Single document reducer owning the unified shape above.
+- `JellySpriteContext` and `AnimatorContext` become thin facades that select
+  their slice via `useDocument()`.
+
+**6b — JellySprite reads document**
+
+- Replace the internal `JellySpriteProvider` pixel state with slices of
+  `DocumentContext`.
+- `collectSaveData()` becomes `exportDocument()` — serialises the live context.
+
+**6c — Animator reads document**
+
+- `AnimatorContext` reads `tags` (→ `animations`) and `frames` directly from
+  `DocumentContext`.
+- The `LOAD_PROJECT` dual-dispatch shrinks to a single `LOAD_DOCUMENT`.
+
+**6d — Unify save/load**
+
+- One `saveDocument()` / `loadDocument()` service that serialises
+  `DocumentContext` state to IDB.
+- Navigate-to-animator no longer needs a save: both views are always live.
+
+**6e — Remove handoff artifacts**
+
+- Delete `serialiseProject()`, `animatorBody`, `jellySpriteState` blob, the
+  "Edit in JellySprite" save-before-navigate guard.
+
+---
+
+### Sprint 6 commit order
+
+```
+1. DocumentContext + useDocument()
+2. JellySprite migrated to DocumentContext
+3. Animator migrated to DocumentContext
+4. Unified save/load service
+5. Remove handoff artifacts
+6. Verify: npm run build + full smoke test
+7. Commit: "feat: Sprint 6 — unified document model"
 ```
