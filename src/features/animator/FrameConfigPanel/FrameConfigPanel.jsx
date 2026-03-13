@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useProject } from "../../../contexts/ProjectContext";
+import { useAnimator } from "../../../contexts/AnimatorContext";
 import { NumberInput } from "../../../ui/NumberInput";
 import { Button } from "../../../ui/Button";
 import "./FrameConfigPanel.css";
@@ -15,7 +15,7 @@ const DEFAULTS = {
 };
 
 export function FrameConfigPanel() {
-  const { state, dispatch } = useProject();
+  const { state, dispatch } = useAnimator();
   const cfg = state.frameConfig;
   const [open, setOpen] = useState(true);
 

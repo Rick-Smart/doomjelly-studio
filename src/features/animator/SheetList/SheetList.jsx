@@ -1,10 +1,10 @@
 import { useNavigate } from "react-router-dom";
-import { useProject } from "../../../contexts/ProjectContext";
+import { useAnimator } from "../../../contexts/AnimatorContext";
 import { sheetGridDims } from "../../../engine/frameUtils";
 import "./SheetList.css";
 
 export function SheetList() {
-  const { state, dispatch } = useProject();
+  const { state, dispatch } = useAnimator();
   const navigate = useNavigate();
   const { sheets, activeSheetId, frameConfig } = state;
 

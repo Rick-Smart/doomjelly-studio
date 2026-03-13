@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState } from "react";
-import { useProject } from "../../../contexts/ProjectContext";
+import { useAnimator } from "../../../contexts/AnimatorContext";
 import { usePlayback } from "../../../contexts/PlaybackContext";
 import { EmptyState } from "../../../ui/EmptyState";
 import { IconButton } from "../../../ui/IconButton";
@@ -9,7 +9,7 @@ import { FrameRow } from "./FrameRow";
 import "./SequenceBuilder.css";
 
 export function SequenceBuilder() {
-  const { state, dispatch } = useProject();
+  const { state, dispatch } = useAnimator();
   const { animations, activeAnimationId, activeSheetId, sheets, frameConfig } =
     state;
   const activeSheet = sheets.find((s) => s.id === activeSheetId) ?? null;

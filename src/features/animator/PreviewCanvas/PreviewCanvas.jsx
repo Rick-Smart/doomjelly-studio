@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState } from "react";
 import { cellToPixel } from "../../../engine/frameUtils";
-import { useProject } from "../../../contexts/ProjectContext";
+import { useAnimator } from "../../../contexts/AnimatorContext";
 import { useAnimationLoop } from "../../../hooks/useAnimationLoop";
 import { usePlayback } from "../../../contexts/PlaybackContext";
 import { useLocalStorage } from "../../../hooks/useLocalStorage";
@@ -50,7 +50,7 @@ function resolveFrameFromTicks(frames, elapsedTicks) {
 }
 
 export function PreviewCanvas({ expanded = false, onToggleExpand } = {}) {
-  const { state } = useProject();
+  const { state } = useAnimator();
   const { animations, activeAnimationId, activeSheetId, sheets, frameConfig } =
     state;
   const activeSheet = sheets.find((s) => s.id === activeSheetId) ?? null;

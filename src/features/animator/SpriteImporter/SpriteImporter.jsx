@@ -1,5 +1,5 @@
 import { useCallback, useRef } from "react";
-import { useProject } from "../../../contexts/ProjectContext";
+import { useAnimator } from "../../../contexts/AnimatorContext";
 import { FileDropZone } from "../../../ui/FileDropZone";
 import "./SpriteImporter.css";
 
@@ -36,7 +36,7 @@ function loadSheetFile(file) {
 }
 
 export function SpriteImporter() {
-  const { state, dispatch } = useProject();
+  const { state, dispatch } = useAnimator();
   const { sheets, activeSheetId, spriteSheet, frameConfig } = state;
   const addInputRef = useRef(null);
   const replaceInputRef = useRef(null);

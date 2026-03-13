@@ -1,5 +1,5 @@
 import { useRef, useEffect } from "react";
-import { useProject } from "../../../contexts/ProjectContext";
+import { useAnimator } from "../../../contexts/AnimatorContext";
 import { usePlayback } from "../../../contexts/PlaybackContext";
 import { FrameThumb } from "../shared/FrameThumb";
 import { useDragReorder } from "../../../hooks/useDragReorder";
@@ -16,7 +16,7 @@ const CELL_MIN_W = 44;
  * Click a cell to seek playback to that frame.
  */
 export function TimelineView() {
-  const { state, dispatch } = useProject();
+  const { state, dispatch } = useAnimator();
   const { animations, activeAnimationId, spriteSheet, frameConfig } = state;
   const activeAnim = animations.find((a) => a.id === activeAnimationId) ?? null;
   const frames = activeAnim?.frames ?? [];

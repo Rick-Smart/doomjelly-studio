@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useLocalStorage } from "../../../hooks/useLocalStorage";
 import { useProject } from "../../../contexts/ProjectContext";
+import { useAnimator } from "../../../contexts/AnimatorContext";
 import { useNotification } from "../../../contexts/NotificationContext";
 import { PlaybackProvider } from "../../../contexts/PlaybackContext";
 import { Page } from "../../../ui/Page";
@@ -31,8 +32,9 @@ function KeyboardHandler({ onSave, onHelp }) {
 }
 
 export function AnimatorPage() {
+  const { state: projectState, dispatch: projectDispatch } = useProject();
   const { state, dispatch, undo, redo, canUndo, canRedo, isDirty, markSaved } =
-    useProject();
+    useAnimator();
   const { showToast } = useNotification();
   const navigate = useNavigate();
   const { spriteId: urlSpriteId } = useParams();
@@ -45,16 +47,15 @@ export function AnimatorPage() {
   const imageUrl = activeSheet?.objectUrl ?? null;
   useEffect(() => {
     if (!urlSpriteId) return;
-    if (state.id === urlSpriteId) return; // already loaded
+    if (projectState.id === urlSpriteId) return; // already loaded
     import("../../../services/projectService").then(({ loadSprite }) =>
       loadSprite(urlSpriteId)
         .then((data) => {
-          if (data)
-            dispatch({
-              type: "LOAD_PROJECT",
-              payload: { ...data, id: urlSpriteId },
-            });
-          else {
+          if (data) {
+            const payload = { ...data, id: urlSpriteId };
+            projectDispatch({ type: "LOAD_PROJECT", payload });
+            dispatch({ type: "LOAD_PROJECT", payload });
+          } else {
             showToast("Sprite not found.", "error");
             navigate("/projects");
           }
@@ -84,6 +85,8 @@ export function AnimatorPage() {
   }
 
   // Stable refs so unmount cleanup can access latest state without stale closure.
+  const projectStateRef = useRef(projectState);
+  projectStateRef.current = projectState;
   const stateRef = useRef(state);
   stateRef.current = state;
   const isDirtyRef = useRef(isDirty);
@@ -118,15 +121,16 @@ export function AnimatorPage() {
     return () => {
       if (!isDirtyRef.current) return;
       const st = stateRef.current;
+      const ps = projectStateRef.current;
       buildAnimatorBody(st)
         .then((animatorBody) => {
           if (!animatorBody) return;
           const activeSheet =
             st.sheets.find((s) => s.id === st.activeSheetId) ?? st.sheets[0];
           return saveSprite({
-            id: st.id ?? crypto.randomUUID(),
-            projectId: st.projectId ?? null,
-            name: st.name,
+            id: ps.id ?? crypto.randomUUID(),
+            projectId: ps.projectId ?? null,
+            name: ps.name,
             animatorBody,
             animCount: st.animations.length,
             frameCount: st.animations.reduce((s, a) => s + a.frames.length, 0),
@@ -203,9 +207,9 @@ export function AnimatorPage() {
   async function handleSave() {
     setSaving(true);
     try {
-      const spriteId = urlSpriteId ?? state.id ?? crypto.randomUUID();
-      if (!state.id) {
-        dispatch({ type: "SET_PROJECT_ID", payload: spriteId });
+      const spriteId = urlSpriteId ?? projectState.id ?? crypto.randomUUID();
+      if (!projectState.id) {
+        projectDispatch({ type: "SET_PROJECT_ID", payload: spriteId });
         // Update URL so refresh works after first save
         navigate(`/animator/${spriteId}`, { replace: true });
       }
@@ -220,8 +224,8 @@ export function AnimatorPage() {
       await saveSprite(
         {
           id: spriteId,
-          projectId: state.projectId ?? null,
-          name: state.name,
+          projectId: projectState.projectId ?? null,
+          name: projectState.name,
           animatorBody,
           animCount: state.animations.length,
           frameCount: state.animations.reduce((s, a) => s + a.frames.length, 0),
@@ -264,9 +268,9 @@ export function AnimatorPage() {
           src = null;
         }
       }
-      if (src) dispatch({ type: "SET_JELLY_SPRITE_DATA", payload: src });
+      if (src) projectDispatch({ type: "SET_JELLY_SPRITE_DATA", payload: src });
     }
-    const targetId = state.id ?? urlSpriteId;
+    const targetId = projectState.id ?? urlSpriteId;
     navigate(targetId ? `/jelly-sprite/${targetId}` : "/jelly-sprite");
   }
 
@@ -292,9 +296,9 @@ export function AnimatorPage() {
     <Page
       title={
         <EditableTitle
-          value={state.name}
+          value={projectState.name}
           onChange={(name) =>
-            dispatch({ type: "SET_PROJECT_NAME", payload: name })
+            projectDispatch({ type: "SET_PROJECT_NAME", payload: name })
           }
         />
       }

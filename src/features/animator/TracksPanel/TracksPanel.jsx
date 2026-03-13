@@ -1,5 +1,5 @@
 import { useRef, useEffect } from "react";
-import { useProject } from "../../../contexts/ProjectContext";
+import { useAnimator } from "../../../contexts/AnimatorContext";
 import { usePlayback } from "../../../contexts/PlaybackContext";
 import { FrameThumb } from "../shared/FrameThumb";
 import { useDragReorder } from "../../../hooks/useDragReorder";
@@ -115,7 +115,7 @@ function TrackRow({
 }
 
 export function TracksPanel({ pinnedTrackIds = [] }) {
-  const { state, dispatch } = useProject();
+  const { state, dispatch } = useAnimator();
   const { animations, activeAnimationId, activeSheetId, sheets, frameConfig } =
     state;
   const activeSheet = sheets.find((s) => s.id === activeSheetId) ?? null;

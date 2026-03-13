@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useProject } from "../../../contexts/ProjectContext";
+import { useAnimator } from "../../../contexts/AnimatorContext";
 import { usePlayback } from "../../../contexts/PlaybackContext";
 import { sheetGridDims } from "../../../engine/frameUtils";
 
@@ -11,7 +11,7 @@ import { sheetGridDims } from "../../../engine/frameUtils";
  * @param {{ onSave: function, onHelp?: function }} callbacks
  */
 export function useAnimatorKeyboard({ onSave, onHelp }) {
-  const { state, dispatch, undo, redo, canUndo, canRedo } = useProject();
+  const { state, dispatch, undo, redo, canUndo, canRedo } = useAnimator();
   const { frameIndex, isPlaying, playPlayback, pausePlayback, seekTo } =
     usePlayback();
 

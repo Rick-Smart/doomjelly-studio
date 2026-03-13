@@ -14,6 +14,7 @@
 | Sprint 1 | Foundation Cleanup           | ✅ Complete (`b5fda67`) |
 | Sprint 2 | Monolith Decomposition       | ✅ Complete (`d8033f9`) |
 | Sprint 3 | Feature Contract Enforcement | ✅ Complete (`86e3b26`) |
+| Sprint 4 | Context Decomposition        | 🔲 Ready to start       |
 
 ---
 
@@ -400,12 +401,173 @@ action — separate from creating/persisting a sprite. These are different jobs.
 
 ### "One `ProjectContext` shared across all editors"
 
-**Decision:** Defer full split to Sprint 4+. Rules 1–10 make the single-context
-model safe through URL identity. Long term: `AnimatorContext` + `JellySpriteContext`
+**Decision:** Fix in Sprint 4. Split into `ActiveSpriteContext` (identity) +
+`AnimatorContext` (animator state + undo/redo). `useProject()` shim preserved.
 
-- thin `ActiveSpriteContext({ id, name, projectId })` as shared navigation identity.
+---
 
-### "Supabase fallback to IDB is transparent"
+## 🔲 Sprint 4 — Context Decomposition
+
+**Goal:** Eliminate the god-context. Every re-render triggered by an animation
+timeline update currently propagates to AppShell, ProjectsPage, and the JellySprite
+editor. The split also makes the Aseprite-style unified document model possible
+in Sprint 5 — each context becomes a clean seam on the document.
+
+---
+
+### Problem: The current monolith
+
+`ProjectContext` holds two completely unrelated concerns:
+
+**Identity / navigation** — used by AppShell, ProjectsPage, JellySpriteWorkspace:
+
+```
+id, name, projectId, spriteId
+```
+
+**Animator editor state** — used by the 9 animator components and ExportPanel:
+
+```
+sheets, activeSheetId, frameConfig, animations, activeAnimationId
++ undo/redo history, canUndo, canRedo, isDirty
+```
+
+**JellySprite editor state** — used by JellySprite, JellySpriteWorkspace:
+
+```
+jellySpriteState, jellySpriteDataUrl
+```
+
+Every animation frame push (`UPDATE_ANIMATION`) triggers a render in AppShell
+and both JellySprite components even though they read none of those fields.
+
+---
+
+### The split
+
+```
+ProjectContext (keep, slim down)
+  → id, name, projectId, spriteId
+  → jellySpriteState, jellySpriteDataUrl
+  → LOAD_PROJECT, RESET_PROJECT, SET_PROJECT_NAME, SET_SPRITE_ID,
+    SET_JELLY_SPRITE_DATA
+  → useProject()   ← backward-compat shim; still exports { state, dispatch }
+
+AnimatorContext (new)
+  → sheets, activeSheetId, frameConfig
+  → animations, activeAnimationId
+  → undo/redo/canUndo/canRedo/isDirty/markSaved
+  → useAnimator()
+```
+
+`AnimatorContext` reads identity (`id`, `name`) from `ProjectContext` so it can
+build save payloads without prop-drilling.
+
+**Key constraint:** `useProject()` must keep working unchanged for all current
+callers during the migration. After Sprint 4 all animator consumers are migrated
+to `useAnimator()` and the fields are removed from `ProjectContext`.
+
+---
+
+### 4a — Create `AnimatorContext` with its own reducer
+
+**File:** `src/contexts/AnimatorContext.jsx`
+
+State:
+
+```js
+{
+  sheets: [],
+  activeSheetId: null,
+  frameConfig: { frameW:32, frameH:32, scale:2, offsetX:0, offsetY:0, gutterX:0, gutterY:0 },
+  animations: [],
+  activeAnimationId: null,
+}
+```
+
+Actions to migrate from `ProjectContext`:
+
+- `SET_SPRITE_SHEET`, `ADD_SHEET`, `REMOVE_SHEET`, `SET_ACTIVE_SHEET`,
+  `RESTORE_SHEET_URLS`, `SET_FRAME_CONFIG`
+- `ADD_ANIMATION`, `DELETE_ANIMATION`, `RENAME_ANIMATION`, `DUPLICATE_ANIMATION`,
+  `SET_ACTIVE_ANIMATION`, `UPDATE_ANIMATION`
+
+Undo/redo history lives here (same logic, just moved).
+
+`LOAD_PROJECT` is handled in **both** contexts: `ProjectContext` gets identity
+fields; `AnimatorContext` gets sheets + animations.
+
+Export hook: `useAnimator()` — throws if used outside `AnimatorProvider`.
+
+---
+
+### 4b — Slim down `ProjectContext`
+
+Remove from `ProjectContext`'s reducer and `initialState`:
+
+- `sheets`, `activeSheetId`, `spriteSheet` (already dead — Rule 3)
+- `frameConfig`, `animations`, `activeAnimationId`
+- `animatorState` (legacy hydration field, no longer needed post-load)
+- All animator action cases
+
+Keep:
+
+- `id`, `name`, `projectId`, `spriteId`
+- `jellySpriteState`, `jellySpriteDataUrl`
+- `LOAD_PROJECT` (identity + jelly fields only)
+- `RESET_PROJECT`, `SET_PROJECT_NAME`, `SET_SPRITE_ID`, `SET_JELLY_SPRITE_DATA`
+
+`localStorage` persistence key `dj-project` changes to persist only the slim
+identity slice. The animator state is **session-only in memory** (it is fully
+reconstructed from IDB on load via `LOAD_PROJECT`).
+
+---
+
+### 4c — Migrate all animator consumers to `useAnimator()`
+
+Replace `useProject()` with `useAnimator()` in:
+
+- `AnimationSidebar`, `AnimatorPage`, `FrameConfigPanel`, `PreviewCanvas`,
+  `SequenceBuilder`, `SheetList`, `SheetViewerCanvas`, `SpriteImporter`,
+  `TimelineView`, `TracksPanel`, `useAnimatorKeyboard`
+- `ExportPanel` (reads only animator fields)
+
+`ProjectsPage` stays on `useProject()` — it only needs `state.id`.
+
+---
+
+### 4d — Wire `AnimatorProvider` into the tree
+
+Mount order in `App.jsx` (or wherever providers are composed):
+
+```jsx
+<ProjectProvider>
+  {" "}
+  ← identity + jelly state
+  <AnimatorProvider>
+    {" "}
+    ← animator state (can read ProjectContext for id/name)
+    <PlaybackProvider>{children}</PlaybackProvider>
+  </AnimatorProvider>
+</ProjectProvider>
+```
+
+`AnimatorProvider`'s `LOAD_PROJECT` dispatch is triggered by `AnimatorPage`'s
+load effect — same as today, just a different context.
+
+---
+
+### Sprint 4 commit order
+
+```
+1. AnimatorContext.jsx + useAnimator() hook
+2. Slim ProjectContext (remove animator fields)
+3. Migrate animator consumers (4c)
+4. Wire AnimatorProvider into App.jsx
+5. Verify: npm run build + manual smoke test
+```
+
+---
 
 **Decision:** Fix in Sprint 3d. Silent data routing to the wrong backend is a
 data integrity hole.
