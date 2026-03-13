@@ -21,8 +21,8 @@
 | Sprint 8a | Rule Violation Fixes               | ✅ Complete (`dc32ace`) |
 | Sprint 8  | TypeScript Migration               | ✅ Complete (`d302053`) |
 | Sprint 9  | Zustand State Management           | ✅ Complete (`388f043`) |
-| Sprint 10 | Store Consumer Migration           | 🔲 Not started          |
-| Sprint 11 | PixelDocument Store + 7e Cleanup   | 🔲 Not started          |
+| Sprint 10 | Store Consumer Migration           | ✅ Complete (`8ed4bd7`) |
+| Sprint 11 | PixelDocument Store + 7e Cleanup   | 🔄 In progress          |
 | Sprint 12 | Service Layer Cleanup              | 🔲 Not started          |
 
 ---
@@ -57,6 +57,26 @@ becomes a design debt line item.
 Sprints can be as large or as small as the problem demands. Feature complexity
 is the scope signal, not time or line count. A sprint that replaces one file
 is as valid as one that restructures five contexts.
+
+### On sprint documentation
+
+This process must be followed at the **start and end of every sprint**:
+
+**Before starting a sprint:**
+
+1. Mark the sprint `🔄 In progress` in the status table above
+2. Update `**Last updated:**` in the file header
+3. Formally challenge the design assumptions the sprint rests on (see _On refactors_ above) — record the outcome in the sprint section
+4. Confirm all enforcement checks from the previous sprint are satisfied before proceeding
+
+**When closing a sprint:**
+
+1. Mark the sprint `✅ Complete (\`commit-hash\`)` in the status table
+2. Record the commit hash in the sprint section header
+3. Update `**Last updated:**` in the file header
+4. Run the Rule 19 completeness checklist for every file touched (build gate + smoke test)
+5. Run each rule's enforcement `grep` for every rule whose scope was touched
+6. Log any deferred items as named line items in the next sprint section
 
 ---
 
@@ -926,6 +946,62 @@ checklist must be satisfied for **every file touched**:
 `JellySpriteBody` caused by extracting only `jellySpriteState` when the
 component also used `state` as a whole object (`projectState: state` in the
 context value). Rule added to prevent recurrence.
+
+---
+
+### Rule 20 — UI component extraction (reusable component library)
+
+Extract a UI pattern into `src/ui/` when it appears identically (or
+near-identically) in **two or more distinct files**. The second real usage
+is the extraction trigger. Do not extract speculatively for hypothetical
+future use — the first usage is a prototype; the second reveals the correct
+shared API.
+
+**Location discipline:**
+
+- Pattern used only within one feature → component lives in
+  `src/features/X/` subdirectory
+- Pattern used by 2+ features, or used in layout/router/App → extract to
+  `src/ui/ComponentName/`
+
+**Structure standard for every `src/ui/` component:**
+
+```
+src/ui/ComponentName/
+  ComponentName.jsx   component implementation + prop documentation
+  ComponentName.css   styles (design tokens only — Rule 18)
+  index.js            named export barrel — no default exports
+```
+
+**Inline override smell:** When a component is overridden by parent-context
+CSS in 2+ call sites, it is missing a `variant`, `size`, or `compact` prop.
+Add the prop to the component and remove the external overrides. Do not
+accumulate per-callsite CSS patches indefinitely.
+
+**Per-sprint UI debt scan:** Every sprint that touches UI files must briefly
+scan the modified files for any inline UI pattern that also appears elsewhere.
+Extract it during the same sprint, or log a named item in the sprint section
+for the next sprint to action. Undocumented debt is a violation.
+
+**Style compliance:** All new and modified component CSS must use design
+tokens from `src/index.css` (Rule 18). No raw hex literals. No `color-mix()`
+values that duplicate an existing token.
+
+**Relationship to other rules:**
+
+- Rule 11: components in `src/ui/` satisfy the cross-feature import ban automatically
+- Rule 12: every new `src/ui/` component must have an `index.js` barrel
+- Rule 18: all component CSS must use design tokens
+
+**Status:** ✅ Compliant (pattern established Sprint 1–2: `FrameThumb`,
+`SplitButton`, `EditableTitle`, `useDragReorder`)  
+**Introduced:** Sprint 11  
+**Enforcement:** In every sprint touching UI files: scan modified files for
+duplicated UI patterns. Any pattern appearing in 2+ files without a shared
+component is a violation. `grep -rn 'color-mix\|#[0-9a-fA-F]\{3,6\}'
+src/ui/` on newly added component CSS must return 0 matches (use tokens).
+Every new `src/ui/` component must have an `index.js` barrel before closing
+the sprint.
 
 ---
 
@@ -1914,7 +1990,7 @@ Update Rule 16 status from ⚠️ to ✅ once audit is documented.
 
 ---
 
-## 🔲 Sprint 11 — PixelDocument Store + Sprint 7e Artifact Removal
+## � Sprint 11 — PixelDocument Store + Sprint 7e Artifact Removal
 
 ### Why these items are grouped
 
