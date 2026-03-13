@@ -1,11 +1,7 @@
-﻿function frameToRect(frame, frameConfig) {
-  const { frameW, frameH, offsetX, offsetY, gutterX, gutterY } = frameConfig;
-  return {
-    x: offsetX + frame.col * (frameW + gutterX),
-    y: offsetY + frame.row * (frameH + gutterY),
-    w: frameW,
-    h: frameH,
-  };
+﻿import { frameRect } from "../engine/frameUtils.js";
+
+function frameToRect(frame, frameConfig) {
+  return frameRect(frame.col, frame.row, frameConfig);
 }
 
 function pickAnimations(animations, options) {

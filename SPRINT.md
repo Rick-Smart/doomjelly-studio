@@ -13,7 +13,7 @@
 | Sprint 0 | Data Stability               | ✅ Complete (`92997f7`) |
 | Sprint 1 | Foundation Cleanup           | ✅ Complete (`b5fda67`) |
 | Sprint 2 | Monolith Decomposition       | ✅ Complete (`d8033f9`) |
-| Sprint 3 | Feature Contract Enforcement | 🔲 Ready to start       |
+| Sprint 3 | Feature Contract Enforcement | ✅ Complete             |
 
 ---
 
@@ -310,7 +310,7 @@ during the transition.
 
 ---
 
-## 🔲 Sprint 3 — Feature Contract Enforcement
+## ✅ Sprint 3 — Feature Contract Enforcement (COMPLETE)
 
 **Goal:** Make the Rules machine-enforceable. Add ESLint rules. Promote shared
 engine utilities. Begin moving toward the unified document model.

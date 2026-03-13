@@ -1,4 +1,5 @@
 import { useRef, useEffect, useState } from "react";
+import { cellToPixel } from "../../../engine/frameUtils";
 import { useProject } from "../../../contexts/ProjectContext";
 import { useAnimationLoop } from "../../../hooks/useAnimationLoop";
 import { usePlayback } from "../../../contexts/PlaybackContext";
@@ -177,8 +178,13 @@ export function PreviewCanvas({ expanded = false, onToggleExpand } = {}) {
       const prev = frames[frameIndex - 1];
       if (prev) {
         ctx.globalAlpha = 0.3;
-        const px = offsetX + prev.col * (frameW + gutterX) + (prev.dx ?? 0);
-        const py = offsetY + prev.row * (frameH + gutterY) + (prev.dy ?? 0);
+        const { x: _ppx, y: _ppy } = cellToPixel(
+          prev.col,
+          prev.row,
+          frameConfig,
+        );
+        const px = _ppx + (prev.dx ?? 0);
+        const py = _ppy + (prev.dy ?? 0);
         ctx.drawImage(
           imgRef.current,
           px,
@@ -213,8 +219,9 @@ export function PreviewCanvas({ expanded = false, onToggleExpand } = {}) {
           ? af[frameIndex] // active: honours ping-pong / once
           : resolveFrameFromTicks(af, elapsedTicks); // others: tick-clock
       if (!frame) continue;
-      const srcX = offsetX + frame.col * (frameW + gutterX) + (frame.dx ?? 0);
-      const srcY = offsetY + frame.row * (frameH + gutterY) + (frame.dy ?? 0);
+      const { x: _fx, y: _fy } = cellToPixel(frame.col, frame.row, frameConfig);
+      const srcX = _fx + (frame.dx ?? 0);
+      const srcY = _fy + (frame.dy ?? 0);
       ctx.drawImage(
         imgRef.current,
         srcX,

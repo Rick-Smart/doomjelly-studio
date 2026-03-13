@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useProject } from "../../../contexts/ProjectContext";
 import { usePlayback } from "../../../contexts/PlaybackContext";
+import { sheetGridDims } from "../../../engine/frameUtils";
 
 /**
  * Wires all animator keyboard shortcuts as a side-effect hook.
@@ -76,13 +77,11 @@ export function useAnimatorKeyboard({ onSave, onHelp }) {
         const activeSheet = sheets.find((s) => s.id === activeSheetId) ?? null;
         if (!activeAnimationId || !activeSheet) return;
         e.preventDefault();
-        const { frameW, frameH, offsetX, offsetY, gutterX, gutterY } =
-          frameConfig;
-        const stepX = frameW + gutterX;
-        const stepY = frameH + gutterY;
-        if (!frameW || !frameH || stepX <= 0 || stepY <= 0) return;
-        const cols = Math.floor((activeSheet.width - offsetX) / stepX);
-        const rows = Math.floor((activeSheet.height - offsetY) / stepY);
+        const { cols, rows } = sheetGridDims(
+          activeSheet.width,
+          activeSheet.height,
+          frameConfig,
+        );
         if (cols <= 0 || rows <= 0) return;
         const newFrames = [];
         for (let row = 0; row < rows; row++) {

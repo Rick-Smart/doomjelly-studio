@@ -1,4 +1,5 @@
 ﻿import { useEffect, useRef, useCallback, useState } from "react";
+import { cellToPixel } from "../../../engine/frameUtils";
 import { useProject } from "../../../contexts/ProjectContext";
 import { useTheme } from "../../../contexts/ThemeContext";
 import "./SheetViewerCanvas.css";
@@ -249,8 +250,9 @@ export function SheetViewerCanvas({ imageUrl }) {
     // Draw used-cell highlights + badges
     usageMap.forEach(({ count, firstIndex }, key) => {
       const [col, row] = key.split(",").map(Number);
-      const cellX = Math.round((offsetX + col * (frameW + gutterX)) * scale);
-      const cellY = Math.round((offsetY + row * (frameH + gutterY)) * scale);
+      const { x: _cx, y: _cy } = cellToPixel(col, row, frameConfig);
+      const cellX = Math.round(_cx * scale);
+      const cellY = Math.round(_cy * scale);
       const cw = frameW * scale;
       const ch = frameH * scale;
 
@@ -290,14 +292,12 @@ export function SheetViewerCanvas({ imageUrl }) {
       const maxCol = Math.max(dragStartCell.col, dragCell.col);
       const minRow = Math.min(dragStartCell.row, dragCell.row);
       const maxRow = Math.max(dragStartCell.row, dragCell.row);
-      const rx1 = Math.round((offsetX + minCol * (frameW + gutterX)) * scale);
-      const ry1 = Math.round((offsetY + minRow * (frameH + gutterY)) * scale);
-      const rx2 = Math.round(
-        (offsetX + (maxCol + 1) * (frameW + gutterX) - gutterX) * scale,
-      );
-      const ry2 = Math.round(
-        (offsetY + (maxRow + 1) * (frameH + gutterY) - gutterY) * scale,
-      );
+      const { x: _tlx, y: _tly } = cellToPixel(minCol, minRow, frameConfig);
+      const { x: _brx, y: _bry } = cellToPixel(maxCol, maxRow, frameConfig);
+      const rx1 = Math.round(_tlx * scale);
+      const ry1 = Math.round(_tly * scale);
+      const rx2 = Math.round((_brx + frameW) * scale);
+      const ry2 = Math.round((_bry + frameH) * scale);
       const rw = rx2 - rx1;
       const rh = ry2 - ry1;
       ctx.fillStyle = `rgba(${ar},${ag},${ab},0.18)`;
@@ -311,12 +311,13 @@ export function SheetViewerCanvas({ imageUrl }) {
 
     // Draw hover highlight (on top of everything)
     if (hoveredCell) {
-      const cellX = Math.round(
-        (offsetX + hoveredCell.col * (frameW + gutterX)) * scale,
+      const { x: _hx, y: _hy } = cellToPixel(
+        hoveredCell.col,
+        hoveredCell.row,
+        frameConfig,
       );
-      const cellY = Math.round(
-        (offsetY + hoveredCell.row * (frameH + gutterY)) * scale,
-      );
+      const cellX = Math.round(_hx * scale);
+      const cellY = Math.round(_hy * scale);
       ctx.strokeStyle = "rgba(255, 255, 255, 0.9)";
       ctx.lineWidth = 1.5;
       ctx.strokeRect(

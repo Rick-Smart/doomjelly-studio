@@ -14,18 +14,12 @@ function pickAnimations(animations, options) {
   return animations;
 }
 
+import { frameRect } from "../engine/frameUtils.js";
+
 /** Source rect (1× coords) for a given cell in the sprite sheet. */
-function cellSrc(
-  col,
-  row,
-  { frameW, frameH, offsetX, offsetY, gutterX, gutterY },
-) {
-  return {
-    sx: offsetX + col * (frameW + gutterX),
-    sy: offsetY + row * (frameH + gutterY),
-    sw: frameW,
-    sh: frameH,
-  };
+function cellSrc(col, row, frameConfig) {
+  const { x: sx, y: sy, w: sw, h: sh } = frameRect(col, row, frameConfig);
+  return { sx, sy, sw, sh };
 }
 
 /**
@@ -180,8 +174,11 @@ export async function generateThumbnail(
   canvas.height = size;
   const ctx = canvas.getContext("2d");
   ctx.imageSmoothingEnabled = false;
-  const sx = offsetX + firstFrame.col * (frameW + gutterX);
-  const sy = offsetY + firstFrame.row * (frameH + gutterY);
+  const { x: sx, y: sy } = frameRect(
+    firstFrame.col,
+    firstFrame.row,
+    frameConfig,
+  );
   ctx.drawImage(img, sx, sy, frameW, frameH, 0, 0, size, size);
   return canvas.toDataURL("image/png");
 }

@@ -1,6 +1,8 @@
 import { isSupabaseEnabled } from "./supabase.js";
 import { idbGet, idbPut, idbDelete, SPRITES_STORE } from "./idb.js";
 import {
+  sbListProjects,
+  sbCreateProject,
   sbListSprites,
   sbSaveSprite,
   sbLoadSprite,
@@ -36,17 +38,44 @@ export async function loadSprite(id) {
 
 export async function saveSprite(sprite, thumbnail) {
   if (thumbnail !== undefined) sprite = { ...sprite, thumbnail };
-  if (isSupabaseEnabled && sprite.projectId) return sbSaveSprite(sprite);
-  if (isSupabaseEnabled && !sprite.projectId) {
-    console.warn(
-      "saveSprite: no projectId — saving to local IDB instead of Supabase",
-    );
+
+  if (isSupabaseEnabled) {
+    let { projectId } = sprite;
+    let autoAssigned = false;
+    if (!projectId) {
+      const projects = await sbListProjects();
+      const existing = projects.find((p) => p.name === "Uncategorized");
+      projectId = existing
+        ? existing.id
+        : (await sbCreateProject("Uncategorized")).id;
+      autoAssigned = true;
+    }
+    const result = await sbSaveSprite({ ...sprite, projectId });
+    return autoAssigned
+      ? { ...result, projectId, _autoAssigned: true }
+      : result;
   }
+
   const now = new Date().toISOString();
   const frameCount = sprite.frameCount ?? sprite.jellyBody?.frames?.length ?? 0;
   const canvasW = sprite.canvasW ?? sprite.jellyBody?.canvasW ?? 32;
   const canvasH = sprite.canvasH ?? sprite.jellyBody?.canvasH ?? 32;
-  const record = { ...sprite, frameCount, canvasW, canvasH, updatedAt: now };
+  const tools = {
+    animator: !!sprite.animatorBody,
+    jelly: !!(
+      sprite.jellyBody ??
+      sprite.jellySpriteState ??
+      sprite.jellySpriteDataUrl
+    ),
+  };
+  const record = {
+    ...sprite,
+    frameCount,
+    canvasW,
+    canvasH,
+    tools,
+    updatedAt: now,
+  };
   await idbPut(SPRITES_STORE, record);
 
   const { body: _b, jellyBody: _jb, animatorBody: _ab, ...meta } = record;

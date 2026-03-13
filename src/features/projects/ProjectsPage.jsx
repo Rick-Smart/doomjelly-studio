@@ -678,6 +678,10 @@ export function ProjectsPage() {
                                     </button>
                                     <button
                                       className="projects-btn projects-btn--sm"
+                                      disabled={
+                                        sprite.tools != null &&
+                                        !sprite.tools.animator
+                                      }
                                       onClick={() =>
                                         handleOpenInAnimator(sprite.id)
                                       }
@@ -701,6 +705,10 @@ export function ProjectsPage() {
                                     </button>
                                     <button
                                       className="projects-btn projects-btn--sm projects-btn--primary"
+                                      disabled={
+                                        sprite.tools != null &&
+                                        !sprite.tools.jelly
+                                      }
                                       onClick={() =>
                                         handleOpenSprite(sprite.id)
                                       }

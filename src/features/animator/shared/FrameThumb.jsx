@@ -1,4 +1,5 @@
 import { useRef, useEffect } from "react";
+import { cellToPixel } from "../../../engine/frameUtils";
 
 /** Fixed thumbnail render size in pixels. */
 const THUMB = 32;
@@ -41,8 +42,14 @@ export function FrameThumb({
     const img = new Image();
     img.onload = () => {
       ctx.imageSmoothingEnabled = false;
-      const srcX = offsetX + col * (frameW + gutterX);
-      const srcY = offsetY + row * (frameH + gutterY);
+      const { x: srcX, y: srcY } = cellToPixel(col, row, {
+        offsetX,
+        offsetY,
+        frameW,
+        frameH,
+        gutterX,
+        gutterY,
+      });
       ctx.drawImage(img, srcX, srcY, frameW, frameH, 0, 0, THUMB, THUMB);
     };
     img.src = src;

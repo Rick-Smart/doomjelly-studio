@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useProject } from "../../../contexts/ProjectContext";
+import { sheetGridDims } from "../../../engine/frameUtils";
 import "./SheetList.css";
 
 export function SheetList() {
@@ -31,24 +32,7 @@ export function SheetList() {
         {sheets.map((sheet) => {
           const isActive = sheet.id === activeSheetId;
           const cfg = sheet.frameConfig ?? frameConfig;
-          const cols = cfg.frameW
-            ? Math.max(
-                0,
-                Math.floor(
-                  (sheet.width - cfg.offsetX + cfg.gutterX) /
-                    (cfg.frameW + cfg.gutterX),
-                ),
-              )
-            : 0;
-          const rows = cfg.frameH
-            ? Math.max(
-                0,
-                Math.floor(
-                  (sheet.height - cfg.offsetY + cfg.gutterY) /
-                    (cfg.frameH + cfg.gutterY),
-                ),
-              )
-            : 0;
+          const { cols, rows } = sheetGridDims(sheet.width, sheet.height, cfg);
           return (
             <li
               key={sheet.id}
