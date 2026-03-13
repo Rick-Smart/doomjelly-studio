@@ -2,7 +2,7 @@
 
 **Branch:** `feature/jelly-sprite-improvements`  
 **Architecture reference:** `ARCHITECTURE.md` — read this first before starting any sprint.  
-**Last updated:** March 14, 2026
+**Last updated:** March 13, 2026
 
 ---
 
@@ -25,6 +25,7 @@
 | Sprint 11 | PixelDocument Store + 7e Cleanup     | ✅ Complete (`806493b`) |
 | Sprint 12 | Service Layer Cleanup                | ✅ Complete (`fb89db4`) |
 | Sprint 13 | Navigation Integrity + Creative Flow | ✅ Complete (`aaa3e58`) |
+| Sprint 14 | Full Ruleset Compliance Pass         | 🔴 Not started          |
 
 ---
 
@@ -2554,3 +2555,173 @@ to `/animator/:savedId` only on success.
 grep scope) contained raw hex fallbacks — `#888`, `#ddd`, `#ccc` — inside
 `var()` expressions. The tokens (`--text-muted`, `--text-primary`) are
 defined in `src/index.css`, so the fallbacks were dead code. Removed.
+
+---
+
+## 🔴 Sprint 14 — Full Ruleset Compliance Pass
+
+**Origin:** Full codebase Rules 1–20 audit run after Sprint 13 (`4ed5a9b`).  
+**Design assumptions:**
+
+- Rules 1–10 and 15–20 are largely clean. The two remaining problem areas are
+  Rule 13 (selector architecture) and Rule 18 (CSS design token completeness).
+- Rule 13 is a structural issue: `selectors.js` lives inside `src/features/animator/`
+  so `ExportPanel` (a different feature) cannot use it without violating Rule 11.
+  The correct fix is to move shared selectors to the context layer.
+- Rule 18 has two categories of remaining work: (a) transparency checkerboard
+  colours that need new tokens, and (b) feature-dir CSS that duplicates the
+  same amber (`#f0a020`) repeatedly without a token.
+- These are cleanly separable into two sub-tasks and do not require invasive
+  refactors.
+
+### Design assumption challenge
+
+| Assumption                                                               | Verdict                                                                                         |
+| ------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------- |
+| Keep selectors inside animator feature                                   | ❌ Wrong. ExportPanel can’t use them → duplicate logic (Rule 13). Move to shared context layer. |
+| `#fff` is a reasonable fallback                                          | ❌ Wrong. `--color-on-accent` exists for this exact purpose. Already fixed in 4ed5a9b.          |
+| Checkerboard raw hex is acceptable because it’s “rendering” not “design” | ⚠️ Borderline. The rule applies to all CSS. Add tokens and move on.                             |
+| `#f0a020` amber is a one-off JellySprite theme colour                    | ❌ Wrong. It appears 10+ times in `JellySprite.css` and should be a named token.                |
+
+---
+
+### 14a — Move `selectors.js` to the shared context layer (Rule 13)
+
+**Problem:** `src/features/animator/selectors.js` is imported by 8 files inside
+`src/features/animator/`. `ExportPanel` (in `src/features/export/`) needs the
+same `selectActiveSheet` + `selectActiveAnimation` logic but cannot import it
+without violating Rule 11. It currently re-implements the same `.find()` inline.
+
+**Fix:**
+
+1. Move `src/features/animator/selectors.js` to `src/contexts/animatorSelectors.js`
+   (alongside `useAnimatorStore.js`).
+2. Update all existing imports: `from "../selectors"` → `from "../../../contexts/animatorSelectors.js"`.
+3. Update `ExportPanel.jsx` to remove the inline `.find()` and import
+   `selectActiveSheet` + `selectActiveAnimation` from the new shared path.
+4. Build gate + confirm 0 errors.
+
+**Files:** `src/contexts/animatorSelectors.js` (new), all 8 animator consumers,
+`src/features/export/ExportPanel/ExportPanel.jsx`
+
+---
+
+### 14b — Add transparency-checker tokens + replace checkerboard raw hex (Rule 18)
+
+**Problem:** `repeating-conic-gradient(#aaa 0% 25%, #fff 0% 50%)` appears in
+multiple CSS files with no named tokens. Rule 18 bans raw hex in component CSS.
+
+Files affected:
+
+- `src/ui/ColorPicker/ColorPicker.css` (×2 — alpha slider bg, preview swatch)
+- `src/features/jelly-sprite/JellySprite.css` (×2 — canvas bg)
+- `src/features/animator/SequenceBuilder/FrameRow/FrameRow.css` (×1, dark variant `#333 #555`)
+
+**Fix:**
+Add to `src/index.css`:
+
+```css
+/* Transparency checkerboard — used for canvas/alpha visualisation */
+--checker-light: #fff;
+--checker-mid: #aaa;
+--checker-dark-1: #555;
+--checker-dark-2: #333;
+```
+
+Replace inline values in all 5 occurrences:
+
+```css
+/* before */
+repeating-conic-gradient(#aaa 0% 25%, #fff 0% 50%)
+/* after */
+repeating-conic-gradient(var(--checker-mid) 0% 25%, var(--checker-light) 0% 50%)
+```
+
+Also fix `var(--cp-color, #000)` in ColorPicker.css — `#000` fallback is
+functionally never visible since `--cp-color` is always set by the component,
+but replace with `var(--cp-color, var(--text))` to comply fully with Rule 18.
+
+**Files:** `src/index.css`, `ColorPicker.css`, `JellySprite.css`, `FrameRow.css`
+
+---
+
+### 14c — Add `--warning-amber` token + replace `#f0a020` in JellySprite.css (Rule 18)
+
+**Problem:** `#f0a020` is hard-coded 12+ times in `JellySprite.css`, including
+inline `color-mix(in srgb, #f0a020 ...)` literals (both of which are explicitly
+banned by Rule 18.
+
+**Fix:**
+Add to `src/index.css`:
+
+```css
+--warning-amber: #f0a020;
+--warning-amber-tint-soft: color-mix(
+  in srgb,
+  var(--warning-amber) 20%,
+  var(--surface2)
+);
+--warning-amber-tint-mid: color-mix(
+  in srgb,
+  var(--warning-amber) 18%,
+  var(--surface2)
+);
+--warning-amber-tint-surface: color-mix(
+  in srgb,
+  var(--warning-amber) 18%,
+  var(--surface)
+);
+```
+
+Replace all `#f0a020` and `color-mix(in srgb, #f0a020 ...)` in `JellySprite.css`.
+
+**Files:** `src/index.css`, `src/features/jelly-sprite/JellySprite.css`
+
+---
+
+### 14d — Feature CSS sweep (Rule 18 remaining)
+
+Remaining `#fff` in feature CSS that maps to `--color-on-accent`:
+
+| File                   | Lines                                        | Context            |
+| ---------------------- | -------------------------------------------- | ------------------ |
+| `AnimationSidebar.css` | 93                                           | accent button text |
+| `AnimatorPage.css`     | 40                                           | accent button text |
+| `SequenceBuilder.css`  | 63, 156                                      | accent button text |
+| `LoginPage.css`        | 55                                           | accent button text |
+| `ExportPanel.css`      | 151                                          | accent button text |
+| `JellySprite.css`      | 96, 131, 406, 622, 626, 709, 819, 1208, 1234 | filled button text |
+| `ProjectsPage.css`     | 269, 284, 532, 547                           | accent button text |
+| `SettingsPage.css`     | 330, 345                                     | accent button text |
+
+`SheetList.css` and `SpriteImporter.css` have hex values inside `var()` fallbacks only —
+tokens are defined in `src/index.css` so the hex never renders; strip the fallbacks.
+
+Replace all with `var(--color-on-accent)`.
+
+**Files:** 8 feature CSS files above
+
+---
+
+### 14e — ErrorBoundary.css — strip dead var() fallbacks (Rule 18)
+
+`ErrorBoundary.css` uses raw hex exclusively inside `var()` fallback positions
+(e.g. `var(--bg, #1a1a2e)`, `var(--danger, #e05c5c)`). Since all referenced
+tokens are defined in `src/index.css`, these fallbacks never render. Strip them:
+`var(--token, #hex)` → `var(--token)`.
+
+**Files:** `src/ui/ErrorBoundary/ErrorBoundary.css`
+
+---
+
+### 14 commit order
+
+```
+1. Move selectors.js to contexts/ + update all imports (14a)
+2. Add checker tokens to index.css + replace in CSS files (14b)
+3. Add --warning-amber token + replace in JellySprite.css (14c)
+4. Replace #fff with --color-on-accent in all feature CSS (14d)
+5. Strip dead fallbacks from ErrorBoundary.css (14e)
+6. npm run build + Rules 1-20 enforcement checklist
+7. Commit: "fix: Sprint 14 — full ruleset compliance pass"
+```
