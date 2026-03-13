@@ -21,6 +21,9 @@
 | Sprint 8a | Rule Violation Fixes               | ✅ Complete (`dc32ace`) |
 | Sprint 8  | TypeScript Migration               | ✅ Complete (`d302053`) |
 | Sprint 9  | Zustand State Management           | ✅ Complete (`388f043`) |
+| Sprint 10 | Store Consumer Migration           | 🔲 Not started          |
+| Sprint 11 | PixelDocument Store + 7e Cleanup   | 🔲 Not started          |
+| Sprint 12 | Service Layer Cleanup              | 🔲 Not started          |
 
 ---
 
@@ -1585,4 +1588,556 @@ Remove the `DocumentProvider` from `App.jsx`.
 9. JellySprite.jsx — remove ToolProvider wrapper
 10. Verify: npm run build ✅ — 0 errors
 11. Commit: "refactor: Sprint 9 — Zustand state management"
+```
+
+---
+
+## 🔲 Sprint 10 — Store Consumer Migration
+
+### Why this sprint is mandatory
+
+Sprint 9 introduced six shims under the governance rule that permits shims for
+**one sprint cycle only**. Sprint 10 is the resolution sprint.
+
+The six shims are:
+
+| Shim                                       | Location                                   | Consumers                                                                         |
+| ------------------------------------------ | ------------------------------------------ | --------------------------------------------------------------------------------- |
+| `useToolContext()` backward-compat wrapper | `ToolContext.jsx`                          | `useCanvas.js`, `JellySprite.jsx`                                                 |
+| `useDocument()` re-export chain            | `DocumentContext.jsx` → `useDocumentStore` | `AnimatorPage`, `JellySprite`, `JellySpriteWorkspace`, `ProjectsPage`, `AppShell` |
+| `useAnimator()` re-export chain            | `AnimatorContext.jsx` → `useAnimatorStore` | 12 animator + ExportPanel                                                         |
+| `ToolProvider` no-op                       | `ToolContext.jsx`                          | None (dead export)                                                                |
+| `DocumentProvider` no-op                   | `DocumentContext.jsx`                      | None (dead export)                                                                |
+| `AnimatorProvider` no-op                   | `AnimatorContext.jsx`                      | None (dead export)                                                                |
+
+The no-op providers have zero external references and can be deleted immediately.
+The hook shims require consumer migrations first.
+
+### The key architecture decision: flatten the stores
+
+Sprint 9 wrapped all domain state under a nested `state: {}` field to preserve
+the old `useX()` return-value shape (`{ state, dispatch, ... }`). This was
+necessary while shims existed. Once shims die, the nesting is purely a
+backward-compat artifact and actively harms performance.
+
+**The problem with nested state:**
+
+```js
+// Current: every component doing this subscribes to the ENTIRE store slice
+const { state, dispatch } = useAnimatorStore();
+const { animations } = state; // re-renders on ANY store change
+```
+
+**The Zustand-idiomatic pattern we want:**
+
+```js
+// After: only re-renders when animations changes
+const animations = useAnimatorStore((s) => s.animations);
+const dispatch = useAnimatorStore((s) => s.dispatch);
+```
+
+Flattening the stores gives every consumer surgical subscription granularity.
+This is the primary performance benefit of Zustand that Sprint 9 left unrealized.
+
+### Governance challenge
+
+**Is flattening risky?** — No. The reducers stay unchanged; only the store's
+top-level shape changes. The migration is mechanical: every `const { state } =
+useAnimatorStore()` → `const { animations, activeAnimationId, ... } =
+useAnimatorStore()`. Since we're touching all consumers anyway to kill the
+shims, the incremental cost is minimal.
+
+**Should we keep selectors in `selectors.js` or co-locate with stores?** —
+Keep `selectors.js`. Selectors are pure functions over the state shape; they
+belong in the feature's own `selectors.js` per Rule 13. The store exports
+primitive fields; components compose them via selectors where needed.
+
+---
+
+### 10a — Flatten `useDocumentStore`
+
+Move all `state.*` fields to the top level of the store.
+
+```js
+// Before
+export const useDocumentStore = create(persist((set, get) => ({
+  state: { id: null, name: 'Untitled', projectId: null, spriteId: null, ... },
+  isDirty: false,
+  dispatch(action) { set({ state: documentReducer(get().state, action) }); },
+  markSaved() { set({ isDirty: false }); },
+}), { ... }));
+
+// After — flat, selector-ready
+export const useDocumentStore = create(persist((set, get) => ({
+  id: null, name: 'Untitled', projectId: null, spriteId: null,
+  canvasW: 32, canvasH: 32, frames: [], layers: [], tags: [],
+  isDirty: false,
+  dispatch(action) {
+    const next = documentReducer(get(), action);
+    set({ ...next, isDirty: /* ... */ });
+  },
+  markSaved() { set({ isDirty: false }); },
+}), { partialize: (s) => ({ id: s.id, name: s.name, projectId: s.projectId, spriteId: s.spriteId }) }));
+```
+
+Update `documentReducer` import in `DocumentContext.jsx` to reflect that the
+reducer now operates on the flat store shape (i.e. the reducer's `state`
+parameter is no longer nested inside a wrapper).
+
+**Files:** `src/contexts/useDocumentStore.js`, `src/contexts/DocumentContext.jsx`
+
+---
+
+### 10b — Flatten `useAnimatorStore`
+
+Same pattern. The `_past` / `_future` undo stacks and `canUndo` / `canRedo`
+flags are already at the top level; only `state.*` fields move up.
+
+```js
+// After — flat
+export const useAnimatorStore = create((set, get) => ({
+  sheets: [], activeSheetId: null, frameConfig: { ... },
+  animations: [], activeAnimationId: null,
+  canUndo: false, canRedo: false, isDirty: false,
+  _past: [], _future: [],
+  dispatch(action) {
+    const next = animatorReducer(get(), action);   // operates on flat state
+    // ...undo tracking...
+    set({ ...next, _past, _future, canUndo, canRedo, isDirty });
+  },
+  undo() { ... },
+  redo() { ... },
+  markSaved() { set({ isDirty: false }); },
+}));
+```
+
+**Files:** `src/contexts/useAnimatorStore.js`
+
+---
+
+### 10c — Migrate all shim consumers
+
+Three groups, smallest first:
+
+**Group 1 — Tool store (2 files)**
+
+`useCanvas.js` and `JellySprite.jsx` currently call `useToolContext()`. Replace
+with direct `useToolStore` imports. Tool store is already flat (no nesting
+was needed — Sprint 9 spread `toolInitialState` directly).
+
+```js
+// Before
+import { useToolContext } from "./store/ToolContext";
+const { state: ts, dispatch: td } = useToolContext();
+
+// After
+import { useToolStore } from "./store/useToolStore";
+const tool = useToolStore((s) => s.tool);
+const fgColor = useToolStore((s) => s.fgColor);
+const td = useToolStore((s) => s.dispatch);
+```
+
+**Group 2 — Document store (5 files)**
+
+`AnimatorPage.jsx`, `JellySprite.jsx`, `JellySpriteWorkspace.jsx`,
+`ProjectsPage.jsx`, `AppShell.jsx`. Replace `useDocument()` from
+`DocumentContext` with `useDocumentStore()` from `useDocumentStore`.
+
+```js
+// Before
+import { useDocument } from "../../../contexts/DocumentContext";
+const { state: projectState, dispatch: projectDispatch } = useDocument();
+
+// After
+import { useDocumentStore } from "../../../contexts/useDocumentStore";
+const id = useDocumentStore((s) => s.id);
+const name = useDocumentStore((s) => s.name);
+const projectDispatch = useDocumentStore((s) => s.dispatch);
+```
+
+**Group 3 — Animator store (12 files)**
+
+`AnimationSidebar`, `AnimatorPage`, `FrameConfigPanel`, `useAnimatorKeyboard`,
+`PreviewCanvas`, `SequenceBuilder`, `SheetList`, `SheetViewerCanvas`,
+`SpriteImporter`, `TimelineView`, `TracksPanel`, `ExportPanel`. Replace
+`useAnimator()` from `AnimatorContext` with `useAnimatorStore()` from
+`useAnimatorStore`.
+
+```js
+// Before
+import { useAnimator } from "../../../contexts/AnimatorContext";
+const { state, dispatch } = useAnimator();
+const { animations, activeAnimationId } = state;
+
+// After
+import { useAnimatorStore } from "../../../contexts/useAnimatorStore";
+const animations = useAnimatorStore((s) => s.animations);
+const activeAnimationId = useAnimatorStore((s) => s.activeAnimationId);
+const dispatch = useAnimatorStore((s) => s.dispatch);
+```
+
+---
+
+### 10d — Delete dead shim exports; reduce context files to reducers only
+
+With all consumers migrated, the three context files can be stripped to
+pure reducer + initial state exports. They are depended on by the stores
+(which import their reducers), so they cannot be deleted entirely yet —
+but all re-exports, no-op providers, and shim hooks are removed.
+
+**`ToolContext.jsx`** after Sprint 10:
+
+```js
+// Only exports the reducer and initial state
+export const toolInitialState = { ... };
+export function toolReducer(state, action) { ... }
+// Everything else deleted
+```
+
+**`AnimatorContext.jsx`** after Sprint 10:
+
+```js
+// Only exports the reducer and initial state
+export const initialAnimatorState = { ... };
+export function animatorReducer(state, action) { ... }
+// No imports, no Provider, no useAnimator
+```
+
+**`DocumentContext.jsx`** after Sprint 10:
+
+```js
+// Only exports the reducer and initial state
+export const initialDocumentState = { ... };
+export function documentReducer(state, action) { ... }
+// No imports, no Provider, no useDocument
+```
+
+An optional follow-on move (`10d+`, can be done in Sprint 11 or 12): inline the
+reducers into their store files, then delete the context files altogether.
+Not mandatory for 10 — keep the store/reducer split clean until Sprint 11
+confirms no regressions.
+
+**Files:** `ToolContext.jsx`, `AnimatorContext.jsx`, `DocumentContext.jsx`
+
+---
+
+### 10e — Rule 16 complete audit
+
+Rule 16 has been marked ⚠️ Partial since Sprint 7. Close it.
+
+Audit every `dispatch()` call across all animator consumers. For each one,
+answer: does a user perceive this as a single undoable action? If yes and the
+action type is not in `UNDOABLE_ACTIONS`, add it. If no and it is in
+`UNDOABLE_ACTIONS`, remove it.
+
+Current `UNDOABLE_ACTIONS`:
+`ADD_ANIMATION, DELETE_ANIMATION, DUPLICATE_ANIMATION, RENAME_ANIMATION,`
+`UPDATE_ANIMATION, SET_FRAME_CONFIG`
+
+Actions **not** in the set (verify each is correct):
+
+- `ADD_SHEET`, `REMOVE_SHEET` — sheets contain large binary `dataUrl`; undo
+  would require snapshotting blobs. Correct to exclude.
+- `SET_ACTIVE_SHEET`, `SET_ACTIVE_ANIMATION` — navigation, not mutation. Correct.
+- `LOAD_PROJECT`, `RESET_PROJECT` — load/reset clears history. Correct.
+- `SET_SPRITE_SHEET` — sets dirty but no history entry (sheet content, not
+  animation structure). Verify this is intentional.
+- `RESTORE_SHEET_URLS` — re-creates objectUrls on mount, not a user action. Correct.
+
+Update Rule 16 status from ⚠️ to ✅ once audit is documented.
+
+**Files:** `src/contexts/useAnimatorStore.js`, Rule 16 entry in SPRINT.md
+
+---
+
+### Sprint 10 commit order
+
+```
+1. Flatten useDocumentStore (10a)
+2. Flatten useAnimatorStore (10b)
+3. Migrate tool consumers — useCanvas.js + JellySprite.jsx (10c group 1)
+4. Migrate document consumers — 5 files (10c group 2)
+5. Migrate animator consumers — 12 files (10c group 3)
+6. Strip shim exports from ToolContext.jsx, AnimatorContext.jsx, DocumentContext.jsx (10d)
+7. Rule 16 audit + status update (10e)
+8. Verify: npm run build — 0 errors
+9. Commit: "refactor: Sprint 10 — store consumer migration, shim resolution"
+```
+
+---
+
+## 🔲 Sprint 11 — PixelDocument Store + Sprint 7e Artifact Removal
+
+### Why these items are grouped
+
+The three deferred Sprint 7e artifacts (`refs.stateRef` mirror,
+`onRegisterCollector`, `collectSaveData`) all have the same root cause:
+the drawing engine and save flow cannot read `PixelDocument` state without
+being handed it via a closure. `usePixelDocumentStore` is the Zustand wrapper
+that makes `PixelDocument` state readable by any module via `getState()`,
+which directly unblocks both artifacts.
+
+They are one problem, not two. Sprint 11 resolves them together.
+
+### How `refs.stateRef` is currently used
+
+`JellySprite.jsx` merges all state fields each render:
+
+```js
+refs.stateRef.current = { ...ss, ...ts }; // ss = JellySpriteStore, ts = ToolStore
+```
+
+`drawingEngine.js`, `canvasRenderer.js`, `clipboardOps.js`, `selectionOps.js`
+then read `refs.stateRef.current` (as `st`) to get both tool settings and
+canvas geometry inside pointer-event callbacks.
+
+After Sprint 10, `useToolStore.getState()` gives tool fields without React.
+After 11a, `usePixelDocumentStore.getState()` gives canvas fields.
+`refs.stateRef` is then fully redundant.
+
+---
+
+### 11a — Create `usePixelDocumentStore`
+
+**File:** `src/features/jelly-sprite/store/usePixelDocumentStore.js`
+
+```js
+import { create } from 'zustand';
+import { PixelDocument } from '../engine/PixelDocument';
+
+export const usePixelDocumentStore = create((set, get) => ({
+  doc: null,
+  frames: [],
+  layers: [],
+  canvasW: 0,
+  canvasH: 0,
+  canUndo: false,
+  canRedo: false,
+
+  init(data) {
+    const doc = data ? PixelDocument.deserialize(data) : new PixelDocument(...);
+    doc.onChange(() => {
+      const { doc } = get();
+      set({
+        frames: doc.frames,
+        layers: doc.layers,
+        canUndo: doc.canUndo,
+        canRedo: doc.canRedo,
+      });
+    });
+    set({ doc, frames: doc.frames, layers: doc.layers,
+          canvasW: doc.canvasW, canvasH: doc.canvasH,
+          canUndo: doc.canUndo, canRedo: doc.canRedo });
+  },
+
+  undo()  { get().doc?.undo(); },
+  redo()  { get().doc?.redo(); },
+  serialize() { return get().doc?.serialize() ?? null; },
+}));
+```
+
+The `doc.onChange` subscription pushes `frames`, `layers`, `canUndo`, `canRedo`
+into the Zustand store so React components can subscribe selectively.
+`doc` itself is the authoritative pixel state — never serialised into Zustand.
+
+---
+
+### 11b — Remove `refs.stateRef` mirror
+
+Replace every `refs.stateRef.current` read in the drawing engine with direct
+store reads:
+
+```js
+// Before — in drawingEngine.js, canvasRenderer.js, etc.
+const st = refs.stateRef.current; // { tool, fgColor, ..., canvasW, canvasH, ... }
+
+// After
+import { useToolStore } from "../store/useToolStore";
+import { usePixelDocumentStore } from "../store/usePixelDocumentStore";
+const ts = useToolStore.getState();
+const ps = usePixelDocumentStore.getState();
+```
+
+All field accesses update accordingly. The line `refs.stateRef.current = { ...ss, ...ts }`
+in `JellySprite.jsx` is deleted. `refs.stateRef` is removed from `JellySpriteProvider`.
+
+**Files:** `drawingEngine.js`, `canvasRenderer.js`, `clipboardOps.js`,
+`selectionOps.js`, `JellySprite.jsx`, `JellySpriteProvider.jsx`
+
+---
+
+### 11c — Remove `onRegisterCollector` / `collectSaveData`
+
+`JellySpriteWorkspace.jsx` currently calls:
+
+```js
+onRegisterCollector={(fn) => { collectorRef.current = fn; }}
+```
+
+And on save:
+
+```js
+const data = collectorRef.current?.();
+```
+
+With `usePixelDocumentStore`, the save flow becomes:
+
+```js
+import { usePixelDocumentStore } from "../jelly-sprite/store/usePixelDocumentStore";
+// ...
+const data = usePixelDocumentStore.getState().serialize();
+```
+
+No callback prop, no ref, no useEffect. Delete `onRegisterCollector` prop from
+`JellySprite.jsx` and `JellySpriteBody`. The `collectSaveData()` function inside
+`JellySpriteBody` is replaced by `usePixelDocumentStore.getState().serialize()`.
+
+**Files:** `JellySprite.jsx`, `JellySpriteWorkspace.jsx`
+
+---
+
+### 11d — Wire `usePixelDocumentStore` into the JellySprite load / frame-switch flows
+
+Current JellySprite load flow: `LOAD_PROJECT` dispatch → `JellySprite` mount
+effect decodes data and imperatively calls `refs.doc.*` to set up the
+`PixelDocument`. This should instead call:
+
+```js
+usePixelDocumentStore.getState().init(deserializedData);
+```
+
+Frame-switch (`handleFrameSwitch`) calls `refs.doc.saveCurrentFrame()` and
+`refs.doc.frameSnapshots[id]` directly. These can remain as-is (they go
+through the `PixelDocument` class, which fires `onChange`, which Zustand
+captures). No change needed to frame-switch logic.
+
+**Files:** `JellySprite.jsx`
+
+---
+
+### Sprint 11 commit order
+
+```
+1. usePixelDocumentStore created (11a)
+2. drawingEngine + canvasRenderer: replace refs.stateRef with store.getState() (11b)
+3. clipboardOps + selectionOps: same (11b continued)
+4. JellySprite.jsx: remove stateRef mirror + refs.stateRef assignment (11b)
+5. JellySpriteWorkspace + JellySprite: remove onRegisterCollector (11c)
+6. Wire init() into load flow (11d)
+7. Verify: npm run build — 0 errors
+8. Commit: "refactor: Sprint 11 — usePixelDocumentStore, remove Sprint 7e artifacts"
+```
+
+---
+
+## 🔲 Sprint 12 — Service Layer Cleanup
+
+### What remains in the service layer
+
+`projectService.js` was split into five focused modules in Sprint 2. The file
+became a re-export barrel for backward compatibility. That was correct. But
+it also contains **legacy shim functions** that wrap the split services under
+old function names. These shims have survived 10 sprints without being
+resolved — that is a critical governance violation.
+
+**Legacy shims in `projectService.js`:**
+
+| Legacy name                           | Maps to                   | Current consumer  |
+| ------------------------------------- | ------------------------- | ----------------- |
+| `pickAndLoadProject()`                | `pickAndLoadSpriteFile()` | Unused (verify)   |
+| `loadProjectFromStorage(id)`          | `loadSprite(id)`          | Unused (verify)   |
+| `saveProjectToStorage(data, thumb)`   | `saveSprite(...)`         | Unused (verify)   |
+| `deleteProjectFromStorage(id)`        | `deleteSprite(id)`        | Unused (verify)   |
+| `serialiseProject(state, jellyState)` | `serialiseSprite(...)`    | `ExportPanel.jsx` |
+
+Two confirmed active consumers:
+
+- `ExportPanel.jsx` — imports `serialiseProject`
+- `ProjectsPage.jsx` — imports multiple names from projectService barrel
+
+---
+
+### 12a — Audit `projectService.js` import sites
+
+For each import from `projectService.js`, determine whether the caller needs
+the legacy alias or can import directly from the split service module.
+
+```js
+// ProjectsPage currently:
+import { saveProjectToStorage, loadProjectFromStorage, deleteProjectFromStorage, ... }
+  from "../../services/projectService";
+
+// After: import directly from split modules
+import { saveSprite, loadSprite, deleteSprite } from "../../services/sprites";
+import { listProjects } from "../../services/projects";
+```
+
+**Files:** All files that import from `projectService.js`
+
+---
+
+### 12b — Migrate `ExportPanel` away from `serialiseProject`
+
+```js
+// Before
+import { serialiseProject } from "../../../services/projectService";
+const blob = await serialiseProject(projectState, jellySpriteState);
+
+// After
+import { serialiseSprite } from "../../../services/serialization";
+// Pass jellyState directly
+```
+
+**Files:** `src/features/export/ExportPanel/ExportPanel.jsx`
+
+---
+
+### 12c — Remove legacy shim functions from `projectService.js`
+
+Once all consumers are migrated, delete the 5 legacy function bodies from
+`projectService.js`. The file remains as a clean re-export barrel for the
+split modules — callers that import generic names like `saveSprite` or
+`listProjects` are already correct and keep working.
+
+```js
+// projectService.js after Sprint 12 — pure re-export barrel only
+export * from "./projects.js";
+export * from "./sprites.js";
+export * from "./serialization.js";
+// No legacy shim functions
+```
+
+**Files:** `src/services/projectService.js`
+
+---
+
+### 12d — Inline context reducers into store files (optional Sprint 10d follow-on)
+
+If context files were only stripped (not deleted) in Sprint 10, this is the
+point where each reducer moves into its store file and the context file is
+deleted. Three files become two:
+
+```
+ToolContext.jsx + useToolStore.js → useToolStore.js (reducer inlined)
+AnimatorContext.jsx + useAnimatorStore.js → useAnimatorStore.js (reducer inlined)
+DocumentContext.jsx + useDocumentStore.js → useDocumentStore.js (reducer inlined)
+```
+
+This removes the last vestiges of the React Context era from the codebase.
+
+**Files:** `useToolStore.js`, `useAnimatorStore.js`, `useDocumentStore.js`,
+then delete `ToolContext.jsx`, `AnimatorContext.jsx`, `DocumentContext.jsx`
+
+---
+
+### Sprint 12 commit order
+
+```
+1. Audit projectService.js import sites
+2. Migrate ExportPanel to serialization.js directly (12b)
+3. Migrate ProjectsPage to split service modules (12a)
+4. Remove legacy shim functions from projectService.js (12c)
+5. Inline reducers into store files + delete context shells (12d)
+6. Verify: npm run build — 0 errors
+7. Commit: "refactor: Sprint 12 — service layer cleanup, delete context shells"
 ```
