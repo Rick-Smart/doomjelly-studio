@@ -14,7 +14,9 @@
 | Sprint 1 | Foundation Cleanup           | ✅ Complete (`b5fda67`) |
 | Sprint 2 | Monolith Decomposition       | ✅ Complete (`d8033f9`) |
 | Sprint 3 | Feature Contract Enforcement | ✅ Complete (`86e3b26`) |
-| Sprint 4 | Context Decomposition        | ✅ `ac647ed`            |
+| Sprint 4 | Context Decomposition        | ✅ Complete (`ac647ed`) |
+| Sprint 5 | State Finalization           | ✅ Complete (`625e694`) |
+| Sprint 6 | Unified Document Model       | 🔄 In progress          |
 
 ---
 
@@ -647,7 +649,7 @@ src/
 
 ---
 
-## 🔲 Sprint 5 — State Finalization
+## ✅ Sprint 5 — State Finalization (`625e694`)
 
 **Goal:** Complete Rule 3 enforcement. `state.spriteSheet` is a redundant mirror
 of the active sheet that was kept during the Sprint 4 migration as a shim. Every

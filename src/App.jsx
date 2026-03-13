@@ -1,7 +1,7 @@
 import { BrowserRouter } from "react-router-dom";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { AuthProvider } from "./contexts/AuthContext";
-import { ProjectProvider } from "./contexts/ProjectContext";
+import { DocumentProvider } from "./contexts/DocumentContext";
 import { AnimatorProvider } from "./contexts/AnimatorContext";
 import { NotificationProvider } from "./contexts/NotificationContext";
 import { AppRoutes } from "./router/routes";
@@ -15,11 +15,11 @@ export default function App() {
         <ThemeProvider>
           <NotificationProvider>
             <AuthProvider>
-              <ProjectProvider>
+              <DocumentProvider>
                 <AnimatorProvider>
                   <AppRoutes />
                 </AnimatorProvider>
-              </ProjectProvider>
+              </DocumentProvider>
             </AuthProvider>
           </NotificationProvider>
         </ThemeProvider>
