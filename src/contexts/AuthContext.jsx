@@ -40,7 +40,24 @@ export function AuthProvider({ children }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(sessionToUser(session));
+      const next = sessionToUser(session);
+      setUser((prev) => {
+        // When the user changes (sign-out or sign-in as different account),
+        // clear the persisted sprite ID from useDocumentStore so nav links
+        // don't point at a stale ID that doesn't exist for the new user.
+        // This prevents 406 errors from sbLoadSprite on the Animator page.
+        // Use SET_DOCUMENT_ID null (not RESET_DOCUMENT which generates a new UUID).
+        if (prev?.id !== next?.id) {
+          import("../contexts/useDocumentStore.js").then(
+            ({ useDocumentStore }) => {
+              useDocumentStore
+                .getState()
+                .dispatch({ type: "SET_DOCUMENT_ID", payload: null });
+            },
+          );
+        }
+        return next;
+      });
     });
 
     return () => subscription.unsubscribe();

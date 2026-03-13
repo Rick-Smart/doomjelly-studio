@@ -123,8 +123,10 @@ export async function sbLoadSprite(id) {
     .select("*")
     .eq("id", id)
     .eq("user_id", user.id)
-    .single();
+    .maybeSingle();
   if (error) throw error;
+  // maybeSingle returns null data (not an error) when no row is found.
+  if (!data) return null;
   const meta = sbSpriteRow(data);
   // Normalise — legacy rows may have stored data in body before migration 003.
   const jellyBody =
