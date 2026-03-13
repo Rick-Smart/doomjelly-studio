@@ -86,5 +86,5 @@
 .error-boundary__btn--primary {
   background: var(--accent, #e94560);
   border-color: var(--accent, #e94560);
-  color: #fff;
+  color: var(--color-on-accent);
 }

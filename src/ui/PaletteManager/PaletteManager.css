@@ -65,7 +65,7 @@
 
 .pm-btn--danger:hover:not(:disabled) {
   background: var(--danger);
-  color: #fff;
+  color: var(--color-on-accent);
   border-color: var(--danger);
 }
 
@@ -222,7 +222,7 @@
   background: var(--accent);
   border: none;
   border-radius: 4px;
-  color: #fff;
+  color: var(--color-on-accent);
   font-weight: 600;
   cursor: pointer;
   transition: opacity 0.1s;

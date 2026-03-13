@@ -13,15 +13,15 @@
 
 .badge--accent {
   background: var(--accent);
-  color: #fff;
+  color: var(--color-on-accent);
 }
 .badge--danger {
   background: var(--danger);
-  color: #fff;
+  color: var(--color-on-accent);
 }
 .badge--success {
-  background: #22c55e;
-  color: #fff;
+  background: var(--success);
+  color: var(--color-on-accent);
 }
 .badge--neutral {
   background: var(--surface3);

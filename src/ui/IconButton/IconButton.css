@@ -58,7 +58,7 @@
 /* primary */
 .icon-btn--primary {
   background: var(--accent);
-  color: #fff;
+  color: var(--color-on-accent);
 }
 .icon-btn--primary:hover:not(:disabled) {
   background: var(--accent-hover);
@@ -73,6 +73,6 @@
 }
 .icon-btn--danger:hover:not(:disabled) {
   background: var(--danger);
-  color: #fff;
+  color: var(--color-on-accent);
   border-color: var(--danger);
 }

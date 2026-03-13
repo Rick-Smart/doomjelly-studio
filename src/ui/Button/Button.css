@@ -38,7 +38,7 @@
 /* primary */
 .btn--primary {
   background: var(--accent);
-  color: #fff;
+  color: var(--color-on-accent);
 }
 .btn--primary:hover:not(:disabled) {
   background: var(--accent-hover);
@@ -68,7 +68,7 @@
 /* danger */
 .btn--danger {
   background: var(--danger);
-  color: #fff;
+  color: var(--color-on-accent);
 }
 .btn--danger:hover:not(:disabled) {
   background: var(--danger-hover);
