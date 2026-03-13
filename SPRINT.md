@@ -17,7 +17,7 @@
 | Sprint 4 | Context Decomposition              | ✅ Complete (`ac647ed`) |
 | Sprint 5 | State Finalization                 | ✅ Complete (`625e694`) |
 | Sprint 6 | Unified Document Model             | ✅ Complete (`5be735c`) |
-| Sprint 7 | JellySprite PixelDocument Refactor | 🔲 Not started          |
+| Sprint 7 | JellySprite PixelDocument Refactor | ✅ Complete (`b6c78a8`) |
 | Sprint 8 | TypeScript Migration               | 🔲 Not started          |
 | Sprint 9 | Zustand State Management           | 🔲 Not started          |
 
@@ -915,7 +915,21 @@ blocked by the JellySprite architecture issues documented in Sprint 7. Sprint
 
 ---
 
-## 🔲 Sprint 7 — JellySprite PixelDocument Refactor
+## ✅ Sprint 7 — JellySprite PixelDocument Refactor
+
+| Sub-sprint | Description                                       | Commit     |
+| ---------- | ------------------------------------------------- | ---------- |
+| 7a         | PixelDocument class created                       | `dc4c6d9`  |
+| 7b         | ToolContext extracted from jellySpriteReducer     | `dc4c6d9`  |
+| 7c         | Migrate pixel state to PixelDocument (refs.doc)   | `0aee0f8`  |
+| 7d         | Connect PixelDocument.onChange to DocumentContext | `b6c78a8`  |
+| 7e         | Function stubs → null in JellySpriteProvider      | `b6c78a8`+ |
+
+**7e deferred:** `onRegisterCollector` prop and `stateRef` mirror retained.
+
+- `stateRef` is extensively used by drawingEngine.js (reads tool+canvas state via closure)
+- `onRegisterCollector` is needed for JellySpriteWorkspace save flow
+- Both can be removed in Sprint 8 when drawingEngine.js is refactored
 
 ### Framework and architecture assessment
 

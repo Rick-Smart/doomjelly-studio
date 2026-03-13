@@ -47,11 +47,13 @@ export function JellySpriteProvider({ children }) {
     playbackFrameIdx: 0,
     isPlaying: false,
 
-    // Functions populated in later milestones
-    redraw: () => {},
-    pushHistory: () => {},
-    undoHistory: () => {},
-    redoHistory: () => {},
+    // Functions wired by useCanvas (redraw) and wireHistoryEngine (history).
+    // Initialised to null; callers must use optional-chaining (refs.redraw?.()).
+    redraw: null,
+    pushHistory: null,
+    undoHistory: null,
+    redoHistory: null,
+    onStrokeComplete: null,
   }).current; // .current so we get the plain object, not the ref wrapper
 
   // Lazy-init PixelDocument — runs only on the first render (refs.doc starts null)
