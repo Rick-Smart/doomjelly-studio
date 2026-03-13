@@ -13,6 +13,7 @@ import { SequenceBuilder } from "../SequenceBuilder";
 import { PreviewCanvas } from "../PreviewCanvas";
 import { loadDocument, saveDocument } from "../../../services/documentService";
 import { buildAnimatorBody } from "../animatorSerializer";
+import { selectActiveSheet } from "../selectors";
 import { KeyboardHelp } from "../KeyboardHelp";
 import { TracksPanel } from "../TracksPanel";
 import { generateThumbnail } from "../../../services/imageExportService";
@@ -40,10 +41,7 @@ export function AnimatorPage() {
   const { spriteId: urlSpriteId } = useParams();
 
   // Derive active sheet from sheets array — single source of truth (Rule 3)
-  const activeSheet =
-    state.sheets.find((s) => s.id === state.activeSheetId) ??
-    state.sheets[0] ??
-    null;
+  const activeSheet = selectActiveSheet(state) ?? state.sheets[0] ?? null;
   const imageUrl = activeSheet?.objectUrl ?? null;
   useEffect(() => {
     if (!urlSpriteId) return;
@@ -122,8 +120,7 @@ export function AnimatorPage() {
       buildAnimatorBody(st)
         .then((animatorBody) => {
           if (!animatorBody) return;
-          const activeSheet =
-            st.sheets.find((s) => s.id === st.activeSheetId) ?? st.sheets[0];
+          const activeSheet = selectActiveSheet(st) ?? st.sheets[0];
           return saveDocument(
             {
               id: ps.id ?? crypto.randomUUID(),
@@ -245,7 +242,7 @@ export function AnimatorPage() {
     // Save before navigating so JellySprite loads the latest state from storage
     if (isDirty) await handleSave();
     const targetId = projectState.id ?? urlSpriteId;
-    navigate(targetId ? `/jelly-sprite/${targetId}` : "/jelly-sprite");
+    navigate(targetId ? `/jelly-sprite/${targetId}` : "/projects");
   }
 
   const saveMenuItems = [

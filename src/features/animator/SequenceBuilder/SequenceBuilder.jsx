@@ -1,5 +1,6 @@
 import { useRef, useEffect, useState } from "react";
 import { useAnimator } from "../../../contexts/AnimatorContext";
+import { selectActiveSheet, selectActiveAnimation } from "../selectors";
 import { usePlayback } from "../../../contexts/PlaybackContext";
 import { EmptyState } from "../../../ui/EmptyState";
 import { IconButton } from "../../../ui/IconButton";
@@ -12,8 +13,8 @@ export function SequenceBuilder() {
   const { state, dispatch } = useAnimator();
   const { animations, activeAnimationId, activeSheetId, sheets, frameConfig } =
     state;
-  const activeSheet = sheets.find((s) => s.id === activeSheetId) ?? null;
-  const activeAnim = animations.find((a) => a.id === activeAnimationId) ?? null;
+  const activeSheet = selectActiveSheet(state);
+  const activeAnim = selectActiveAnimation(state);
   const frames = activeAnim?.frames ?? [];
   const { frameIndex: playbackIdx, pausePlayback, seekTo } = usePlayback();
 

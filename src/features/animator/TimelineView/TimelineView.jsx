@@ -1,6 +1,6 @@
 import { useRef, useEffect } from "react";
 import { useAnimator } from "../../../contexts/AnimatorContext";
-import { selectActiveSheet } from "../selectors";
+import { selectActiveSheet, selectActiveAnimation } from "../selectors";
 import { usePlayback } from "../../../contexts/PlaybackContext";
 import { FrameThumb } from "../shared/FrameThumb";
 import { useDragReorder } from "../../../hooks/useDragReorder";
@@ -19,7 +19,7 @@ const CELL_MIN_W = 44;
 export function TimelineView() {
   const { state, dispatch } = useAnimator();
   const { animations, activeAnimationId, frameConfig } = state;
-  const activeAnim = animations.find((a) => a.id === activeAnimationId) ?? null;
+  const activeAnim = selectActiveAnimation(state);
   const frames = activeAnim?.frames ?? [];
 
   const { frameIndex, seekTo, pausePlayback } = usePlayback();

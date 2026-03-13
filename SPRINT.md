@@ -8,18 +8,19 @@
 
 ## Sprint status
 
-| Sprint   | Name                               | Status                  |
-| -------- | ---------------------------------- | ----------------------- |
-| Sprint 0 | Data Stability                     | ✅ Complete (`92997f7`) |
-| Sprint 1 | Foundation Cleanup                 | ✅ Complete (`b5fda67`) |
-| Sprint 2 | Monolith Decomposition             | ✅ Complete (`d8033f9`) |
-| Sprint 3 | Feature Contract Enforcement       | ✅ Complete (`86e3b26`) |
-| Sprint 4 | Context Decomposition              | ✅ Complete (`ac647ed`) |
-| Sprint 5 | State Finalization                 | ✅ Complete (`625e694`) |
-| Sprint 6 | Unified Document Model             | ✅ Complete (`5be735c`) |
-| Sprint 7 | JellySprite PixelDocument Refactor | ✅ Complete (`15ee57a`) |
-| Sprint 8 | TypeScript Migration               | 🔲 Not started          |
-| Sprint 9 | Zustand State Management           | 🔲 Not started          |
+| Sprint    | Name                               | Status                  |
+| --------- | ---------------------------------- | ----------------------- |
+| Sprint 0  | Data Stability                     | ✅ Complete (`92997f7`) |
+| Sprint 1  | Foundation Cleanup                 | ✅ Complete (`b5fda67`) |
+| Sprint 2  | Monolith Decomposition             | ✅ Complete (`d8033f9`) |
+| Sprint 3  | Feature Contract Enforcement       | ✅ Complete (`86e3b26`) |
+| Sprint 4  | Context Decomposition              | ✅ Complete (`ac647ed`) |
+| Sprint 5  | State Finalization                 | ✅ Complete (`625e694`) |
+| Sprint 6  | Unified Document Model             | ✅ Complete (`5be735c`) |
+| Sprint 7  | JellySprite PixelDocument Refactor | ✅ Complete (`15ee57a`) |
+| Sprint 8  | TypeScript Migration               | 🔲 Not started          |
+| Sprint 8a | Rule Violation Fixes               | ⏳ In progress          |
+| Sprint 9  | Zustand State Management           | 🔲 Not started          |
 
 ---
 
@@ -731,12 +732,9 @@ IDB is the real persistence layer. `localStorage` index writes are a convenience
 cache only. All localStorage writes must be wrapped in `try/catch` so a quota
 error or private-browsing restriction never surfaces as a save failure.
 
-**Status:** ⚠️ Partial  
+**Status:** ✅ Compliant  
 **Introduced:** Sprint 0 (`92997f7`) — `projectService.js` / `localIndex.js`  
-**Violation:** `writeProjectsIndex()` and `writeSpritesIndex()` in
-`src/services/localIndex.js` call `localStorage.setItem` without `try/catch`.
-Read functions are protected; write functions are not.  
-**Fix target:** Sprint 8 — wrap both write functions in `try/catch`.
+**Fixed:** Sprint 8a — both write functions wrapped in `try/catch`.
 
 ---
 
@@ -746,16 +744,10 @@ Every navigation to an editor must carry the spriteId. Code must not fall back
 to an ID-less editor route when the ID is unavailable — it should navigate to
 `/projects` or show an error instead.
 
-**Status:** ❌ Violated (2 callsites)  
+**Status:** ✅ Compliant  
 **Introduced:** Sprint 0 (`908ba2d`)  
-**Violations:**
-
-- `AnimatorPage.jsx:248` — `navigate(targetId ? '/jelly-sprite/${targetId}' : "/jelly-sprite")`  
-  The fallback path `"/jelly-sprite"` (no ID) is banned. Should navigate to
-  `/projects` if `targetId` is null.
-- `ProjectsPage.jsx:157` — `navigate(state.id ? '/animator/${state.id}' : "/animator")`  
-   Same issue. Fallback to `/animator` (no ID) is banned.  
-  **Fix target:** Sprint 8 — replace both fallbacks with `navigate("/projects")`.
+**Fixed:** Sprint 8a — both bare fallback navigates replaced with `navigate("/projects")`:
+`AnimatorPage.jsx` (`handleEditInJellySprite`), `ProjectsPage.jsx` (add-sheet-to-animator).
 
 ---
 
@@ -790,12 +782,10 @@ import { AnimatorPage } from "../features/animator";
 import { AnimatorPage } from "../features/animator/AnimatorPage/AnimatorPage";
 ```
 
-**Status:** ⚠️ Partial  
+**Status:** ✅ Compliant  
 **Introduced:** Sprint 1 (`b5fda67`)  
-**Violation:** The `auth` feature has no `index.js` barrel. `routes.jsx:5`
-imports `LoginPage` directly: `import { LoginPage } from "../features/auth/LoginPage"`.
-This is also the reason `LoginPage` is not lazy-loaded (see Rule 17).  
-**Fix target:** Sprint 8 — add `src/features/auth/index.js`, convert to lazy import.
+**Fixed:** Sprint 8a — `src/features/auth/index.js` barrel created. `routes.jsx`
+now imports `LoginPage` via the barrel.
 
 ---
 
@@ -805,27 +795,11 @@ Any derived state computed identically by more than one component lives in
 `selectors.js` inside its feature. Components never duplicate `.find()` or
 `.filter()` logic for shared data.
 
-**Status:** ⚠️ Partial  
+**Status:** ✅ Compliant  
 **Introduced:** Sprint 1 (`b5fda67`) — `src/features/animator/selectors.js`  
-**Selectors that exist:** `selectActiveSheet`, `selectActiveAnimation`,
-`selectFrameCount`, `selectFrames`  
-**Violations — inline `.find()` duplicating `selectActiveSheet`:**
-
-- `AnimatorPage.jsx:44` and `:126`
-- `TracksPanel.jsx:121`
-- `useAnimatorKeyboard.js:77`
-- `SequenceBuilder.jsx:15`
-- `PreviewCanvas.jsx:56`
-
-**Violations — inline `.find()` duplicating `selectActiveAnimation`:**
-
-- `useAnimatorKeyboard.js:18`
-- `TimelineView.jsx:22`
-- `SheetViewerCanvas.jsx:236`, `:397`, `:430`, `:526`
-- `SequenceBuilder.jsx:16`
-- `PreviewCanvas.jsx:57`
-
-**Fix target:** Sprint 8 — replace all inline duplicates with selector calls.
+**Fixed:** Sprint 8a — all inline duplicates replaced with selector calls across
+`AnimatorPage.jsx`, `TracksPanel.jsx`, `useAnimatorKeyboard.js`, `SequenceBuilder.jsx`,
+`PreviewCanvas.jsx`, `TimelineView.jsx`, `SheetViewerCanvas.jsx`.
 
 ---
 
@@ -875,13 +849,9 @@ multi-step Animator dispatch is properly batched has not been completed.
 Every feature page is wrapped in `React.lazy()` in `routes.jsx`. This keeps
 the initial bundle size constant as features grow.
 
-**Status:** ⚠️ Partial  
+**Status:** ✅ Compliant  
 **Introduced:** Sprint 1 (`b5fda67`) — `routes.jsx`  
-**Compliant:** `AnimatorPage`, `JellySpriteWorkspace`, `ProjectsPage`, `SettingsPage`  
-**Violation:** `LoginPage` is not lazy — it is eagerly imported at
-`routes.jsx:5`. Blocked by missing `auth/index.js` barrel (Rule 12).  
-**Fix target:** Sprint 8 — add `auth/index.js` barrel (Rule 12 fix) then
-convert `LoginPage` to `React.lazy()`.
+**Fixed:** Sprint 8a — `LoginPage` converted to `React.lazy()` via `auth/index.js` barrel.
 
 ---
 
@@ -892,24 +862,19 @@ values that duplicate existing design tokens. Repeated patterns become named
 tokens in `src/index.css`.
 
 **Tokens in `src/index.css`:** `--accent-tint-soft` (10%), `--accent-tint-mid`
-(14%), `--accent-tint-strong` (22%), `--cell-min-w` (44px), `--track-label-w`
-(130px), `--danger`, `--danger-hover`.
+(14%), `--accent-tint-strong` (22%), `--accent-tint-xsoft-t` (5%/transparent),
+`--accent-tint-faint` (8%/surface2), `--accent-tint-mid-t` (14%/transparent),
+`--accent-tint-soft-t` (10%/transparent), `--cell-min-w` (44px), `--track-label-w`
+(130px), `--danger`, `--danger-hover`, `--success`, `--warning`, `--text-disabled`,
+`--surface-alt`, `--color-on-accent`, `--accent-separator`.
 
-**Status:** ⚠️ Partial  
+**Status:** ✅ Compliant  
 **Introduced:** Sprint 1 (`b5fda67`)  
-**Violations:**
-
-- `TracksPanel.css` — 4 inline `color-mix()` calls not using existing tokens
-  (5%/transparent, 8%/surface2, 14%/transparent, 10%/transparent)
-- `SplitButton.css` — `color: #fff` (×2), `background: #fff`, inline
-  `color-mix(in srgb, #fff 25%, var(--accent))`
-- `Toast.css` — `#22c55e` (success green) and `color-mix(in srgb, #22c55e ...)`
-  — needs a `--success` token
-- `SheetList.css` — `#222`, `#555`, `#f59e0b` used as var fallbacks
-
-**Fix target:** Sprint 8 — add `--success` token; replace color-mix literals in
-TracksPanel.css and Toast.css with tokens; evaluate `#fff` usages for
-`--color-on-accent` token.
+**Fixed:** Sprint 8a — new tokens added to `src/index.css` (see above).
+All inline `color-mix()` literals in `TracksPanel.css` replaced with tokens.
+`Toast.css` `#22c55e` replaced with `var(--success)`.
+`SplitButton.css` `#fff` replaced with `var(--color-on-accent)` and border-left
+replaced with `var(--accent-separator)`.
 
 ---
 

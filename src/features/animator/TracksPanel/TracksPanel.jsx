@@ -1,5 +1,6 @@
 import { useRef, useEffect } from "react";
 import { useAnimator } from "../../../contexts/AnimatorContext";
+import { selectActiveSheet } from "../selectors";
 import { usePlayback } from "../../../contexts/PlaybackContext";
 import { FrameThumb } from "../shared/FrameThumb";
 import { useDragReorder } from "../../../hooks/useDragReorder";
@@ -118,7 +119,7 @@ export function TracksPanel({ pinnedTrackIds = [] }) {
   const { state, dispatch } = useAnimator();
   const { animations, activeAnimationId, activeSheetId, sheets, frameConfig } =
     state;
-  const activeSheet = sheets.find((s) => s.id === activeSheetId) ?? null;
+  const activeSheet = selectActiveSheet(state);
   const {
     frameIndex,
     seekTo,

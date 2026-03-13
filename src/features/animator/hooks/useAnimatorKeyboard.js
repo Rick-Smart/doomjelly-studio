@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useAnimator } from "../../../contexts/AnimatorContext";
+import { selectActiveSheet, selectActiveAnimation } from "../selectors";
 import { usePlayback } from "../../../contexts/PlaybackContext";
 import { sheetGridDims } from "../../../engine/frameUtils";
 
@@ -15,9 +16,7 @@ export function useAnimatorKeyboard({ onSave, onHelp }) {
   const { frameIndex, isPlaying, playPlayback, pausePlayback, seekTo } =
     usePlayback();
 
-  const activeAnim = state.animations.find(
-    (a) => a.id === state.activeAnimationId,
-  );
+  const activeAnim = selectActiveAnimation(state);
   const frameCount = activeAnim?.frames.length ?? 0;
 
   useEffect(() => {
@@ -73,8 +72,8 @@ export function useAnimatorKeyboard({ onSave, onHelp }) {
         return;
       }
       if ((e.key === "a" || e.key === "A") && !e.ctrlKey && !e.metaKey) {
-        const { activeAnimationId, activeSheetId, sheets, frameConfig } = state;
-        const activeSheet = sheets.find((s) => s.id === activeSheetId) ?? null;
+        const { activeAnimationId, frameConfig } = state;
+        const activeSheet = selectActiveSheet(state);
         if (!activeAnimationId || !activeSheet) return;
         e.preventDefault();
         const { cols, rows } = sheetGridDims(

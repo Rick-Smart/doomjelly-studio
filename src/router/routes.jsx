@@ -2,8 +2,10 @@ import { lazy, Suspense } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { ProtectedRoute } from "./ProtectedRoute";
 import { AppShell } from "../layout/AppShell";
-import { LoginPage } from "../features/auth/LoginPage";
 
+const LoginPage = lazy(() =>
+  import("../features/auth").then((m) => ({ default: m.LoginPage })),
+);
 const AnimatorPage = lazy(() =>
   import("../features/animator").then((m) => ({ default: m.AnimatorPage })),
 );

@@ -12,7 +12,7 @@
   border: 1px solid var(--accent);
   border-right: none;
   border-radius: 4px 0 0 4px;
-  color: #fff;
+  color: var(--color-on-accent);
   cursor: pointer;
   white-space: nowrap;
   display: flex;
@@ -34,9 +34,9 @@
   padding: 3px 7px;
   background: var(--accent);
   border: 1px solid var(--accent);
-  border-left: 1px solid color-mix(in srgb, #fff 25%, var(--accent));
+  border-left: 1px solid var(--accent-separator);
   border-radius: 0 4px 4px 0;
-  color: #fff;
+  color: var(--color-on-accent);
   cursor: pointer;
   line-height: 1;
 }
@@ -54,7 +54,7 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #fff;
+  background: var(--color-on-accent);
   opacity: 0.75;
   flex-shrink: 0;
 }

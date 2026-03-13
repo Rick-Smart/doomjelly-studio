@@ -10,7 +10,11 @@ export function readProjectsIndex() {
 }
 
 export function writeProjectsIndex(list) {
-  localStorage.setItem(PROJECTS_INDEX_KEY, JSON.stringify(list));
+  try {
+    localStorage.setItem(PROJECTS_INDEX_KEY, JSON.stringify(list));
+  } catch {
+    // localStorage quota or private-browsing restriction — non-fatal (Rule 9)
+  }
 }
 
 export function readSpritesIndex() {
@@ -22,7 +26,11 @@ export function readSpritesIndex() {
 }
 
 export function writeSpritesIndex(list) {
-  localStorage.setItem(SPRITES_INDEX_KEY, JSON.stringify(list));
+  try {
+    localStorage.setItem(SPRITES_INDEX_KEY, JSON.stringify(list));
+  } catch {
+    // localStorage quota or private-browsing restriction — non-fatal (Rule 9)
+  }
 }
 
 // One-time migration from the old single-level localStorage schema.

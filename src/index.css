@@ -23,6 +23,19 @@
   --accent-tint-soft: color-mix(in srgb, var(--accent) 10%, var(--surface2));
   --accent-tint-mid: color-mix(in srgb, var(--accent) 14%, var(--surface2));
   --accent-tint-strong: color-mix(in srgb, var(--accent) 22%, var(--surface2));
+  /* Transparent tint variants — for cells/rows that overlay image or checker backgrounds */
+  --accent-tint-xsoft-t: color-mix(in srgb, var(--accent) 5%, transparent);
+  --accent-tint-faint: color-mix(in srgb, var(--accent) 8%, var(--surface2));
+  --accent-tint-mid-t: color-mix(in srgb, var(--accent) 14%, transparent);
+  --accent-tint-soft-t: color-mix(in srgb, var(--accent) 10%, transparent);
+  /* Semantic color tokens */
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --text-disabled: #4a4a6a;
+  --surface-alt: #1e1e30;
+  /* On-accent foreground + accent button separator */
+  --color-on-accent: #fff;
+  --accent-separator: color-mix(in srgb, #fff 25%, var(--accent));
 
   /* Layout constants shared by timeline + tracks panel */
   --cell-min-w: 44px;

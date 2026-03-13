@@ -154,7 +154,7 @@ export function ProjectsPage() {
         },
       });
       // Navigate to Animator with the current session's sprite ID
-      navigate(state.id ? `/animator/${state.id}` : "/animator");
+      navigate(state.id ? `/animator/${state.id}` : "/projects");
     } catch (err) {
       console.error(err);
       showToast("Failed to add sheet to Animator.", "error");

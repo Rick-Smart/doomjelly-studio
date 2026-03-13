@@ -1,6 +1,7 @@
 ﻿import { useEffect, useRef, useCallback, useState } from "react";
 import { cellToPixel } from "../../../engine/frameUtils";
 import { useAnimator } from "../../../contexts/AnimatorContext";
+import { selectActiveAnimation } from "../selectors";
 import { useTheme } from "../../../contexts/ThemeContext";
 import "./SheetViewerCanvas.css";
 
@@ -233,7 +234,7 @@ export function SheetViewerCanvas({ imageUrl }) {
     // Build usage map: "col,row" → { count, firstIndex }
     // Only highlight frames that belong to the currently displayed sheet.
     const primarySheetId = sheets[0]?.id ?? activeSheetId;
-    const activeAnim = animations.find((a) => a.id === activeAnimationId);
+    const activeAnim = selectActiveAnimation(state);
     const activeSheetFrames = activeAnim
       ? activeAnim.frames.filter(
           (f) => (f.sheetId ?? primarySheetId) === activeSheetId,
@@ -394,7 +395,7 @@ export function SheetViewerCanvas({ imageUrl }) {
     setDragStartCell(null);
     setDragCell(null);
     if (!endCell) return;
-    const activeAnim = animations.find((a) => a.id === activeAnimationId);
+    const activeAnim = selectActiveAnimation(state);
     if (!activeAnim) return;
     const minCol = Math.min(dragStartCell.col, endCell.col);
     const maxCol = Math.max(dragStartCell.col, endCell.col);
@@ -427,7 +428,7 @@ export function SheetViewerCanvas({ imageUrl }) {
     e.preventDefault();
     const cell = canvasCoordsToCell(e);
     if (!cell) return;
-    const activeAnim = animations.find((a) => a.id === activeAnimationId);
+    const activeAnim = selectActiveAnimation(state);
     if (!activeAnim) return;
     // Find the last frame matching this cell and remove it.
     const lastIdx = activeAnim.frames.reduce(
@@ -523,7 +524,7 @@ export function SheetViewerCanvas({ imageUrl }) {
       {imageUrl &&
         activeAnimationId &&
         (() => {
-          const activeAnim = animations.find((a) => a.id === activeAnimationId);
+          const activeAnim = selectActiveAnimation(state);
           return activeAnim && activeAnim.frames.length === 0 ? (
             <div className="sheet-viewer__hint sheet-viewer__hint--no-frames">
               Click any cell to add it to "{activeAnim.name}"

@@ -52,7 +52,7 @@
 }
 
 .track-row--active {
-  background: color-mix(in srgb, var(--accent) 5%, transparent);
+  background: var(--accent-tint-xsoft-t);
 }
 
 .track-row__label {
@@ -76,7 +76,7 @@
 
 .track-row--active .track-row__label {
   border-right-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 8%, var(--surface2));
+  background: var(--accent-tint-faint);
 }
 
 .track-row__name {
@@ -167,7 +167,7 @@
 }
 
 .tracks-cell--active {
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  background: var(--accent-tint-mid-t);
 }
 
 .tracks-cell--dragging {
@@ -177,7 +177,7 @@
 
 .tracks-cell--drop-target {
   border-left: 2px solid var(--accent);
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  background: var(--accent-tint-soft-t);
 }
 
 /* ── Thumbnail ────────────────────────────────────────── */

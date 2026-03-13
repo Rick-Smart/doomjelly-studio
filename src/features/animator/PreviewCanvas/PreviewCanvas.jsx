@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState } from "react";
 import { cellToPixel } from "../../../engine/frameUtils";
 import { useAnimator } from "../../../contexts/AnimatorContext";
+import { selectActiveSheet, selectActiveAnimation } from "../selectors";
 import { useAnimationLoop } from "../../../hooks/useAnimationLoop";
 import { usePlayback } from "../../../contexts/PlaybackContext";
 import { useLocalStorage } from "../../../hooks/useLocalStorage";
@@ -53,8 +54,8 @@ export function PreviewCanvas({ expanded = false, onToggleExpand } = {}) {
   const { state } = useAnimator();
   const { animations, activeAnimationId, activeSheetId, sheets, frameConfig } =
     state;
-  const activeSheet = sheets.find((s) => s.id === activeSheetId) ?? null;
-  const activeAnim = animations.find((a) => a.id === activeAnimationId) ?? null;
+  const activeSheet = selectActiveSheet(state);
+  const activeAnim = selectActiveAnimation(state);
   const frames = activeAnim?.frames ?? [];
 
   const [mode, setMode] = useState("loop");
