@@ -134,7 +134,7 @@
   flex-shrink: 0;
 }
 
-/* Compact NumberInput overrides */
+/* NumberInput layout widths — size/padding handled by compact prop */
 .seq-frame .num-input {
   width: 44px;
   flex-shrink: 0;
@@ -145,15 +145,8 @@
   width: 36px;
 }
 
-.seq-frame .num-input__label {
-  display: none;
-}
-
 .seq-frame .num-input__field {
   width: 100%;
-  font-size: 11px;
-  padding: 1px 2px;
-  height: 22px;
 }
 
 /* Highlight rows with a non-zero offset */

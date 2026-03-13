@@ -19,6 +19,15 @@
   --danger: #ef4444;
   --danger-hover: #dc2626;
 
+  /* Shared tint tokens — use these instead of inline color-mix() calls */
+  --accent-tint-soft: color-mix(in srgb, var(--accent) 10%, var(--surface2));
+  --accent-tint-mid: color-mix(in srgb, var(--accent) 14%, var(--surface2));
+  --accent-tint-strong: color-mix(in srgb, var(--accent) 22%, var(--surface2));
+
+  /* Layout constants shared by timeline + tracks panel */
+  --cell-min-w: 44px;
+  --track-label-w: 130px;
+
   font-family:
     system-ui,
     -apple-system,
@@ -36,6 +45,12 @@
 
 body {
   margin: 0;
+  min-height: 100vh;
+  background: var(--bg);
+}
+
+/* Route-level lazy load placeholder */
+.page-loading {
   min-height: 100vh;
   background: var(--bg);
 }

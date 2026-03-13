@@ -647,7 +647,7 @@
     color 0.1s;
 }
 .jelly-sprite__add-frame-btn:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--accent) 10%, var(--surface2));
+  background: var(--accent-tint-soft);
   border-color: var(--accent);
   color: var(--accent);
 }
@@ -1294,7 +1294,7 @@
   background: var(--surface3);
 }
 .jelly-sprite__layer-row--active {
-  background: color-mix(in srgb, var(--accent) 10%, var(--surface2));
+  background: var(--accent-tint-soft);
   border-color: var(--accent);
 }
 

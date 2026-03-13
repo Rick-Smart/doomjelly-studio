@@ -16,10 +16,15 @@ export function Select({
   onChange,
   options = [],
   disabled,
+  compact = false,
   className = "",
 }) {
   return (
-    <label className={`select-wrap${className ? ` ${className}` : ""}`}>
+    <label
+      className={`select-wrap${compact ? " select-wrap--compact" : ""}${
+        className ? ` ${className}` : ""
+      }`}
+    >
       {label && <span className="select-wrap__label">{label}</span>}
       <div className="select-wrap__control">
         <select

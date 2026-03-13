@@ -52,7 +52,7 @@
 }
 .si-row--active {
   border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 10%, var(--surface2));
+  background: var(--accent-tint-soft);
   cursor: default;
 }
 

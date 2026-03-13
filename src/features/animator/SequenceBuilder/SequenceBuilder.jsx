@@ -4,6 +4,7 @@ import { usePlayback } from "../../../contexts/PlaybackContext";
 import { EmptyState } from "../../../ui/EmptyState";
 import { IconButton } from "../../../ui/IconButton";
 import { NumberInput } from "../../../ui/NumberInput";
+import { useDragReorder } from "../../../hooks/useDragReorder";
 import { FrameRow } from "./FrameRow";
 import "./SequenceBuilder.css";
 
@@ -17,8 +18,10 @@ export function SequenceBuilder() {
   const { frameIndex: playbackIdx, pausePlayback, seekTo } = usePlayback();
 
   const [bulkTicks, setBulkTicks] = useState(6);
-  const [dragIdx, setDragIdx] = useState(null);
-  const [dropIdx, setDropIdx] = useState(null);
+
+  const { dragIdx, dropIdx, getDragProps } = useDragReorder((from, to) =>
+    reorderFrames(from, to),
+  );
 
   const totalTicks = frames.reduce((sum, f) => sum + (f.ticks ?? 6), 0);
   const totalMs = Math.round((totalTicks / 60) * 1000);
@@ -150,20 +153,7 @@ export function SequenceBuilder() {
                 onMoveDown={() => moveFrame(i, 1)}
                 isDragging={dragIdx === i}
                 isDropTarget={dropIdx === i && dragIdx !== i}
-                onDragStart={() => setDragIdx(i)}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  setDropIdx(i);
-                }}
-                onDrop={() => {
-                  reorderFrames(dragIdx, dropIdx);
-                  setDragIdx(null);
-                  setDropIdx(null);
-                }}
-                onDragEnd={() => {
-                  setDragIdx(null);
-                  setDropIdx(null);
-                }}
+                {...getDragProps(i)}
               />
             ))}
           </ul>
@@ -172,6 +162,7 @@ export function SequenceBuilder() {
             <span className="seq-builder__bulk-label">All ticks:</span>
             <NumberInput
               label=""
+              compact
               value={bulkTicks}
               onChange={setBulkTicks}
               min={1}

@@ -206,6 +206,12 @@ export function SheetViewerCanvas({ imageUrl }) {
     const gridLineColor = getComputedStyle(document.documentElement)
       .getPropertyValue("--text")
       .trim();
+    const accentHex = getComputedStyle(document.documentElement)
+      .getPropertyValue("--accent")
+      .trim();
+    const ar = parseInt(accentHex.slice(1, 3), 16);
+    const ag = parseInt(accentHex.slice(3, 5), 16);
+    const ab = parseInt(accentHex.slice(5, 7), 16);
     drawGrid(
       ctx,
       img.naturalWidth,
@@ -251,8 +257,8 @@ export function SheetViewerCanvas({ imageUrl }) {
       // Tinted fill — brighter when also hovered
       const isHovered = hoveredCell?.col === col && hoveredCell?.row === row;
       ctx.fillStyle = isHovered
-        ? "rgba(59, 130, 246, 0.45)"
-        : "rgba(59, 130, 246, 0.25)";
+        ? `rgba(${ar},${ag},${ab},0.45)`
+        : `rgba(${ar},${ag},${ab},0.25)`;
       ctx.fillRect(cellX, cellY, cw, ch);
 
       // Badge pill: top-left corner, shows firstIndex / count
@@ -294,9 +300,9 @@ export function SheetViewerCanvas({ imageUrl }) {
       );
       const rw = rx2 - rx1;
       const rh = ry2 - ry1;
-      ctx.fillStyle = "rgba(59, 130, 246, 0.18)";
+      ctx.fillStyle = `rgba(${ar},${ag},${ab},0.18)`;
       ctx.fillRect(rx1, ry1, rw, rh);
-      ctx.strokeStyle = "rgba(99, 179, 237, 0.95)";
+      ctx.strokeStyle = `rgba(${ar},${ag},${ab},0.95)`;
       ctx.lineWidth = 1.5;
       ctx.setLineDash([4, 3]);
       ctx.strokeRect(rx1 + 0.5, ry1 + 0.5, rw - 1, rh - 1);

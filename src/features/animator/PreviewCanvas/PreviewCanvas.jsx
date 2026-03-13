@@ -291,6 +291,7 @@ export function PreviewCanvas({ expanded = false, onToggleExpand } = {}) {
             value={mode}
             onChange={setMode}
             options={MODE_OPTIONS}
+            compact
             className="preview-canvas__compact-select"
           />
           {onToggleExpand && (
@@ -328,6 +329,7 @@ export function PreviewCanvas({ expanded = false, onToggleExpand } = {}) {
             value={bg}
             onChange={setBg}
             options={BG_OPTIONS}
+            compact
             className="preview-canvas__compact-select"
           />
           {bg === "custom" && (

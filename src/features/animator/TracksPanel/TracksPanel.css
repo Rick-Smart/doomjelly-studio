@@ -71,7 +71,7 @@
 }
 
 .track-row__label:hover {
-  background: color-mix(in srgb, var(--accent) 14%, var(--surface2));
+  background: var(--accent-tint-mid);
 }
 
 .track-row--active .track-row__label {

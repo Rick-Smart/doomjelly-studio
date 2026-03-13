@@ -157,19 +157,12 @@
   border-color: var(--accent);
 }
 
-/* Compact NumberInput overrides for bulk row */
+/* Width constraint for bulk row NumberInput (size handled by compact prop) */
 .seq-builder__bulk .num-input {
   width: 44px;
   flex-shrink: 0;
 }
 
-.seq-builder__bulk .num-input__label {
-  display: none;
-}
-
 .seq-builder__bulk .num-input__field {
   width: 100%;
-  font-size: 11px;
-  padding: 1px 2px;
-  height: 22px;
 }

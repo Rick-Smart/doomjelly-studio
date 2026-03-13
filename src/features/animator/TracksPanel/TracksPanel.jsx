@@ -1,59 +1,13 @@
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect } from "react";
 import { useProject } from "../../../contexts/ProjectContext";
 import { usePlayback } from "../../../contexts/PlaybackContext";
+import { FrameThumb } from "../shared/FrameThumb";
+import { useDragReorder } from "../../../hooks/useDragReorder";
 import "./TracksPanel.css";
 
 const TICK_PX = 7;
-const CELL_MIN_W = 48;
-const THUMB = 32;
+const CELL_MIN_W = 44;
 const LABEL_W = 130;
-
-function FrameThumb({
-  src,
-  col,
-  row,
-  frameW,
-  frameH,
-  offsetX,
-  offsetY,
-  gutterX,
-  gutterY,
-}) {
-  const canvasRef = useRef(null);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    ctx.clearRect(0, 0, THUMB, THUMB);
-    if (!src || !frameW || !frameH) return;
-    const img = new Image();
-    img.onload = () => {
-      ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(
-        img,
-        offsetX + col * (frameW + gutterX),
-        offsetY + row * (frameH + gutterY),
-        frameW,
-        frameH,
-        0,
-        0,
-        THUMB,
-        THUMB,
-      );
-    };
-    img.src = src;
-  }, [src, col, row, frameW, frameH, offsetX, offsetY, gutterX, gutterY]);
-
-  return (
-    <canvas
-      ref={canvasRef}
-      width={THUMB}
-      height={THUMB}
-      className="tracks-cell__thumb"
-    />
-  );
-}
 
 function TrackRow({
   anim,
@@ -69,8 +23,9 @@ function TrackRow({
 }) {
   const { frameW, frameH, offsetX, offsetY, gutterX, gutterY } = frameConfig;
   const frames = anim.frames;
-  const [dragIdx, setDragIdx] = useState(null);
-  const [dropIdx, setDropIdx] = useState(null);
+  const { dragIdx, dropIdx, getDragProps } = useDragReorder((from, to) =>
+    onReorder(anim.id, from, to),
+  );
   const activeRef = useRef(null);
 
   useEffect(() => {
@@ -132,20 +87,7 @@ function TrackRow({
                   className={`tracks-cell${isCurrent ? " tracks-cell--active" : ""}${isDragging ? " tracks-cell--dragging" : ""}${isDropTarget ? " tracks-cell--drop-target" : ""}`}
                   style={{ width: w }}
                   onClick={() => onSelectFrame(anim.id, i)}
-                  onDragStart={() => setDragIdx(i)}
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    setDropIdx(i);
-                  }}
-                  onDrop={() => {
-                    onReorder(anim.id, dragIdx, i);
-                    setDragIdx(null);
-                    setDropIdx(null);
-                  }}
-                  onDragEnd={() => {
-                    setDragIdx(null);
-                    setDropIdx(null);
-                  }}
+                  {...getDragProps(i)}
                   title={`Frame ${i + 1} — ${frame.ticks}t — drag to reorder`}
                 >
                   <span className="tracks-cell__index">{i + 1}</span>
@@ -159,6 +101,7 @@ function TrackRow({
                     offsetY={offsetY}
                     gutterX={gutterX}
                     gutterY={gutterY}
+                    className="tracks-cell__thumb"
                   />
                   <span className="tracks-cell__ticks">{frame.ticks}t</span>
                 </div>

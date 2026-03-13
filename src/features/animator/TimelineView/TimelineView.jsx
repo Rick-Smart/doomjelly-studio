@@ -1,53 +1,14 @@
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect } from "react";
 import { useProject } from "../../../contexts/ProjectContext";
 import { usePlayback } from "../../../contexts/PlaybackContext";
+import { FrameThumb } from "../shared/FrameThumb";
+import { useDragReorder } from "../../../hooks/useDragReorder";
 import "./TimelineView.css";
 
 /** pixels per tick — cells grow wider with more ticks */
 const TICK_PX = 7;
 /** minimum cell width in pixels */
 const CELL_MIN_W = 44;
-/** thumbnail render size */
-const THUMB = 32;
-
-function TimelineThumb({
-  src,
-  col,
-  row,
-  frameW,
-  frameH,
-  offsetX,
-  offsetY,
-  gutterX,
-  gutterY,
-}) {
-  const canvasRef = useRef(null);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    ctx.clearRect(0, 0, THUMB, THUMB);
-    if (!src || !frameW || !frameH) return;
-    const img = new Image();
-    img.onload = () => {
-      ctx.imageSmoothingEnabled = false;
-      const srcX = offsetX + col * (frameW + gutterX);
-      const srcY = offsetY + row * (frameH + gutterY);
-      ctx.drawImage(img, srcX, srcY, frameW, frameH, 0, 0, THUMB, THUMB);
-    };
-    img.src = src;
-  }, [src, col, row, frameW, frameH, offsetX, offsetY, gutterX, gutterY]);
-
-  return (
-    <canvas
-      ref={canvasRef}
-      width={THUMB}
-      height={THUMB}
-      className="tl-cell__thumb"
-    />
-  );
-}
 
 /**
  * Horizontal timeline strip — alternative frame view to the list.
@@ -63,8 +24,9 @@ export function TimelineView() {
   const { frameIndex, seekTo, pausePlayback } = usePlayback();
 
   const activeRef = useRef(null);
-  const [dragIdx, setDragIdx] = useState(null);
-  const [dropIdx, setDropIdx] = useState(null);
+  const { dragIdx, dropIdx, getDragProps } = useDragReorder((from, to) =>
+    reorderFrames(from, to),
+  );
 
   // Auto-scroll to keep the active cell in view.
   useEffect(() => {
@@ -127,26 +89,13 @@ export function TimelineView() {
                 }`}
                 style={{ width: w }}
                 onClick={() => handleClick(i)}
-                onDragStart={() => setDragIdx(i)}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  setDropIdx(i);
-                }}
-                onDrop={() => {
-                  reorderFrames(dragIdx, i);
-                  setDragIdx(null);
-                  setDropIdx(null);
-                }}
-                onDragEnd={() => {
-                  setDragIdx(null);
-                  setDropIdx(null);
-                }}
+                {...getDragProps(i)}
                 title={`Frame ${i + 1} — ${frame.ticks} tick${
                   frame.ticks !== 1 ? "s" : ""
                 } — drag to reorder`}
               >
                 <span className="tl-cell__index">{i + 1}</span>
-                <TimelineThumb
+                <FrameThumb
                   src={src}
                   col={frame.col}
                   row={frame.row}
@@ -156,6 +105,7 @@ export function TimelineView() {
                   offsetY={offsetY}
                   gutterX={gutterX}
                   gutterY={gutterY}
+                  className="tl-cell__thumb"
                 />
                 <span className="tl-cell__ticks">{frame.ticks}t</span>
               </div>

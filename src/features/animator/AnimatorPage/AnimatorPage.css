@@ -227,7 +227,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 6px 10px;
-  background: color-mix(in srgb, var(--accent) 10%, var(--surface2));
+  background: var(--accent-tint-soft);
   border-bottom: 1px solid var(--border);
   font-size: 11px;
   color: var(--text-muted);
