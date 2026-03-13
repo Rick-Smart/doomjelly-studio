@@ -372,23 +372,32 @@ export async function saveSprite(sprite, thumbnail) {
   const record = { ...sprite, frameCount, canvasW, canvasH, updatedAt: now };
   await idbPut(SPRITES_STORE, record);
 
-  const index = readSpritesIndex();
   // Strip large binary blobs from the index — only keep metadata
   const { body: _b, jellyBody: _jb, animatorBody: _ab, ...meta } = record;
-  const i = index.findIndex((s) => s.id === sprite.id);
-  if (i >= 0) {
-    index[i] = { ...index[i], ...meta };
-  } else {
-    index.unshift(meta);
-  }
-  writeSpritesIndex(index);
 
-  const projects = readProjectsIndex();
-  const pi = projects.findIndex((p) => p.id === sprite.projectId);
-  if (pi >= 0) {
-    projects[pi] = { ...projects[pi], updatedAt: now };
-    writeProjectsIndex(projects);
+  // Index writes are best-effort — a localStorage failure must not mask a
+  // successful IDB write (Rule 9).
+  try {
+    const index = readSpritesIndex();
+    const i = index.findIndex((s) => s.id === sprite.id);
+    if (i >= 0) index[i] = { ...index[i], ...meta };
+    else index.unshift(meta);
+    writeSpritesIndex(index);
+  } catch (e) {
+    console.warn("saveSprite: sprites index update failed (non-fatal):", e);
   }
+
+  try {
+    const projects = readProjectsIndex();
+    const pi = projects.findIndex((p) => p.id === sprite.projectId);
+    if (pi >= 0) {
+      projects[pi] = { ...projects[pi], updatedAt: now };
+      writeProjectsIndex(projects);
+    }
+  } catch (e) {
+    console.warn("saveSprite: projects index update failed (non-fatal):", e);
+  }
+
   return meta;
 }
 

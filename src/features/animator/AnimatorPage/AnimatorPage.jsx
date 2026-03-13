@@ -86,16 +86,17 @@ function KeyboardHandler({ onSave, onHelp }) {
         return;
       }
       if ((e.key === "a" || e.key === "A") && !e.ctrlKey && !e.metaKey) {
-        const { activeAnimationId, spriteSheet, frameConfig } = state;
-        if (!activeAnimationId || !spriteSheet) return;
+        const { activeAnimationId, activeSheetId, sheets, frameConfig } = state;
+        const activeSheet = sheets.find((s) => s.id === activeSheetId) ?? null;
+        if (!activeAnimationId || !activeSheet) return;
         e.preventDefault();
         const { frameW, frameH, offsetX, offsetY, gutterX, gutterY } =
           frameConfig;
         const stepX = frameW + gutterX;
         const stepY = frameH + gutterY;
         if (!frameW || !frameH || stepX <= 0 || stepY <= 0) return;
-        const cols = Math.floor((spriteSheet.width - offsetX) / stepX);
-        const rows = Math.floor((spriteSheet.height - offsetY) / stepY);
+        const cols = Math.floor((activeSheet.width - offsetX) / stepX);
+        const rows = Math.floor((activeSheet.height - offsetY) / stepY);
         if (cols <= 0 || rows <= 0) return;
         const newFrames = [];
         for (let row = 0; row < rows; row++) {
@@ -125,7 +126,8 @@ function KeyboardHandler({ onSave, onHelp }) {
     canRedo,
     dispatch,
     state.activeAnimationId,
-    state.spriteSheet,
+    state.activeSheetId,
+    state.sheets,
     state.frameConfig,
     onSave,
     onHelp,
@@ -314,17 +316,6 @@ async function buildAnimatorBody(st) {
   return {
     sheets: sheetsWithData,
     activeSheetId: st.activeSheetId,
-    // Legacy field — kept so older loads can still read a single spriteSheet
-    spriteSheet: primary?.dataUrl
-      ? {
-          dataUrl: primary.dataUrl,
-          filename: primary.filename,
-          width: primary.width,
-          height: primary.height,
-          frameW: st.frameConfig.frameW,
-          frameH: st.frameConfig.frameH,
-        }
-      : undefined,
     animations: st.animations,
     frameConfig: st.frameConfig,
   };
@@ -409,7 +400,12 @@ export function AnimatorPage() {
   const navigate = useNavigate();
   const { spriteId: urlSpriteId } = useParams();
 
-  // Self-load from URL param — makes refresh and direct links work
+  // Derive active sheet from sheets array — single source of truth (Rule 3)
+  const activeSheet =
+    state.sheets.find((s) => s.id === state.activeSheetId) ??
+    state.sheets[0] ??
+    null;
+  const imageUrl = activeSheet?.objectUrl ?? null;
   useEffect(() => {
     if (!urlSpriteId) return;
     if (state.id === urlSpriteId) return; // already loaded
@@ -434,7 +430,6 @@ export function AnimatorPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [urlSpriteId]);
 
-  const imageUrl = state.spriteSheet?.objectUrl ?? null;
   const [leftOpen, setLeftOpen] = useState(true);
   const [leftWidth, setLeftWidth] = useLocalStorage("dj-panel-left", 220);
   const [rightWidth, setRightWidth] = useLocalStorage("dj-panel-right", 380);
@@ -593,14 +588,8 @@ export function AnimatorPage() {
           animatorBody,
           animCount: state.animations.length,
           frameCount: state.animations.reduce((s, a) => s + a.frames.length, 0),
-          canvasW:
-            state.spriteSheet?.width ??
-            state.animatorState?.spriteSheet?.width ??
-            32,
-          canvasH:
-            state.spriteSheet?.height ??
-            state.animatorState?.spriteSheet?.height ??
-            32,
+          canvasW: activeSheet?.width ?? 32,
+          canvasH: activeSheet?.height ?? 32,
         },
         thumbnail,
       );
@@ -617,9 +606,10 @@ export function AnimatorPage() {
   }
 
   async function handleEditInJellySprite() {
-    const sh = state.spriteSheet;
-    if (sh?.objectUrl) {
-      let src = sh.objectUrl;
+    // Rule 4: save before navigating so no work is lost
+    if (isDirty) await handleSave();
+    if (activeSheet?.objectUrl) {
+      let src = activeSheet.objectUrl;
       if (!src.startsWith("data:")) {
         try {
           const img = new Image();
@@ -629,8 +619,8 @@ export function AnimatorPage() {
             img.src = src;
           });
           const cvs = document.createElement("canvas");
-          cvs.width = sh.width;
-          cvs.height = sh.height;
+          cvs.width = activeSheet.width;
+          cvs.height = activeSheet.height;
           cvs.getContext("2d").drawImage(img, 0, 0);
           src = cvs.toDataURL("image/png");
         } catch {
@@ -689,7 +679,7 @@ export function AnimatorPage() {
           >
             ↪
           </button>
-          {state.spriteSheet && (
+          {state.sheets.length > 0 && (
             <>
               <span className="editor-toolbar__sep" />
               <button

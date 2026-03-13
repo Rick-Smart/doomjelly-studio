@@ -50,7 +50,9 @@ function resolveFrameFromTicks(frames, elapsedTicks) {
 
 export function PreviewCanvas({ expanded = false, onToggleExpand } = {}) {
   const { state } = useProject();
-  const { animations, activeAnimationId, spriteSheet, frameConfig } = state;
+  const { animations, activeAnimationId, activeSheetId, sheets, frameConfig } =
+    state;
+  const activeSheet = sheets.find((s) => s.id === activeSheetId) ?? null;
   const activeAnim = animations.find((a) => a.id === activeAnimationId) ?? null;
   const frames = activeAnim?.frames ?? [];
 
@@ -129,7 +131,7 @@ export function PreviewCanvas({ expanded = false, onToggleExpand } = {}) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [frameConfig.frameW, frameConfig.frameH]);
 
-  const src = spriteSheet?.objectUrl ?? null;
+  const src = activeSheet?.objectUrl ?? null;
 
   // Load / reload source image whenever objectUrl changes.
   useEffect(() => {

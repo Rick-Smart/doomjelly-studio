@@ -39,9 +39,11 @@ export function ExportPanel({ isOpen, onClose }) {
     animations,
     activeAnimationId,
     frameConfig,
-    spriteSheet,
+    activeSheetId,
+    sheets,
     name: projectName,
   } = state;
+  const activeSheet = sheets.find((s) => s.id === activeSheetId) ?? null;
 
   const [exportType, setExportType] = useState("json");
   const [formatId, setFormatId] = useState("generic");
@@ -52,7 +54,7 @@ export function ExportPanel({ isOpen, onClose }) {
 
   const activeAnim = animations.find((a) => a.id === activeAnimationId);
   const format = EXPORT_FORMATS.find((f) => f.id === formatId);
-  const hasImage = !!spriteSheet?.objectUrl;
+  const hasImage = !!activeSheet?.objectUrl;
   const hasAnims = animations.length > 0;
 
   const selectedAnims = useMemo(
@@ -139,11 +141,11 @@ export function ExportPanel({ isOpen, onClose }) {
   }
 
   async function handleDownloadAtlas() {
-    if (!spriteSheet?.objectUrl) return;
+    if (!activeSheet?.objectUrl) return;
     setIsExporting(true);
     setExportError(null);
     try {
-      const img = await loadImage(spriteSheet.objectUrl);
+      const img = await loadImage(activeSheet.objectUrl);
       const result = buildPackedAtlas(img, animations, frameConfig, {
         target,
         activeAnimationId,
@@ -166,11 +168,11 @@ export function ExportPanel({ isOpen, onClose }) {
   }
 
   async function handleDownloadStrips() {
-    if (!spriteSheet?.objectUrl) return;
+    if (!activeSheet?.objectUrl) return;
     setIsExporting(true);
     setExportError(null);
     try {
-      const img = await loadImage(spriteSheet.objectUrl);
+      const img = await loadImage(activeSheet.objectUrl);
       const strips = buildAnimStrips(img, animations, frameConfig, {
         target,
         activeAnimationId,
@@ -208,8 +210,8 @@ export function ExportPanel({ isOpen, onClose }) {
         JSON.stringify(data, null, 2),
       );
 
-      if (spriteSheet?.objectUrl) {
-        const img = await loadImage(spriteSheet.objectUrl);
+      if (activeSheet?.objectUrl) {
+        const img = await loadImage(activeSheet.objectUrl);
 
         // Packed atlas — all animations
         const atlasResult = buildPackedAtlas(img, animations, frameConfig, {

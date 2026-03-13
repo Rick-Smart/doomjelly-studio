@@ -173,7 +173,9 @@ function TrackRow({
 
 export function TracksPanel({ pinnedTrackIds = [] }) {
   const { state, dispatch } = useProject();
-  const { animations, activeAnimationId, spriteSheet, frameConfig } = state;
+  const { animations, activeAnimationId, activeSheetId, sheets, frameConfig } =
+    state;
+  const activeSheet = sheets.find((s) => s.id === activeSheetId) ?? null;
   const {
     frameIndex,
     seekTo,
@@ -181,7 +183,7 @@ export function TracksPanel({ pinnedTrackIds = [] }) {
     previewAnimIds,
     togglePreviewAnim,
   } = usePlayback();
-  const src = spriteSheet?.objectUrl ?? null;
+  const src = activeSheet?.objectUrl ?? null;
 
   // Only show animations the user has explicitly pinned to the tracks panel
   const pinnedAnimations = animations.filter((a) =>

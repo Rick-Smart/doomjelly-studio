@@ -9,7 +9,9 @@ import "./SequenceBuilder.css";
 
 export function SequenceBuilder() {
   const { state, dispatch } = useProject();
-  const { animations, activeAnimationId, spriteSheet, frameConfig } = state;
+  const { animations, activeAnimationId, activeSheetId, sheets, frameConfig } =
+    state;
+  const activeSheet = sheets.find((s) => s.id === activeSheetId) ?? null;
   const activeAnim = animations.find((a) => a.id === activeAnimationId) ?? null;
   const frames = activeAnim?.frames ?? [];
   const { frameIndex: playbackIdx, pausePlayback, seekTo } = usePlayback();
@@ -65,7 +67,7 @@ export function SequenceBuilder() {
   }
 
   const { frameW, frameH, offsetX, offsetY, gutterX, gutterY } = frameConfig;
-  const src = spriteSheet?.objectUrl ?? null;
+  const src = activeSheet?.objectUrl ?? null;
 
   if (!activeAnim) {
     return (
