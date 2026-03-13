@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useLocalStorage } from "../../../hooks/useLocalStorage";
-import { useProject } from "../../../contexts/ProjectContext";
+import { useDocument } from "../../../contexts/DocumentContext";
 import { useAnimator } from "../../../contexts/AnimatorContext";
 import { useNotification } from "../../../contexts/NotificationContext";
 import { PlaybackProvider } from "../../../contexts/PlaybackContext";
@@ -11,7 +11,7 @@ import { SheetViewerCanvas } from "../SheetViewerCanvas";
 import { AnimationSidebar } from "../AnimationSidebar";
 import { SequenceBuilder } from "../SequenceBuilder";
 import { PreviewCanvas } from "../PreviewCanvas";
-import { saveSprite } from "../../../services/projectService";
+import { loadDocument, saveDocument } from "../../../services/documentService";
 import { buildAnimatorBody } from "../animatorSerializer";
 import { KeyboardHelp } from "../KeyboardHelp";
 import { TracksPanel } from "../TracksPanel";
@@ -32,7 +32,7 @@ function KeyboardHandler({ onSave, onHelp }) {
 }
 
 export function AnimatorPage() {
-  const { state: projectState, dispatch: projectDispatch } = useProject();
+  const { state: projectState, dispatch: projectDispatch } = useDocument();
   const { state, dispatch, undo, redo, canUndo, canRedo, isDirty, markSaved } =
     useAnimator();
   const { showToast } = useNotification();
@@ -48,23 +48,20 @@ export function AnimatorPage() {
   useEffect(() => {
     if (!urlSpriteId) return;
     if (projectState.id === urlSpriteId) return; // already loaded
-    import("../../../services/projectService").then(({ loadSprite }) =>
-      loadSprite(urlSpriteId)
-        .then((data) => {
-          if (data) {
-            const payload = { ...data, id: urlSpriteId };
-            projectDispatch({ type: "LOAD_PROJECT", payload });
-            dispatch({ type: "LOAD_PROJECT", payload });
-          } else {
-            showToast("Sprite not found.", "error");
-            navigate("/projects");
-          }
-        })
-        .catch(() => {
-          showToast("Failed to load sprite.", "error");
+    loadDocument(urlSpriteId)
+      .then((data) => {
+        if (data) {
+          projectDispatch({ type: "LOAD_PROJECT", payload: data });
+          dispatch({ type: "LOAD_PROJECT", payload: data });
+        } else {
+          showToast("Sprite not found.", "error");
           navigate("/projects");
-        }),
-    );
+        }
+      })
+      .catch(() => {
+        showToast("Failed to load sprite.", "error");
+        navigate("/projects");
+      });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [urlSpriteId]);
 
@@ -127,16 +124,16 @@ export function AnimatorPage() {
           if (!animatorBody) return;
           const activeSheet =
             st.sheets.find((s) => s.id === st.activeSheetId) ?? st.sheets[0];
-          return saveSprite({
-            id: ps.id ?? crypto.randomUUID(),
-            projectId: ps.projectId ?? null,
-            name: ps.name,
-            animatorBody,
-            animCount: st.animations.length,
-            frameCount: st.animations.reduce((s, a) => s + a.frames.length, 0),
-            canvasW: activeSheet?.width ?? 32,
-            canvasH: activeSheet?.height ?? 32,
-          });
+          return saveDocument(
+            {
+              id: ps.id ?? crypto.randomUUID(),
+              projectId: ps.projectId ?? null,
+              name: ps.name,
+              canvasW: activeSheet?.width ?? 32,
+              canvasH: activeSheet?.height ?? 32,
+            },
+            { animatorBody },
+          );
         })
         .catch(console.error);
     };
@@ -219,20 +216,18 @@ export function AnimatorPage() {
             imageUrl,
             state.frameConfig,
             state.animations,
-          ).catch(() => undefined)
-        : undefined;
-      await saveSprite(
+          ).catch(() => null)
+        : null;
+      await saveDocument(
         {
           id: spriteId,
           projectId: projectState.projectId ?? null,
           name: projectState.name,
-          animatorBody,
-          animCount: state.animations.length,
-          frameCount: state.animations.reduce((s, a) => s + a.frames.length, 0),
           canvasW: activeSheet?.width ?? 32,
           canvasH: activeSheet?.height ?? 32,
+          frames: state.animations.flatMap((a) => a.frames),
         },
-        thumbnail,
+        { animatorBody, thumbnail },
       );
       markSaved();
       setSaved(true);
@@ -247,29 +242,8 @@ export function AnimatorPage() {
   }
 
   async function handleEditInJellySprite() {
-    // Rule 4: save before navigating so no work is lost
+    // Save before navigating so JellySprite loads the latest state from storage
     if (isDirty) await handleSave();
-    if (activeSheet?.objectUrl) {
-      let src = activeSheet.objectUrl;
-      if (!src.startsWith("data:")) {
-        try {
-          const img = new Image();
-          await new Promise((res, rej) => {
-            img.onload = res;
-            img.onerror = rej;
-            img.src = src;
-          });
-          const cvs = document.createElement("canvas");
-          cvs.width = activeSheet.width;
-          cvs.height = activeSheet.height;
-          cvs.getContext("2d").drawImage(img, 0, 0);
-          src = cvs.toDataURL("image/png");
-        } catch {
-          src = null;
-        }
-      }
-      if (src) projectDispatch({ type: "SET_JELLY_SPRITE_DATA", payload: src });
-    }
     const targetId = projectState.id ?? urlSpriteId;
     navigate(targetId ? `/jelly-sprite/${targetId}` : "/jelly-sprite");
   }

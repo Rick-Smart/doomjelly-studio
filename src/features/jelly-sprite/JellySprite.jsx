@@ -1,5 +1,5 @@
 ﻿import { useRef, useEffect, useLayoutEffect } from "react";
-import { useProject } from "../../contexts/ProjectContext";
+import { useDocument } from "../../contexts/DocumentContext";
 import "./JellySprite.css";
 import * as A from "./store/jellySpriteActions";
 import { makeLayer, makeFrame, MAX_ZOOM } from "./jellySprite.constants";
@@ -35,7 +35,7 @@ export function JellySprite({ onRegisterCollector }) {
 
 // Inner component — all logic runs inside JellySpriteProvider
 function JellySpriteBody({ onRegisterCollector }) {
-  const { state, dispatch } = useProject();
+  const { state, dispatch } = useDocument();
   const { refs, state: ss, dispatch: sd } = useJellySpriteStore();
 
   // Store state (M4)
@@ -192,7 +192,6 @@ function JellySpriteBody({ onRegisterCollector }) {
   // Stub refs — break circular hook dependencies
   const pushHistoryEntryStubRef = useRef(() => {});
   const redrawStubRef = useRef(() => {});
-  const saveToProjectStubRef = useRef(() => {});
 
   // Restore refs — used by the two-phase full-state restore
   // pendingRestoreRef: decoded restore payload from jellySpritePersistence,
@@ -474,14 +473,6 @@ function JellySpriteBody({ onRegisterCollector }) {
   // All pointer handling now routes through refs.drawingEngine exclusively.
 
   // Patch stubs every render
-  function saveToProject() {
-    const c = canvasRef.current;
-    if (!c) return;
-    dispatch({
-      type: "SET_JELLY_SPRITE_DATA",
-      payload: c.toDataURL("image/png"),
-    });
-  }
   pushHistoryEntryStubRef.current = () => {
     refs.pushHistory?.();
     updateThumbnailForActiveFrame();
@@ -496,7 +487,6 @@ function JellySpriteBody({ onRegisterCollector }) {
   // canUndo/canRedo dispatch (enables undo/redo buttons).
   refs.onStrokeComplete = pushHistoryEntryStubRef.current;
   redrawStubRef.current = redraw;
-  saveToProjectStubRef.current = saveToProject;
 
   // Persistence: save-data collector
   // collectSaveData() snapshots current pixel state, serialises everything,
@@ -648,7 +638,6 @@ function JellySpriteBody({ onRegisterCollector }) {
       type: A.MERGE_LAYER_DOWN,
       payload: { survivingLayerId: below.id, removedLayerId: id },
     });
-    saveToProjectStubRef.current();
   }
   function flattenAll() {
     const flat = new Uint8ClampedArray(canvasW * canvasH * 4);
@@ -677,7 +666,6 @@ function JellySpriteBody({ onRegisterCollector }) {
     pushHistoryEntryStubRef.current();
     refs.redraw?.();
     sd({ type: A.FLATTEN_ALL, payload: { newLayer: baseLayer } });
-    saveToProjectStubRef.current();
   }
   function moveLayerUp(id) {
     sd({ type: A.MOVE_LAYER_UP, payload: id });
@@ -949,21 +937,7 @@ function JellySpriteBody({ onRegisterCollector }) {
       }
     }
 
-    const src = state.jellySpriteDataUrl;
-    if (src) {
-      const img = new Image();
-      img.onload = () => {
-        const ctx2 = refs.offscreenEl.getContext("2d");
-        ctx2.clearRect(0, 0, w, h);
-        ctx2.drawImage(img, 0, 0, w, h);
-        pixelsRef.current.set(ctx2.getImageData(0, 0, w, h).data);
-        refs.pixelBuffers[ss.activeLayerId] = pixelsRef.current;
-        finish();
-      };
-      img.src = src;
-    } else {
-      finish();
-    }
+    finish();
   }, [canvasW, canvasH]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sync pixelsRef when active layer changes
@@ -994,6 +968,20 @@ function JellySpriteBody({ onRegisterCollector }) {
   useEffect(() => {
     refVisibleRef.current = refVisible;
   }, [refVisible]);
+
+  // --- Sprint 6b: push document metadata into DocumentContext ---
+  // Pixel data stays in refs; only the slim metadata layer (frame/layer
+  // identity + canvas dimensions) is pushed so the Animator and other
+  // consumers can read the document structure without touching pixel buffers.
+  useEffect(() => {
+    dispatch({ type: "SET_CANVAS_SIZE", payload: { w: canvasW, h: canvasH } });
+  }, [canvasW, canvasH]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    dispatch({ type: "SET_FRAMES", payload: ss.frames });
+  }, [ss.frames]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    dispatch({ type: "SET_LAYERS", payload: ss.layers });
+  }, [ss.layers]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Keep refs.tileCanvasEl in sync — the canvas DOM element is conditionally
   // rendered (only when tileVisible), so we need a post-commit effect.

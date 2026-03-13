@@ -2,13 +2,13 @@ import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useTheme } from "../contexts/ThemeContext";
 import { THEMES } from "../contexts/ThemeContext";
-import { useProject } from "../contexts/ProjectContext";
+import { useDocument } from "../contexts/DocumentContext";
 import "./AppShell.css";
 
 export function AppShell() {
   const { user, logout } = useAuth();
   const { theme, setTheme, themes } = useTheme();
-  const { state } = useProject();
+  const { state } = useDocument();
 
   const NAV_ITEMS = [
     {

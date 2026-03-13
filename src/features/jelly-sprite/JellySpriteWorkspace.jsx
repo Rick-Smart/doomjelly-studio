@@ -1,19 +1,15 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { useProject } from "../../contexts/ProjectContext";
+import { useDocument } from "../../contexts/DocumentContext";
 import { useNotification } from "../../contexts/NotificationContext";
 import { Page } from "../../ui/Page";
-import {
-  loadSprite,
-  saveSprite,
-  serialiseSprite,
-} from "../../services/projectService";
+import { loadDocument, saveDocument } from "../../services/documentService";
 import { JellySprite } from "./JellySprite";
 import { ErrorBoundary } from "../../ui/ErrorBoundary/ErrorBoundary";
 import { EditableTitle } from "../../ui/EditableTitle";
 
 export function JellySpriteWorkspace() {
-  const { state, dispatch } = useProject();
+  const { state, dispatch } = useDocument();
   const { showToast } = useNotification();
   const navigate = useNavigate();
   const { spriteId } = useParams();
@@ -27,9 +23,10 @@ export function JellySpriteWorkspace() {
     if (!spriteId) return;
     // Don't reload if context already has this sprite loaded
     if (state.id === spriteId) return;
-    loadSprite(spriteId)
+    loadDocument(spriteId)
       .then((data) => {
-        dispatch({ type: "LOAD_PROJECT", payload: { ...data, id: spriteId } });
+        if (!data) throw new Error("Sprite not found");
+        dispatch({ type: "LOAD_PROJECT", payload: data });
       })
       .catch((err) => {
         console.error("Failed to load sprite:", err);
@@ -43,32 +40,24 @@ export function JellySpriteWorkspace() {
     setSaving(true);
     try {
       const collected = jellySpriteCollectorRef.current?.() ?? null;
-      const jellySpriteState = collected?.data ?? null;
-      const thumbnail = collected?.thumbnail ?? undefined;
+      const jellyBody = collected?.data ?? null;
+      const thumbnail = collected?.thumbnail ?? null;
       const spriteSheet = collected?.spriteSheet ?? null;
-      const data = serialiseSprite(jellySpriteState, {
-        id: spriteId ?? state.id,
-        projectId: state.projectId,
-        name: state.name,
-      });
-      const id = data.id;
+
+      const { id } = await saveDocument(
+        { ...state, id: spriteId ?? state.id },
+        {
+          jellyBody,
+          animatorBody: spriteSheet ? { spriteSheet } : null,
+          thumbnail,
+        },
+      );
+
       if (!state.id) dispatch({ type: "SET_PROJECT_ID", payload: id });
       // Update URL so refresh always reloads the correct sprite
       if (!spriteId || spriteId !== id) {
         navigate(`/jelly-sprite/${id}`, { replace: true });
       }
-      await saveSprite({
-        ...data,
-        id,
-        // jelly_body: full pixel/layer state (for re-editing in JellySprite)
-        jellyBody: jellySpriteState,
-        // animator_body: flat sprite sheet (for opening in the Animator)
-        animatorBody: spriteSheet ? { spriteSheet } : null,
-        // legacy body column kept during transition
-        body: data,
-        thumbnail,
-        projectId: state.projectId ?? data.projectId ?? null,
-      });
       setSaved(true);
       showToast("Sprite saved.", "success", 2500);
       setTimeout(() => setSaved(false), 2000);

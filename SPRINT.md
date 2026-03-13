@@ -8,15 +8,18 @@
 
 ## Sprint status
 
-| Sprint   | Name                         | Status                  |
-| -------- | ---------------------------- | ----------------------- |
-| Sprint 0 | Data Stability               | ✅ Complete (`92997f7`) |
-| Sprint 1 | Foundation Cleanup           | ✅ Complete (`b5fda67`) |
-| Sprint 2 | Monolith Decomposition       | ✅ Complete (`d8033f9`) |
-| Sprint 3 | Feature Contract Enforcement | ✅ Complete (`86e3b26`) |
-| Sprint 4 | Context Decomposition        | ✅ Complete (`ac647ed`) |
-| Sprint 5 | State Finalization           | ✅ Complete (`625e694`) |
-| Sprint 6 | Unified Document Model       | 🔄 In progress          |
+| Sprint   | Name                               | Status                   |
+| -------- | ---------------------------------- | ------------------------ |
+| Sprint 0 | Data Stability                     | ✅ Complete (`92997f7`)  |
+| Sprint 1 | Foundation Cleanup                 | ✅ Complete (`b5fda67`)  |
+| Sprint 2 | Monolith Decomposition             | ✅ Complete (`d8033f9`)  |
+| Sprint 3 | Feature Contract Enforcement       | ✅ Complete (`86e3b26`)  |
+| Sprint 4 | Context Decomposition              | ✅ Complete (`ac647ed`)  |
+| Sprint 5 | State Finalization                 | ✅ Complete (`625e694`)  |
+| Sprint 6 | Unified Document Model             | 🔄 In progress (6a done) |
+| Sprint 7 | JellySprite PixelDocument Refactor | 🔲 Not started           |
+| Sprint 8 | TypeScript Migration               | 🔲 Not started           |
+| Sprint 9 | Zustand State Management           | 🔲 Not started           |
 
 ---
 
@@ -778,7 +781,7 @@ const src = selectActiveSheet(state)?.objectUrl ?? null;
 
 ---
 
-## 🔲 Sprint 6 — Unified Document Model
+## � Sprint 6 — Unified Document Model (6a complete)
 
 **Goal:** JellySprite and Animator stop being two separate editors that
 hand a save blob back and forth. Instead they become two live **views** of a
@@ -867,14 +870,397 @@ No serialisation across an IDB fence to switch views.
 
 ---
 
+### Sprint 6 status and revised scope
+
+**6a — DocumentContext created** `a338424` ✅  
+`src/contexts/DocumentContext.jsx` — unified document shape with `frames[]`,
+`layers[]`, `tags[]`, `canvasW/H`, and JellySprite blobs. `ProjectContext` is
+a 2-line re-export shim (must be resolved in 6b per shim governance rule).
+
+**Design assumption challenged and kept:** The original Sprint 6 plan called
+for JellySprite to be migrated _onto_ DocumentContext's state (replacing its
+internal `JellySpriteProvider`). After reading the JellySprite internals, this
+was challenged: JellySprite's `refs.frameSnapshots` is the true pixel document,
+living outside React entirely. Migrating it onto DocumentContext would mean
+storing pixel buffers in React state — a catastrophic performance regression.
+
+**Revised Sprint 6 scope (metadata sync, not pixel migration):**
+
+- **6b** — JellySprite pushes metadata to DocumentContext (`frames[]`, `layers[]`,
+  `canvasW/H`) using `useEffect` on state changes. Pixel data stays in `refs`.
+  `ProjectContext` shim resolved.
+- **6c** — Animator pushes its `animations[]` to DocumentContext as `tags[]`
+  when animations change. `LOAD_PROJECT` dual-dispatch cleaned up.
+- **6d** — Create `src/services/documentService.js` with `saveDocument()` /
+  `loadDocument()`. Both workspaces route through it. Remove the separate
+  `animatorBody` / `jellyBody` split save paths.
+- **6e** — Remove handoff artifacts: `serialiseProject()`, the
+  `SET_JELLY_SPRITE_DATA` data-URL paste on "Edit in JellySprite", and the
+  `onRegisterCollector` callback from `JellySprite.jsx`.
+
+**The full pixel unification** (JellySprite `refs` → DocumentContext) is
+blocked by the JellySprite architecture issues documented in Sprint 7. Sprint
+6b-6e unify the _metadata layer_; Sprint 7 unifies the _data layer_.
+
 ### Sprint 6 commit order
 
 ```
-1. DocumentContext + useDocument()
-2. JellySprite migrated to DocumentContext
-3. Animator migrated to DocumentContext
-4. Unified save/load service
-5. Remove handoff artifacts
+1. 6b — JellySprite → DocumentContext metadata sync; ProjectContext shim resolved
+2. 6c — Animator → DocumentContext tags sync
+3. 6d — documentService.js unified save/load
+4. 6e — Remove handoff artifacts
+5. Verify: npm run build + smoke test
+6. Commit: "feat: Sprint 6 — unified document model (metadata layer)"
+```
+
+---
+
+## 🔲 Sprint 7 — JellySprite PixelDocument Refactor
+
+### Framework and architecture assessment
+
+Before Sprint 7 is implemented, the following question was formally evaluated:
+**Is React + Vite the right foundation for an app of this type and scale?**
+
+#### What this app is
+
+DoomJelly Studio is a **pixel art editor** with animation sequencing. Its two
+core operations — real-time pixel painting and frame playback — are both
+completely incompatible with React's update model. A paint stroke at 60fps
+touches 50–500 pixels per event. A react state update per pixel would destroy
+performance. This is why JellySprite already bypasses React entirely for all
+pixel operations using a raw `refs` object.
+
+The Animator's playback is already abstracted into `PlaybackContext` which
+uses `setInterval`, not state updates, for frame advancement.
+
+**The diagnosis:** React was chosen correctly as the UI shell. The problem is
+that JellySprite mixed the pixel engine _into_ the React component tree. React
+is not doing the drawing — it was never supposed to. The architecture needs to
+make that separation explicit, not fight it.
+
+#### Is Vite the right bundler?
+
+Yes, unconditionally. Vite's HMR, ESM-first dev server, and Rollup production
+build are the best available for a React SPA of this scale. No reason to change.
+
+#### Is online-only (browser + Supabase) the right delivery model?
+
+Out of scope: the user acknowledged "besides the fact it's online only." This
+is a product decision, not an architecture one. Noted: if offline/desktop is
+ever needed, Tauri (Rust shell + existing Vite frontend) adds a native layer
+without rebuilding the app. Electron is the heavier alternative.
+
+#### Is React 19 the right UI framework?
+
+Yes, with one caveat. React 19 is correct for this UI shell. The mistake is
+not React — it's storing mutable performance-critical state (pixel buffers,
+history stacks, canvas refs, engine functions) _in the component tree_.
+
+The correct model:
+
+- **React** owns: navigation, panels, toolbars, dialogs, notifications, auth
+- **Non-React class** owns: pixel buffers, history, frame snapshots, serialization
+- **React refs** own: canvas DOM elements (read-only bridge)
+
+This is exactly the pattern Excalidraw and Figma's web renderer use. They have
+a non-React "Scene" object that owns all document data. React renders UI around
+it but never holds the data.
+
+#### Should we rebuild from scratch?
+
+No. The foundation is correct. The `services/`, `contexts/`, `engine/` layering
+is already well-structured. The bug classes from Sprints 0-5 are eliminated.
+The remaining problem is contained to one feature: JellySprite's internal
+state model. That is Sprint 7's job — extract the pixel engine from the
+component tree into a standalone `PixelDocument` class.
+
+#### Verdict: continue on React 19 + Vite, fix the pixel engine architecture
+
+No framework migration needed. Sprint 8 (TypeScript) and Sprint 9 (Zustand)
+are architectural improvements to the existing stack, not replacements.
+
+---
+
+### Sprint 7 goal
+
+Extract JellySprite's pixel engine out of the React component tree into a
+standalong `PixelDocument` class. This resolves every architectural problem
+identified in the pre-sprint 7 assessment:
+
+| Problem                                   | Root cause                              | Fix                                  |
+| ----------------------------------------- | --------------------------------------- | ------------------------------------ |
+| `JellySprite.jsx` = 1,535 lines           | Business logic in a view component      | Move to `PixelDocument`              |
+| `refs.redraw` is a dead stub at mount     | Provider depends on consumer            | `PixelDocument` owns redraw          |
+| Serialization needs both `refs` and `ss`  | Two parallel state systems              | `PixelDocument.serialize()`          |
+| `canUndo`/`canRedo` split between systems | History stack in refs, flags in reducer | `PixelDocument` owns all history     |
+| 40-field flat initial state               | Six concerns in one object              | Three owners (see below)             |
+| `onRegisterCollector` callback            | State unreachable from outside          | `PixelDocument` is directly readable |
+
+### The three-owner model
+
+```
+PixelDocument (plain JS class — no React)
+  → frames[], layers[], pixelBuffers, maskBuffers
+  → frameSnapshots (per-frame pixel + layer state)
+  → historyStack, historyIndex
+  → undo(), redo(), canUndo, canRedo
+  → addFrame(), removeFrame(), switchFrame()
+  → addLayer(), removeLayer(), reorderLayers()
+  → serialize() → { version, frames, layers, pixelData }
+  → static deserialize(data) → PixelDocument
+
+ToolContext (thin React context)
+  → tool, brushType, brushSize, brushOpacity, brushHardness
+  → fgColor, bgColor, fgAlpha, colorHistory, relatedColors
+  → palettes, activePalette
+  → symmetryH, symmetryV, fillShapes
+  → gridVisible, zoom, panelTab
+  → Persisted to localStorage independently
+
+CanvasController (thin React component)
+  → Holds canvas DOM refs
+  → Receives pointer events → calls PixelDocument methods
+  → Listens for PixelDocument.onChange → triggers redraw or React state update
+  → Connects PixelDocument to DocumentContext (pushes frames[]/layers[] on change)
+```
+
+`JellySprite.jsx` becomes a layout component (~100 lines) that wires
+`ToolContext`, `CanvasController`, and panel components together.
+
+### 7a — Create `PixelDocument` class
+
+**File:** `src/features/jelly-sprite/engine/PixelDocument.js`
+
+Pure JS class. No imports from React. Testable in Node.
+
+```js
+export class PixelDocument {
+  constructor({ canvasW, canvasH, frames, layers }) { ... }
+
+  // Frame operations
+  addFrame(name) { ... }
+  removeFrame(frameId) { ... }
+  switchFrame(frameIdx) { ... }    // saves current, loads target
+
+  // Layer operations
+  addLayer(name) { ... }
+  removeLayer(layerId) { ... }
+  reorderLayers(layerIds) { ... }
+
+  // History
+  pushHistory() { ... }            // snapshot current buffers
+  undo() { ... }                   // restore + fire onChange
+  redo() { ... }
+  get canUndo() { ... }
+  get canRedo() { ... }
+
+  // Serialization
+  serialize() { ... }              // → { version, frames, layers, pixelData }
+  static deserialize(data) { ... } // → PixelDocument
+
+  // Observer
+  onChange(handler) { ... }        // called when frames/layers/pixels mutate
+}
+```
+
+### 7b — Create `ToolContext`
+
+**File:** `src/features/jelly-sprite/store/ToolContext.jsx`
+
+Contains only: tool settings, brush settings, colors, palettes, UI toggles.
+Removes those fields from `jellySpriteInitialState` and `jellySpriteReducer`.
+Persists to `localStorage` under key `dj-tool-state`.
+
+### 7c — Migrate JellySprite to use `PixelDocument`
+
+Replace all direct `refs.pixelBuffers`, `refs.frameSnapshots`, `refs.historyStack`
+usages in `JellySprite.jsx` and `drawingEngine.js` with `PixelDocument` method
+calls. Remove the `refs` object from `JellySpriteProvider`.
+
+`JellySpriteProvider` reduces to just providing `ToolContext` — the pixel
+document is held in a `useRef` in `JellySprite.jsx` as a stable instance.
+
+### 7d — Connect `PixelDocument` to `DocumentContext`
+
+On every `PixelDocument.onChange` event, push updated `frames[]`, `layers[]`,
+and `canvasW/H` into `DocumentContext` via dispatch. This replaces the
+`useEffect`-based sync installed in Sprint 6b.
+
+### 7e — Remove `JellySpriteProvider.refs` and `jellySpriteReducer` pixel cases
+
+Delete: all pixel buffer cases from the reducer, the `refs` plain object,
+the `onRegisterCollector` prop, the `stateRef` mirror, and all function stubs.
+
+### Sprint 7 commit order
+
+```
+1. PixelDocument class (no consumers yet)
+2. ToolContext (carved out of jellySpriteReducer)
+3. JellySprite.jsx + drawingEngine.js migrated to PixelDocument
+4. JellySpriteProvider cleaned up (refs removed)
+5. PixelDocument → DocumentContext sync (replaces Sprint 6b useEffect)
 6. Verify: npm run build + full smoke test
-7. Commit: "feat: Sprint 6 — unified document model"
+7. Commit: "refactor: Sprint 7 — PixelDocument extraction"
+```
+
+**Challenged assumptions for Sprint 7:**
+
+- Is `PixelDocument` the right abstraction, or should it be a Zustand store?
+  — Answer: plain class first; Zustand (Sprint 9) can wrap it if needed. A class
+  has zero dependencies and is testable without a test runner that supports hooks.
+- Should `drawingEngine.js` be methods on `PixelDocument` or remain separate?
+  — Keep separate: `drawingEngine` is a pure pixel-op library; `PixelDocument`
+  calls it. Single-responsibility preserved.
+
+---
+
+## 🔲 Sprint 8 — TypeScript Migration
+
+### Why TypeScript, and why now
+
+After Sprint 7, the codebase has three clean seams:
+
+- `PixelDocument` — a plain JS class with a well-defined API
+- `ToolContext` — a React context with a flat, enumerable state object
+- `DocumentContext` — a reducer context with a schema-stable state shape
+
+These seams are the ideal TypeScript starting points. The split-state bugs that
+have plagued this project (the `refs` / reducer split, the `spriteSheet` mirror,
+the `jellySpriteState` blob) all would have been caught immediately by the
+TypeScript compiler if types existed.
+
+**The cost of not having TypeScript now:**
+
+- No autocomplete on `DocumentContext` state fields — typos silently return `undefined`
+- `refs` is typed as `any` (it's a plain object) — type-unsafe mutations everywhere
+- `buildAnimatorBody`, `serialiseSprite`, `serializeJellySprite` all accept
+  untyped objects — schema drift is invisible until runtime
+
+### 8a — Vite TypeScript config
+
+Add `tsconfig.json` and `tsconfig.node.json`. Update `vite.config.js` → `vite.config.ts`.
+Rename `src/main.jsx` → `src/main.tsx`. Enable `strict: true` from day one.
+
+### 8b — Type the service layer first
+
+The services are pure I/O with clear data contracts. Type them first:
+
+```ts
+// src/services/types.ts
+export interface SpriteRecord { id: string; name: string; ... }
+export interface AnimatorBody { sheets: SheetRecord[]; animations: AnimationRecord[]; ... }
+export interface JellyBody { version: number; frames: FrameRecord[]; ... }
+```
+
+### 8c — Type `DocumentContext`, `AnimatorContext`, `ToolContext`
+
+Give each context a typed state interface and typed dispatch union.
+
+### 8d — Type `PixelDocument`
+
+`PixelDocument.ts` — the class already has a clean API; typing it is mostly
+adding return types and property types.
+
+### 8e — Type the UI components
+
+Component props interfaces. Start with shared `ui/` components — they have the
+stablest prop contracts.
+
+### Sprint 8 commit order
+
+```
+1. tsconfig + Vite config
+2. Service layer types
+3. Context types (Document, Animator, Tool)
+4. PixelDocument types
+5. UI component prop types
+6. Verify: tsc --noEmit passes
+7. Commit: "chore: Sprint 8 — TypeScript migration"
+```
+
+---
+
+## 🔲 Sprint 9 — Zustand State Management
+
+### Why Zustand, and why after TypeScript
+
+The React Context + useReducer pattern was the right choice for this project
+through Sprint 7. It required no dependencies and matched the project's scale.
+By Sprint 7 the state is decomposed into three clean contexts
+(`DocumentContext`, `AnimatorContext`, `ToolContext`) and a non-React
+`PixelDocument` class.
+
+The remaining React Context pain points:
+
+- Every dispatch triggers a render in all consumers, even when the specific
+  field they read didn't change (React Context has no selector support)
+- `AnimatorContext`'s undo/redo clones the entire state on every history entry —
+  fine for shallow objects, expensive for deeply nested animation arrays
+- Testing context-connected components requires wrapping them in providers
+
+Zustand solves all three:
+
+- Selector-based subscriptions — `const tool = useToolStore(s => s.tool)` only
+  re-renders when `tool` changes
+- Sliced stores can share state without provider nesting
+- Stores are importable directly in tests without a provider wrapper
+
+**Note:** Zustand does NOT replace `PixelDocument`. `PixelDocument` stays as
+a plain class. Zustand wraps it — the store holds a `PixelDocument` instance
+and exposes its operations as store actions.
+
+### 9a — Replace `ToolContext` with `useToolStore`
+
+Smallest first. `ToolContext` is purely serializable data with no side effects.
+
+```js
+export const useToolStore = create(persist(
+  (set) => ({ tool: 'pencil', brushSize: 1, fgColor: '#000000', ... }),
+  { name: 'dj-tool-state' }
+));
+```
+
+### 9b — Replace `AnimatorContext` with `useAnimatorStore`
+
+```js
+export const useAnimatorStore = create((set, get) => ({
+  sheets: [], activeSheetId: null, animations: [], ...
+  dispatch: (action) => set(animatorReducer(get(), action)),
+  undo: () => { ... },
+  redo: () => { ... },
+}));
+```
+
+### 9c — Wrap `PixelDocument` in `usePixelDocumentStore`
+
+```js
+export const usePixelDocumentStore = create((set, get) => ({
+  doc: null,          // PixelDocument instance
+  frames: [],         // mirror for React — updated by doc.onChange
+  layers: [],
+  canUndo: false,
+  canRedo: false,
+  init: (data) => { ... },
+  undo: () => get().doc?.undo(),
+  redo: () => get().doc?.redo(),
+}));
+```
+
+### 9d — Replace `DocumentContext` with `useDocumentStore`
+
+Identity fields (`id`, `name`, `projectId`, `spriteId`) become a Zustand slice.
+Remove the `DocumentProvider` from `App.jsx`.
+
+### Sprint 9 commit order
+
+```
+1. Install zustand
+2. useToolStore (replace ToolContext)
+3. useAnimatorStore (replace AnimatorContext + useAnimator hook)
+4. usePixelDocumentStore (wrap PixelDocument)
+5. useDocumentStore (replace DocumentContext)
+6. Remove all Provider wrappers from App.jsx
+7. Verify: npm run build + full smoke test
+8. Commit: "refactor: Sprint 9 — Zustand state management"
 ```

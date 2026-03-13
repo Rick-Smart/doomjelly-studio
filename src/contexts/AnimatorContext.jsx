@@ -5,7 +5,9 @@ import {
   useRef,
   useState,
   useCallback,
+  useEffect,
 } from "react";
+import { useDocument } from "./DocumentContext";
 
 // ---------------------------------------------------------------------------
 // Initial state — all animator-owned fields.
@@ -308,6 +310,15 @@ export function AnimatorProvider({ children }) {
   }, []);
 
   const markSaved = useCallback(() => setIsDirty(false), []);
+
+  // --- Sprint 6c: sync animations to DocumentContext as tags ---
+  // DocumentContext.tags = named frame ranges; the Animator's animations[]
+  // represent the same concept. Push on every change so any consumer of
+  // useDocument() always sees the up-to-date animation list.
+  const { dispatch: docDispatch } = useDocument();
+  useEffect(() => {
+    docDispatch({ type: "SET_TAGS", payload: state.animations });
+  }, [state.animations, docDispatch]);
 
   const undo = useCallback(() => {
     const h = histRef.current;

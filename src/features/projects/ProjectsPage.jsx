@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { useProject } from "../../contexts/ProjectContext";
+import { useDocument } from "../../contexts/DocumentContext";
 import { useNotification } from "../../contexts/NotificationContext";
 import { Page } from "../../ui/Page";
 import { ConfirmDialog } from "../../ui/ConfirmDialog";
@@ -25,7 +25,7 @@ import {
 import "./ProjectsPage.css";
 
 export function ProjectsPage() {
-  const { state, dispatch } = useProject();
+  const { state, dispatch } = useDocument();
   const { showToast } = useNotification();
   const navigate = useNavigate();
 
@@ -267,7 +267,6 @@ export function ProjectsPage() {
           gutterX: 0,
           gutterY: 0,
         },
-        jellySpriteDataUrl: null,
         jellySpriteState: null,
       },
     });

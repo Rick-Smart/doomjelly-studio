@@ -37,7 +37,6 @@ export const initialDocumentState = {
 
   // JellySprite restoration blob (carried from ProjectContext)
   jellySpriteState: null,
-  jellySpriteDataUrl: null,
 };
 
 // ---------------------------------------------------------------------------
@@ -64,7 +63,6 @@ function reducer(state, action) {
           action.payload.animations ??
           initialDocumentState.tags,
         jellySpriteState: action.payload.jellySpriteState ?? null,
-        jellySpriteDataUrl: action.payload.jellySpriteDataUrl ?? null,
       };
 
     case "RESET_DOCUMENT":
@@ -83,10 +81,6 @@ function reducer(state, action) {
 
     case "SET_SPRITE_ID":
       return { ...state, spriteId: action.payload };
-
-    // JellySprite restoration blob
-    case "SET_JELLY_SPRITE_DATA":
-      return { ...state, jellySpriteDataUrl: action.payload };
 
     // Canvas geometry (JellySprite notifies the document when the canvas
     // is resized so Animator can read the current frame dimensions)
@@ -136,7 +130,6 @@ export function DocumentProvider({ children }) {
 
   const dispatch = useCallback((action) => {
     if (
-      action.type === "SET_JELLY_SPRITE_DATA" ||
       action.type === "SET_DOCUMENT_NAME" ||
       action.type === "SET_PROJECT_NAME"
     ) {
