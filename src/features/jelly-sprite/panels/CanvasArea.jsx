@@ -166,8 +166,26 @@ export function CanvasArea() {
     setZoom,
   } = useJellySprite();
 
-  // ── Auto-fit zoom ─────────────────────────────────────────────────────────
+  // ── Auto-fit zoom + display scale ────────────────────────────────────────
   const wrapRef = useRef(null);
+  const canvasInnerRef = useRef(null);
+
+  // Apply a CSS transform scale to canvas-inner so the integer-zoom canvas
+  // visually fills the wrap space. CSS transform doesn't affect layout, so
+  // overflow: auto on the wrap won't trigger scrollbars.
+  const applyDisplayScale = useCallback(
+    (wrapW, wrapH, intZoom) => {
+      const inner = canvasInnerRef.current;
+      if (!inner) return;
+      const pad = 40;
+      const scale = Math.min(
+        (wrapW - pad) / (canvasW * intZoom),
+        (wrapH - pad) / (canvasH * intZoom),
+      );
+      inner.style.transform = scale > 1 ? `scale(${scale})` : "";
+    },
+    [canvasW, canvasH],
+  );
 
   useEffect(() => {
     const wrap = wrapRef.current;
@@ -185,12 +203,22 @@ export function CanvasArea() {
         ),
       );
       setZoom(fit);
+      applyDisplayScale(width, height, fit);
     };
     compute();
     const ro = new ResizeObserver(compute);
     ro.observe(wrap);
     return () => ro.disconnect();
-  }, [canvasW, canvasH]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [canvasW, canvasH, applyDisplayScale]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Reapply display scale when the user manually zooms (toolbar +/-) without
+  // triggering a container resize.
+  useEffect(() => {
+    const wrap = wrapRef.current;
+    if (!wrap) return;
+    const { width, height } = wrap.getBoundingClientRect();
+    applyDisplayScale(width, height, zoom);
+  }, [zoom, applyDisplayScale]);
 
   // ── Brush cursor overlay ────────────────────────────────────────────────────
   const brushCursorRef = useRef(null);
@@ -244,15 +272,18 @@ export function CanvasArea() {
       const canvas = canvasRef.current;
       if (!canvas) return;
       const rect = canvas.getBoundingClientRect();
-      const rawX = Math.floor((e.clientX - rect.left) / zoom);
-      const rawY = Math.floor((e.clientY - rect.top) / zoom);
+      // Derive effective zoom from the canvas's actual rendered rect so that
+      // CSS displayScale transforms don't skew coordinate conversion.
+      const effectiveZoom = rect.width / canvasW;
+      const rawX = Math.floor((e.clientX - rect.left) / effectiveZoom);
+      const rawY = Math.floor((e.clientY - rect.top) / effectiveZoom);
       cursorPxRef.current =
         rawX >= 0 && rawX < canvasW && rawY >= 0 && rawY < canvasH
           ? { x: rawX, y: rawY }
           : null;
       scheduleDraw();
     },
-    [canvasRef, zoom, canvasW, canvasH, scheduleDraw],
+    [canvasRef, canvasW, canvasH, scheduleDraw],
   );
 
   const handleCursorLeave = useCallback(() => {
@@ -279,6 +310,7 @@ export function CanvasArea() {
             preview without touching the drawing-engine handlers below. */}
         <div
           className="jelly-sprite__canvas-inner"
+          ref={canvasInnerRef}
           onPointerMove={handleCursorMove}
           onPointerLeave={handleCursorLeave}
         >

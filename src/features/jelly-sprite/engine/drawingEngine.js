@@ -42,8 +42,11 @@ import * as selOps from "./tools/selectionOps.js";
 //   so the selection can be dragged partially off-canvas without snapping).
 function canvasCoords(e, canvasEl, zoom, w, h, clamp = true) {
   const rect = canvasEl.getBoundingClientRect();
-  const fx = Math.floor((e.clientX - rect.left) / zoom);
-  const fy = Math.floor((e.clientY - rect.top) / zoom);
+  // Derive effective zoom from the canvas's rendered width so that CSS
+  // display-scale transforms (used to fill wrap space) don't corrupt coords.
+  const effectiveZoom = rect.width / w;
+  const fx = Math.floor((e.clientX - rect.left) / effectiveZoom);
+  const fy = Math.floor((e.clientY - rect.top) / effectiveZoom);
   return clamp
     ? {
         x: Math.max(0, Math.min(w - 1, fx)),
