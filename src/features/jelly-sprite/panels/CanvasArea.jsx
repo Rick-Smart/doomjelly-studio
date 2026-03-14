@@ -188,7 +188,6 @@ export function CanvasArea() {
         isPlaying: ip,
       } = brushPropsRef.current;
       if (ip || !BRUSH_CURSOR_TOOLS.has(t)) {
-        // Clear when playing or on non-paint tools
         canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
         return;
       }
@@ -196,7 +195,7 @@ export function CanvasArea() {
     });
   }, []);
 
-  // Redraw when brush settings or zoom change (user changed them while hovering).
+  // Redraw when brush settings or zoom change while the cursor is hovering.
   useEffect(() => {
     scheduleDraw();
   }, [tool, brushType, brushSize, zoom, isPlaying, scheduleDraw]);
@@ -209,10 +208,11 @@ export function CanvasArea() {
     [],
   );
 
-  // Wrapped pointer handlers — forward to drawing engine + update cursor pos.
-  const handlePointerMove = useCallback(
+  // Cursor-tracking handlers attached to the WRAPPER DIV so they receive
+  // bubbled events from the main canvas without interfering with the drawing
+  // engine. The main canvas keeps its original handlers untouched.
+  const handleCursorMove = useCallback(
     (e) => {
-      onPointerMove(e);
       const canvas = canvasRef.current;
       if (!canvas) return;
       const rect = canvas.getBoundingClientRect();
@@ -224,17 +224,13 @@ export function CanvasArea() {
           : null;
       scheduleDraw();
     },
-    [onPointerMove, canvasRef, zoom, canvasW, canvasH, scheduleDraw],
+    [canvasRef, zoom, canvasW, canvasH, scheduleDraw],
   );
 
-  const handlePointerLeave = useCallback(
-    (e) => {
-      onPointerLeave(e);
-      cursorPxRef.current = null;
-      scheduleDraw();
-    },
-    [onPointerLeave, scheduleDraw],
-  );
+  const handleCursorLeave = useCallback(() => {
+    cursorPxRef.current = null;
+    scheduleDraw();
+  }, [scheduleDraw]);
 
   return (
     <div className="jelly-sprite__canvas-area">
@@ -250,17 +246,23 @@ export function CanvasArea() {
         </div>
       )}
       <div className="jelly-sprite__canvas-wrap">
-        {/* Inner wrapper gives overlay canvas an absolute-positioning context */}
-        <div className="jelly-sprite__canvas-inner">
+        {/* Wrapper gives overlay canvas its positioning context.
+            Cursor tracking lives here so bubbled canvas events update the
+            preview without touching the drawing-engine handlers below. */}
+        <div
+          className="jelly-sprite__canvas-inner"
+          onPointerMove={handleCursorMove}
+          onPointerLeave={handleCursorLeave}
+        >
           <canvas
             ref={canvasRef}
             className="jelly-sprite__canvas"
             width={canvasW * zoom}
             height={canvasH * zoom}
             onPointerDown={onPointerDown}
-            onPointerMove={handlePointerMove}
+            onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
-            onPointerLeave={handlePointerLeave}
+            onPointerLeave={onPointerLeave}
             style={{ cursor: cursorStyle }}
           />
           <canvas
