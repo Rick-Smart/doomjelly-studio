@@ -1477,7 +1477,9 @@ function JellySpriteBody() {
       ? isDrawing.current
         ? "grabbing"
         : "grab"
-      : CURSOR_PRECISION;
+      : tool === "pencil" || tool === "eraser" || tool === "spray"
+        ? "none" // brush-shape overlay canvas replaces the native cursor
+        : CURSOR_PRECISION;
 
   // Context object
   const ctx = {

@@ -164,6 +164,23 @@
   padding: 20px;
 }
 
+/* Positions the brush-cursor overlay canvas on top of the main canvas */
+.jelly-sprite__canvas-inner {
+  position: relative;
+  display: inline-block;
+  line-height: 0;
+  flex-shrink: 0;
+}
+
+.jelly-sprite__brush-cursor {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
 .jelly-sprite__canvas {
   image-rendering: pixelated;
   image-rendering: crisp-edges;
