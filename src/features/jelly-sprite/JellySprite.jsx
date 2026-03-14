@@ -901,18 +901,6 @@ function JellySpriteBody() {
       seedHistory(refs, restore.layers, restore.activeLayerId);
       redraw();
 
-      // Auto-zoom to fit the restored canvas
-      const wrap = refs.canvasEl?.parentElement;
-      if (wrap) {
-        const availW = wrap.clientWidth - 40;
-        const availH = wrap.clientHeight - 40;
-        const fillZoom = Math.max(
-          1,
-          Math.min(MAX_ZOOM, Math.floor(Math.min(availW / rW, availH / rH))),
-        );
-        setZoom(fillZoom);
-      }
-
       // Generate thumbnails for all restored frames using the restored
       // dimensions (canvasW/canvasH in the closure are still the old values
       // at this point; rW/rH come from the restore payload).
@@ -964,16 +952,6 @@ function JellySpriteBody() {
         }
         wireHistoryEngine(refs, sd);
         redraw();
-        const wrap = refs.canvasEl?.parentElement;
-        if (wrap) {
-          const availW = wrap.clientWidth - 40;
-          const availH = wrap.clientHeight - 40;
-          const fillZoom = Math.max(
-            1,
-            Math.min(MAX_ZOOM, Math.floor(Math.min(availW / w, availH / h))),
-          );
-          setZoom(fillZoom);
-        }
         return;
       }
       // pendingResizeDataRef is set: user resized after restore. Fall through to
@@ -1027,19 +1005,9 @@ function JellySpriteBody() {
     function finish() {
       wireHistoryEngine(refs, sd);
       redraw();
-      // Auto-zoom to fill the canvas work area whenever the canvas size changes
-      // (including the initial mount). refs.canvasEl is set by useCanvas which
-      // runs its effect before this one.
-      const wrap = refs.canvasEl?.parentElement;
-      if (wrap) {
-        const availW = wrap.clientWidth - 40;
-        const availH = wrap.clientHeight - 40;
-        const fillZoom = Math.max(
-          1,
-          Math.min(MAX_ZOOM, Math.floor(Math.min(availW / w, availH / h))),
-        );
-        setZoom(fillZoom);
-      }
+      // Auto-zoom is handled by CanvasArea's ResizeObserver, which reads
+      // the actual canvas-wrap dimensions (not canvas-inner) and fires on
+      // both mount and container resize.
     }
 
     finish();
