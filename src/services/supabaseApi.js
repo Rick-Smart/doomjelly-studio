@@ -95,7 +95,8 @@ export async function sbSaveSprite(sprite) {
     project_id: sprite.projectId,
     user_id: user.id,
     name: sprite.name,
-    body: sprite.body ?? {},
+    // NOTE: no `body` column — clean-slate schema (Sprint 15) removed it;
+    // pixel data lives in jelly_body and animator_body only.
     ...(jellyBodyRaw !== undefined && { jelly_body: jellyBodyRaw }),
     ...(animatorBodyRaw !== undefined && { animator_body: animatorBodyRaw }),
     thumbnail: sprite.thumbnail ?? null,
