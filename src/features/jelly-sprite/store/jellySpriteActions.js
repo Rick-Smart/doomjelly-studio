@@ -81,6 +81,10 @@ export const SET_REF_VISIBLE = "SET_REF_VISIBLE"; // boolean
 export const SET_TILE_VISIBLE = "SET_TILE_VISIBLE"; // boolean
 export const SET_TILE_COUNT = "SET_TILE_COUNT"; // number
 
+// Ink mode
+export const SET_INK_MODE = "SET_INK_MODE"; // "simple" | "lock-alpha" | "shading"
+export const SET_SHADING_RAMP = "SET_SHADING_RAMP"; // string[] of hex colors
+
 // Persistence
 export const LOAD_JELLY_STATE = "LOAD_JELLY_STATE"; // document state restore (from jellySpritePersistence)
 export const LOAD_TOOL_STATE = "LOAD_TOOL_STATE"; // tool state restore (into ToolContext)

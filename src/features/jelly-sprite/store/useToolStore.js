@@ -42,6 +42,10 @@ const toolInitialState = {
   tileVisible: false,
   tileCount: 2,
 
+  // Ink
+  inkMode: "simple",
+  shadingRamp: [],
+
   // UI
   panelTab: "palette",
 
@@ -195,6 +199,12 @@ function toolReducer(state, action) {
     case A.SET_CUSTOM_H:
       return { ...state, customH: payload };
 
+    // Ink
+    case A.SET_INK_MODE:
+      return { ...state, inkMode: payload };
+    case A.SET_SHADING_RAMP:
+      return { ...state, shadingRamp: payload };
+
     // Batch restore from a saved jellySprite payload (Sprint 7b)
     case A.LOAD_TOOL_STATE: {
       const s = payload ?? {};
@@ -225,6 +235,8 @@ function toolReducer(state, action) {
         ...(s.refVisible != null ? { refVisible: s.refVisible } : {}),
         ...(s.tileVisible != null ? { tileVisible: s.tileVisible } : {}),
         ...(s.tileCount != null ? { tileCount: s.tileCount } : {}),
+        ...(s.inkMode != null ? { inkMode: s.inkMode } : {}),
+        ...(s.shadingRamp != null ? { shadingRamp: s.shadingRamp } : {}),
         // refImage intentionally not restored — large blobs are never saved per-sprite
         refImage: null,
       };
@@ -257,6 +269,8 @@ const PERSIST_FIELDS = [
   "tileCount",
   "panelTab",
   "zoom",
+  "inkMode",
+  "shadingRamp",
 ];
 
 export const useToolStore = create(

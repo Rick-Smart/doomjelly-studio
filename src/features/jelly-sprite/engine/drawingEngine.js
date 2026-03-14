@@ -75,6 +75,8 @@ function makeBrushCtx(refs) {
     h: st.canvasH,
     sel: refs.selection ?? null,
     lassoMask: refs.selectionMask ?? null,
+    inkMode: st.inkMode ?? "simple",
+    shadingRamp: st.shadingRamp ?? [],
   };
 }
 

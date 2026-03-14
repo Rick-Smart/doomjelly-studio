@@ -106,6 +106,34 @@ function compositePixelConstrained(buf, x, y, w, h, src, sel, lassoMask) {
   buf[i + 3] = Math.round(outA * 255);
 }
 
+/**
+ * lockAlphaPixelConstrained — like compositePixelConstrained but locks the
+ * destination alpha. Only paints on pixels that already have alpha > 0;
+ * fully transparent pixels are skipped entirely (preserving transparency).
+ */
+function lockAlphaPixelConstrained(buf, x, y, w, h, src, sel, lassoMask) {
+  if (sel) {
+    if (x < sel.x || x >= sel.x + sel.w || y < sel.y || y >= sel.y + sel.h)
+      return;
+    if (lassoMask && !lassoMask[y * w + x]) return;
+  }
+  if (x < 0 || x >= w || y < 0 || y >= h) return;
+  const i = (y * w + x) * 4;
+  if (buf[i + 3] === 0) return; // skip transparent pixels — alpha is locked
+  const sA = src[3] / 255;
+  if (sA >= 1) {
+    buf[i] = src[0];
+    buf[i + 1] = src[1];
+    buf[i + 2] = src[2];
+    // buf[i + 3] unchanged
+    return;
+  }
+  buf[i] = Math.round(src[0] * sA + buf[i] * (1 - sA));
+  buf[i + 1] = Math.round(src[1] * sA + buf[i + 1] * (1 - sA));
+  buf[i + 2] = Math.round(src[2] * sA + buf[i + 2] * (1 - sA));
+  // buf[i + 3] unchanged
+}
+
 /** Reduce the alpha of an existing pixel by `strength` (0–255). */
 function erasePixelConstrained(buf, x, y, w, h, strength, sel, lassoMask) {
   if (sel) {
@@ -119,11 +147,51 @@ function erasePixelConstrained(buf, x, y, w, h, strength, sel, lassoMask) {
 }
 
 /**
+ * shadePixelConstrained — shading ink step.
+ * Finds the pixel's current hex color in shadingRamp and advances one step
+ * deeper (toward the end of the array). Skips transparent pixels.
+ * No-op if the pixel's color is not in the ramp or already at the darkest end.
+ */
+function shadePixelConstrained(buf, x, y, w, h, shadingRamp, sel, lassoMask) {
+  if (!shadingRamp || shadingRamp.length < 2) return;
+  if (sel) {
+    if (x < sel.x || x >= sel.x + sel.w || y < sel.y || y >= sel.y + sel.h)
+      return;
+    if (lassoMask && !lassoMask[y * w + x]) return;
+  }
+  if (x < 0 || x >= w || y < 0 || y >= h) return;
+  const i = (y * w + x) * 4;
+  if (buf[i + 3] === 0) return; // skip transparent
+  const currentHex = rgbaToHex(buf[i], buf[i + 1], buf[i + 2]).toLowerCase();
+  const rampIdx = shadingRamp.findIndex((c) => c.toLowerCase() === currentHex);
+  if (rampIdx === -1 || rampIdx >= shadingRamp.length - 1) return;
+  const [nr, ng, nb] = hexToRgba(shadingRamp[rampIdx + 1], 255);
+  buf[i] = nr;
+  buf[i + 1] = ng;
+  buf[i + 2] = nb;
+  // alpha unchanged
+}
+
+/**
  * paintWithSymmetry — composites rgba at (x,y) and any mirror positions.
  * If editingMaskId is set, writes to the mask buffer instead.
+ * Respects ctx.inkMode: "simple" (default), "lock-alpha", or "shading".
+ * For "shading", ctx.shadingRamp must be a string[] of hex colors.
  */
 export function paintWithSymmetry(
-  { buf, maskBuf, editingMaskId, symmetryH, symmetryV, w, h, sel, lassoMask },
+  {
+    buf,
+    maskBuf,
+    editingMaskId,
+    symmetryH,
+    symmetryV,
+    w,
+    h,
+    sel,
+    lassoMask,
+    inkMode,
+    shadingRamp,
+  },
   x,
   y,
   rgba,
@@ -139,6 +207,65 @@ export function paintWithSymmetry(
     if (symmetryH && symmetryV) applyMask(w - 1 - x, h - 1 - y);
     return;
   }
+
+  if (inkMode === "lock-alpha") {
+    lockAlphaPixelConstrained(buf, x, y, w, h, rgba, sel, lassoMask);
+    if (symmetryH)
+      lockAlphaPixelConstrained(buf, w - 1 - x, y, w, h, rgba, sel, lassoMask);
+    if (symmetryV)
+      lockAlphaPixelConstrained(buf, x, h - 1 - y, w, h, rgba, sel, lassoMask);
+    if (symmetryH && symmetryV)
+      lockAlphaPixelConstrained(
+        buf,
+        w - 1 - x,
+        h - 1 - y,
+        w,
+        h,
+        rgba,
+        sel,
+        lassoMask,
+      );
+    return;
+  }
+
+  if (inkMode === "shading") {
+    shadePixelConstrained(buf, x, y, w, h, shadingRamp, sel, lassoMask);
+    if (symmetryH)
+      shadePixelConstrained(
+        buf,
+        w - 1 - x,
+        y,
+        w,
+        h,
+        shadingRamp,
+        sel,
+        lassoMask,
+      );
+    if (symmetryV)
+      shadePixelConstrained(
+        buf,
+        x,
+        h - 1 - y,
+        w,
+        h,
+        shadingRamp,
+        sel,
+        lassoMask,
+      );
+    if (symmetryH && symmetryV)
+      shadePixelConstrained(
+        buf,
+        w - 1 - x,
+        h - 1 - y,
+        w,
+        h,
+        shadingRamp,
+        sel,
+        lassoMask,
+      );
+    return;
+  }
+
   compositePixelConstrained(buf, x, y, w, h, rgba, sel, lassoMask);
   if (symmetryH)
     compositePixelConstrained(buf, w - 1 - x, y, w, h, rgba, sel, lassoMask);

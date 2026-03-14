@@ -56,6 +56,9 @@ export function RightPanel() {
     paletteDelete,
     paletteRename,
     paletteSetColors,
+    inkMode,
+    shadingRamp,
+    setShadingRamp,
   } = useJellySprite();
 
   return (
@@ -143,6 +146,9 @@ export function RightPanel() {
               onRenamePalette={paletteRename}
               onSetActivePalette={setActivePalette}
               onSetColors={paletteSetColors}
+              shadingMode={inkMode === "shading"}
+              shadingRamp={shadingRamp}
+              onShadingRampChange={setShadingRamp}
             />
           </div>
         )}

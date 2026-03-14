@@ -52,6 +52,10 @@ export interface ToolState {
   tileVisible: boolean;
   tileCount: number;
 
+  // Ink
+  inkMode: "simple" | "lock-alpha" | "shading";
+  shadingRamp: string[];
+
   // UI
   panelTab: string;
 
@@ -101,6 +105,9 @@ export type ToolAction =
   | { type: "PALETTE_DELETE"; payload: string }
   | { type: "PALETTE_RENAME"; payload: { oldName: string; newName: string } }
   | { type: "PALETTE_SET_COLORS"; payload: { name: string; colors: string[] } }
+  // Ink
+  | { type: "SET_INK_MODE"; payload: "simple" | "lock-alpha" | "shading" }
+  | { type: "SET_SHADING_RAMP"; payload: string[] }
   // Persistence
   | { type: "LOAD_TOOL_STATE"; payload: Partial<ToolState> }
   // UI

@@ -231,3 +231,76 @@
 .pm-ramp-apply:hover {
   opacity: 0.85;
 }
+
+/* ── Shading ramp panel ── */
+.pm-shading-ramp {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 7px 8px;
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface3));
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+}
+
+.pm-shading-ramp-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+}
+
+.pm-shading-ramp-hint {
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--text-muted);
+}
+
+.pm-shading-ramp-empty {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-style: italic;
+  line-height: 1.4;
+}
+
+.pm-shading-ramp-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+}
+
+.pm-swatch--ramp {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  z-index: 2;
+}
+
+.pm-swatch--ramp-strip {
+  width: 16px;
+  height: 16px;
+  border-radius: 2px;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.1s;
+}
+
+.pm-swatch--ramp-strip:hover {
+  transform: scale(1.2);
+  border-color: var(--text);
+}
+
+.pm-tool-btn--danger {
+  color: var(--color-danger, #e05560);
+  border-color: var(--color-danger, #e05560);
+}
+
+.pm-tool-btn--danger:hover {
+  background: color-mix(
+    in srgb,
+    var(--color-danger, #e05560) 12%,
+    var(--surface3)
+  );
+}

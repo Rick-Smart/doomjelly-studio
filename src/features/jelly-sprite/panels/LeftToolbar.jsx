@@ -31,6 +31,8 @@ export function LeftToolbar() {
     canRedo,
     clearCanvas,
     deselectAll,
+    inkMode,
+    setInkMode,
   } = useJellySprite();
 
   const SELECT_TOOLS = new Set(["select-rect", "select-lasso", "select-wand"]);
@@ -107,6 +109,36 @@ export function LeftToolbar() {
             title="Mirror vertical"
           >
             ⇕
+          </button>
+        </div>
+      </div>
+
+      <div className="jelly-sprite__tool-section">
+        <div className="jelly-sprite__tool-section-label">Ink</div>
+        <div className="jelly-sprite__tool-group">
+          <button
+            className={`jelly-sprite__tool-btn${inkMode === "simple" ? " jelly-sprite__tool-btn--active" : ""}`}
+            onClick={() => setInkMode("simple")}
+            title="Simple ink — normal paint (default)"
+          >
+            ✏
+          </button>
+          <button
+            className={`jelly-sprite__tool-btn${inkMode === "lock-alpha" ? " jelly-sprite__tool-btn--active" : ""}`}
+            onClick={() => setInkMode("lock-alpha")}
+            title="Lock Alpha — paint only on existing pixels, preserve transparency"
+          >
+            🔒
+          </button>
+          <button
+            className={`jelly-sprite__tool-btn${inkMode === "shading" ? " jelly-sprite__tool-btn--active" : ""}`}
+            onClick={() => {
+              setInkMode("shading");
+              setPanelTab("palette");
+            }}
+            title="Shading ink — shift pixel color along the shading ramp (define ramp in Palette tab)"
+          >
+            🌑
           </button>
         </div>
       </div>

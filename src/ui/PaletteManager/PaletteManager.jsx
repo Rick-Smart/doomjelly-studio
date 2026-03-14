@@ -163,6 +163,10 @@ export function PaletteManager({
   onRenamePalette,
   onSetActivePalette,
   onSetColors,
+  // Shading ink props (optional)
+  shadingMode = false,
+  shadingRamp = [],
+  onShadingRampChange,
 }) {
   const [showRamp, setShowRamp] = useState(false);
   const [rampSteps, setRampSteps] = useState(5);
@@ -278,19 +282,37 @@ export function PaletteManager({
 
       {/* ── Colour swatches ── */}
       <div className="pm-swatches">
-        {colors.map((hex, i) => (
-          <button
-            key={i}
-            className={`pm-swatch${activeColor === hex ? " pm-swatch--active" : ""}`}
-            style={{ background: hex }}
-            title={hex}
-            onClick={() => onSelectColor(hex)}
-            onContextMenu={(e) => {
-              e.preventDefault();
-              onRemoveColor(i);
-            }}
-          />
-        ))}
+        {colors.map((hex, i) => {
+          const inRamp = shadingMode && shadingRamp.includes(hex.toLowerCase());
+          return (
+            <button
+              key={i}
+              className={`pm-swatch${activeColor === hex ? " pm-swatch--active" : ""}${inRamp ? " pm-swatch--ramp" : ""}`}
+              style={{ background: hex }}
+              title={
+                shadingMode
+                  ? `${hex} — Shift+click to ${inRamp ? "remove from" : "add to"} shading ramp`
+                  : hex
+              }
+              onClick={(e) => {
+                if (shadingMode && e.shiftKey && onShadingRampChange) {
+                  const norm = hex.toLowerCase();
+                  if (inRamp) {
+                    onShadingRampChange(shadingRamp.filter((c) => c !== norm));
+                  } else {
+                    onShadingRampChange([...shadingRamp, norm]);
+                  }
+                } else {
+                  onSelectColor(hex);
+                }
+              }}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                onRemoveColor(i);
+              }}
+            />
+          );
+        })}
         <button
           className="pm-swatch pm-swatch--add"
           title="Add current colour to palette"
@@ -339,6 +361,48 @@ export function PaletteManager({
           </button>
         ))}
       </div>
+
+      {/* ── Shading ramp (visible when shading ink active) ── */}
+      {shadingMode && (
+        <div className="pm-shading-ramp">
+          <div className="pm-shading-ramp-label">
+            Shading Ramp
+            <span className="pm-shading-ramp-hint">
+              {" "}
+              (Shift+click swatches)
+            </span>
+          </div>
+          {shadingRamp.length === 0 ? (
+            <div className="pm-shading-ramp-empty">
+              No colors — Shift+click palette swatches to build ramp (lightest →
+              darkest)
+            </div>
+          ) : (
+            <div className="pm-shading-ramp-strip">
+              {shadingRamp.map((hex, i) => (
+                <button
+                  key={i}
+                  className="pm-swatch pm-swatch--ramp-strip"
+                  style={{ background: hex }}
+                  title={`${hex} — click to remove`}
+                  onClick={() =>
+                    onShadingRampChange &&
+                    onShadingRampChange(shadingRamp.filter((_, j) => j !== i))
+                  }
+                />
+              ))}
+            </div>
+          )}
+          {shadingRamp.length > 0 && (
+            <button
+              className="pm-tool-btn pm-tool-btn--danger"
+              onClick={() => onShadingRampChange && onShadingRampChange([])}
+            >
+              Clear ramp
+            </button>
+          )}
+        </div>
+      )}
 
       {/* ── Colour ramp panel ── */}
       {showRamp && (

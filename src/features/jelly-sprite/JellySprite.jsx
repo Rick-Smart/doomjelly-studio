@@ -93,6 +93,8 @@ function JellySpriteBody() {
     refVisible,
     tileVisible,
     tileCount,
+    inkMode,
+    shadingRamp,
   } = ts;
 
   // Sync non-Zustand refs so engine closures see the latest values per render
@@ -149,6 +151,8 @@ function JellySpriteBody() {
   const setRefVisible = (v) => td({ type: A.SET_REF_VISIBLE, payload: v });
   const setTileVisible = (v) => td({ type: A.SET_TILE_VISIBLE, payload: v });
   const setTileCount = (v) => td({ type: A.SET_TILE_COUNT, payload: v });
+  const setInkMode = (v) => td({ type: A.SET_INK_MODE, payload: v });
+  const setShadingRamp = (v) => td({ type: A.SET_SHADING_RAMP, payload: v });
   const setResizeAnchor = (v) => td({ type: A.SET_RESIZE_ANCHOR, payload: v });
   const setCustomW = (v) => td({ type: A.SET_CUSTOM_W, payload: v });
   const setCustomH = (v) => td({ type: A.SET_CUSTOM_H, payload: v });
@@ -1611,6 +1615,10 @@ function JellySpriteBody() {
     setTileCount,
     tileCanvasRef,
     redrawRef,
+    inkMode,
+    setInkMode,
+    shadingRamp,
+    setShadingRamp,
     projectState: state,
   };
 
