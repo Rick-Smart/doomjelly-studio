@@ -8,15 +8,16 @@
 
 ## Quick Navigation
 
-|                                                                    |                                              |
-| ------------------------------------------------------------------ | -------------------------------------------- |
-| [Sprint Status Dashboard](#sprint-status-dashboard)                | Current state of all sprints                 |
-| [Sprint Governance](#sprint-governance)                            | Policies, shim rules, start/close checklists |
-| [Sprint Close Checklist](#sprint-close-checklist)                  | Enforcement greps to run before every close  |
-| [Rules 1–20 Reference](#rules-120-reference)                       | Architecture laws + enforcement notes        |
-| [Sprint 16 — Active](#sprint-16--crash-fix-dead-code--rough-edges) | Current sprint full detail                   |
-| [Sprint 15 — Last Completed](#sprint-15--data-model-normalization) | Bugs fixed, changes, audit                   |
-| [Sprint History (0–12)](#sprint-history-012)                       | Collapsed summaries for completed work       |
+|                                                                            |                                              |
+| -------------------------------------------------------------------------- | -------------------------------------------- |
+| [Sprint Status Dashboard](#sprint-status-dashboard)                        | Current state of all sprints                 |
+| [Sprint Governance](#sprint-governance)                                    | Policies, shim rules, start/close checklists |
+| [Sprint Close Checklist](#sprint-close-checklist)                          | Enforcement greps to run before every close  |
+| [Rules 1–20 Reference](#rules-120-reference)                               | Architecture laws + enforcement notes        |
+| [Sprint 17 — Next](#sprint-17--ink-system-lock-alpha--shading-ink)         | Next sprint full detail                      |
+| [Sprint 16 — Last Completed](#sprint-16--crash-fix-dead-code--rough-edges) | Bugs fixed, changes, audit                   |
+| [Sprint 15](#sprint-15--data-model-normalization)                          | Collapsed summary                            |
+| [Sprint History (0–12)](#sprint-history-012)                               | Collapsed summaries for completed work       |
 
 ---
 
@@ -42,6 +43,11 @@
 | Sprint 14 | Full Ruleset Compliance Pass (CSS)   | ✅ Complete (`81bd5ec`) |
 | Sprint 15 | Data Model Normalization             | ✅ Complete (`1d6f081`) |
 | Sprint 16 | Crash Fix, Dead Code & Rough Edges   | ✅ Complete (`536a1f4`) |
+| Sprint 17 | Ink System (Lock Alpha + Shading)    | 🔲 Not started          |
+| Sprint 18 | Drawing Quality + Onion Skin Upgrade | 🔲 Not started          |
+| Sprint 19 | Color Adjustments                    | 🔲 Not started          |
+| Sprint 20 | Drawing Tool Expansion               | 🔲 Not started          |
+| Sprint 21 | Advanced Timeline                    | 🔲 Not started          |
 
 ---
 
@@ -277,6 +283,255 @@ Before a store consumer migration is declared complete: (1) grep all references 
 Extract a UI pattern into `src/ui/` when it appears identically in two or more distinct files. The first usage is a prototype; the second reveals the correct shared API. Do not extract speculatively. Feature-internal patterns stay in the feature directory.
 
 Every `src/ui/` component requires: `ComponentName.jsx`, `ComponentName.css` (tokens only — Rule 18), `index.js` barrel with named exports.
+
+---
+
+## Sprint 17 — Ink System (Lock Alpha + Shading Ink)
+
+**Status:** 🔲 Not started  
+**Origin:** Aseprite parity audit (March 2026). Lock alpha and shading ink are the two highest-ROI drawing modes missing from JellySprite. Both are isolated to the drawing engine layer and require no architectural change — just a new scalar in ToolStore and a rendering branch in pixelOps.
+
+### Design assumptions challenged
+
+| Assumption                                                         | Verdict                                                                                                                                                   |
+| ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| The drawing engine only needs one paint mode (alpha-composite)     | ❌ Wrong for retro pixel art. Lock alpha (recolor without changing transparency) and shading ink (shift pixels along a palette ramp) are daily-use tools. |
+| Ink mode should be a per-tool setting                              | ⚠️ Debatable. Aseprite makes it global (context bar). Simpler — go global for now; per-tool is a future refinement.                                       |
+| Palette ramp selection for shading needs a separate data structure | ✅ Correct. The shading ramp is a user-selected ordered subset of palette colors. Store as `shadingRamp: string[]` in ToolStore.                          |
+
+### Tasks
+
+#### 17a — Add `inkMode` to ToolStore ✅ (pending)
+
+Add `inkMode: "simple" | "lock-alpha" | "shading"` to `tool.types.ts`, `jellySpriteActions.js`, `jellySpriteReducer.js`, `jellySpriteInitialState.js`, and the Zustand `useToolStore`. Default: `"simple"`.
+
+Also add `shadingRamp: string[]` (ordered palette color selection used by shading ink) to the same stores. Default: `[]`.
+
+#### 17b — Lock Alpha ink in drawing engine ✅ (pending)
+
+When `inkMode === "lock-alpha"`: strokes replace only the RGB channels of existing pixels. Alpha is read from the layer buffer, not the brush. Pixels with `alpha === 0` are never touched — the ink cannot paint on transparent areas.
+
+Implementation: in `compositePixelConstrained` / `stampBrush` in `pixelOps.js`, add an `inkMode` branch. If `lock-alpha`: write `[srcR, srcG, srcB, existingA]` — only when `existingA > 0`.
+
+#### 17c — Shading ink ✅ (pending)
+
+The shading ink shifts a pixel's color one step along `shadingRamp` on each stroke pass. Left-click moves the pixel toward the start of the ramp (darker); right-click toward the end (lighter). A pixel whose color is not in the ramp is not affected.
+
+- Add `SET_SHADING_RAMP` action dispatched from palette panel when user shift-clicks to select a run of palette swatches.
+- In `drawingEngine.js` `applyBrushAt`, when `inkMode === "shading"`: read the pixel's current color, find its index in `shadingRamp`, increment/decrement, write the new palette color.
+- The shading ramp selection UI lives in the Palette tab: shift-click a swatch to start the ramp, shift-click another to extend it.
+
+#### 17d — Ink picker UI ✅ (pending)
+
+Add an ink-mode row to `LeftToolbar.jsx` below the existing tool groups (or as a compact 3-button row in the Draw section). Three buttons: `S` (simple), `⍻` (lock alpha), `◑` (shading). Active mode highlighted.
+
+For shading ink, show a visual ramp strip in the Palette panel when that mode is active so the user can see the selected gradient.
+
+### Rules compliance
+
+| Rule                 | Impact                                                                                          |
+| -------------------- | ----------------------------------------------------------------------------------------------- |
+| 14 — engine pure     | All ink logic goes in `pixelOps.js` / `drawingEngine.js`. ToolStore holds the mode scalar only. |
+| 3 — no derived state | `shadingRamp` is explicit user data, not derived from palette.                                  |
+
+### Enforcement greps (run before close)
+
+```bash
+# inkMode must never be read outside the engine layer
+grep -rn "inkMode" src/ | grep -v "store\|engine\|toolbar\|panel"
+
+# shadingRamp must not be mutated outside ToolStore actions
+grep -rn "shadingRamp" src/ | grep -v "store\|engine\|panel"
+
+# Build gate
+npm run build
+```
+
+### Commit order
+
+```
+1. 17a — inkMode + shadingRamp in ToolStore
+2. 17b — Lock Alpha ink in pixelOps + drawingEngine
+3. 17c — Shading ink in drawingEngine + palette ramp selection UI
+4. 17d — Ink picker UI in LeftToolbar
+5. npm run build + enforcement greps
+6. Commit: "feat: Sprint 17 — ink system (lock alpha + shading)"
+```
+
+---
+
+## Sprint 18 — Drawing Quality + Onion Skin Upgrade
+
+**Status:** 🔲 Not started  
+**Origin:** Aseprite parity audit. Pixel perfect mode and onion skin improvements are independent of Sprint 17 and lower-risk — both are rendering-only changes with no schema impact.
+
+### Design assumptions challenged
+
+| Assumption                                       | Verdict                                                                                                                                                             |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Pixel perfect is complex to implement            | ✅ False. The algorithm is a post-stroke filter: walk the bresenham line and remove any pixel that has two already-painted neighbours at a corner — about 20 lines. |
+| Onion skin depth should be a per-frame concept   | ❌ Wrong. It's a global view preference, same as Aseprite. Store in ToolStore as `onionPrev: number`, `onionNext: number`.                                          |
+| Red/blue tint requires a second compositing pass | ✅ True but cheap — draw prev frames with a red color-matrix, next frames with blue (canvas globalCompositeOperation + CSS filter, or tint in compositeEngine).     |
+
+### Tasks
+
+#### 18a — Pixel Perfect freehand mode
+
+Add `pixelPerfect: boolean` to ToolStore (default `false`). When enabled during freehand pencil strokes: after each new pixel is stamped, check if the previous pixel forms an "L-bend" with the one before it (two pixels that could both be removed without breaking connectivity). If so, erase the redundant one. This is the canonical pixel-perfect algorithm.
+
+Affects: `drawingEngine.js` `onPointerMove` for pencil tool only. No pixelOps changes needed — it's a stroke post-filter.
+
+UI: Toggle button in LeftToolbar pencil-mode section (or auto-show when pencil is active).
+
+#### 18b — Configurable onion skin depth
+
+Add `onionPrev: number` and `onionNext: number` to `jellySpriteInitialState` + actions + reducer. Default `1` each (preserves current behavior). Range 0–5.
+
+In `CanvasArea.jsx` compositing / onion render: render `onionPrev` previous frames at decreasing opacity, `onionNext` next frames at decreasing opacity.
+
+UI: Two number spinners in the frame-strip controls area (visible when onion skinning is on).
+
+#### 18c — Red/blue onion skin tinting
+
+Prev frames tinted red (`rgba(255,0,0,0.4)` overlay), next frames tinted blue (`rgba(0,100,255,0.4)` overlay). Replace the current single-opacity ghost with color-coded ghosts. Classic animation industry convention.
+
+Add `onionTint: boolean` to ToolStore. Default `true`. Toggle button next to the onion toggle.
+
+### Commit order
+
+```
+1. 18a — pixel perfect mode in drawingEngine + toolbar toggle
+2. 18b — onionPrev / onionNext depth controls
+3. 18c — red/blue onion tint
+4. npm run build + enforcement greps
+5. Commit: "feat: Sprint 18 — pixel perfect + onion skin upgrade"
+```
+
+---
+
+## Sprint 19 — Color Adjustments
+
+**Status:** 🔲 Not started  
+**Origin:** Aseprite parity audit. Color adjustment operations (HSL, brightness/contrast, replace color) are edit commands applied to a layer's pixel buffer. None require schema changes.
+
+### Design assumptions challenged
+
+| Assumption                                       | Verdict                                                                                                                                                                      |
+| ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Color adjustments belong in the drawing engine   | ❌ No. They are one-shot buffer transforms, not stroke operations. They belong as standalone pure functions in a new `src/features/jelly-sprite/engine/adjustments.js` file. |
+| These need a non-destructive/layer-effect system | 🔲 Deferred. Apply destructively (to the pixel buffer) and push to undo history. Non-destructive adjustment layers are Sprint 22+ territory.                                 |
+
+### Tasks
+
+#### 19a — Hue / Saturation / Lightness
+
+Pure function `adjustHSL(buf, w, h, dH, dS, dL, sel, selMask)`. Converts each pixel to HSL, applies delta, converts back. Respects selection.
+
+UI: Modal (or inline panel) with three sliders. Accessible from a new right-click context menu on the Layers panel or an Edit menu in the canvas toolbar.
+
+#### 19b — Brightness / Contrast
+
+Pure function `adjustBrightnessContrast(buf, w, h, brightness, contrast, sel, selMask)`. Standard per-channel linear remap.
+
+UI: Two sliders in the same adjustment modal/panel as 19a (tabbed or stacked).
+
+#### 19c — Replace Color
+
+Pure function `replaceColor(buf, w, h, fromHex, toHex, tolerance, sel, selMask)`. Walks all pixels; if `colorsMatchTolerance(pixel, from, tol)` → replace with `to`. Tolerance 0–255 slider.
+
+UI: FG/BG color pair display with a swap button + tolerance slider in the adjustment panel.
+
+### Commit order
+
+```
+1. 19a — HSL adjustment function + modal UI
+2. 19b — Brightness/Contrast (extend the same modal)
+3. 19c — Replace Color
+4. npm run build + enforcement greps
+5. Commit: "feat: Sprint 19 — color adjustments (HSL, brightness, replace color)"
+```
+
+---
+
+## Sprint 20 — Drawing Tool Expansion
+
+**Status:** 🔲 Not started  
+**Origin:** Aseprite parity audit. Curve, polygon, and gradient tools are the main drawing primitives we lack. Each is an isolated addition to `pixelOps.js` + `drawingEngine.js` + `jellySprite.constants.js`.
+
+### Design assumptions challenged
+
+| Assumption                                    | Verdict                                                                                                                                |
+| --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Bézier curves require a new interaction model | ✅ True. Click endpoints first, then drag control points in a second phase. Need to add a "control point drag" state to drawingEngine. |
+| Gradient needs a new tool or can reuse fill   | ❌ New tool. Fill flood-fills a region; gradient fills it with a ramp. Different interaction (drag to set direction).                  |
+
+### Tasks
+
+#### 20a — Curve tool (cubic Bézier)
+
+Four-point interaction: click start, click end, then drag two control point handles. On commit, rasterize with De Casteljau subdivision into bresenham pixels. Add to TOOL_GROUPS as `{ id: "curve", icon: "⌒", title: "Curve (shift+L)" }`.
+
+#### 20b — Polygon tool
+
+Click to place vertices; double-click or press Enter to close and stroke/fill. Store in-progress vertices in drawingEngine local state. On close, run scanline polygon fill (reuse `buildPolygonMask` already in `selectionUtils.js`). Add to TOOL_GROUPS.
+
+#### 20c — Contour tool
+
+Freehand closed-shape drawing. Like lasso select but draws instead of selects. On pointer-up, auto-closes the path back to the start point and strokes/fills. Mostly reuses the existing lasso path logic.
+
+#### 20d — Gradient fill
+
+Drag to define direction and extent. Two modes: linear and radial. Fills selection (or full canvas) with a smooth ramp from FG to BG color. Rasterizes by computing each pixel's position along the gradient axis.
+
+### Commit order
+
+```
+1. 20a — Curve tool
+2. 20b — Polygon tool
+3. 20c — Contour tool
+4. 20d — Gradient fill
+5. npm run build + enforcement greps
+6. Commit: "feat: Sprint 20 — curve, polygon, contour, gradient tools"
+```
+
+---
+
+## Sprint 21 — Advanced Timeline
+
+**Status:** 🔲 Not started  
+**Origin:** Aseprite parity audit. Cel-level opacity and linked cels require the most careful design — they touch the pixel document data model. Per-frame ticks editing in the JellySprite frame strip fills the gap between the editor and the Animator.
+
+### Design assumptions challenged
+
+| Assumption                              | Verdict                                                                                                                                                                                                                                                                    |
+| --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| Cel opacity can reuse layer opacity     | ❌ Layer opacity is per-layer global. Cel opacity is per (layer, frame) — a 2D grid value. Needs a new `celOpacity: Record<layerId, Record<frameId, number>>` field in the pixelDocument state.                                                                            |
+| Linked cels are just a copy on save     | ❌ Wrong. A linked cel is a live reference — editing it in one frame also edits the others. Requires storing a `linkedTo: frameId                                                                                                                                          | null` pointer on the layer-per-frame structure and routing brush writes to all linked frames. |
+| Per-frame ticks editing is a big change | ✅ False. JellySprite frames already have an `id` field. Add a `ticks: number` field (default 1) to `makeFrame()`, surface an editable input on double-click in the frame strip, dispatch `UPDATE_FRAME_TICKS`. The Animator already reads ticks from its own frame model. |
+
+### Tasks
+
+#### 21a — Editable per-frame ticks in JellySprite
+
+Add `ticks: number` to each frame in `jellySpriteInitialState` (default `1`). Add `UPDATE_FRAME_TICKS` action. Double-click a frame thumb in `CanvasArea.jsx` to open an inline number input. The global FPS control becomes the "tick rate" (ticks per second), making the two controls orthogonal: FPS sets the clock; ticks per frame sets how many clock steps each frame holds.
+
+#### 21b — Cel opacity
+
+Add `celOpacity: Record<string, Record<string, number>>` to pixelDocument state (keyed by `[layerId][frameId]`, default `1.0`). In `compositeEngine.js`, when blending layer pixels, multiply by `celOpacity[layerId][frameId] ?? 1`. UI: slider in a cel properties popover (right-click on frame thumb while a layer is active).
+
+#### 21c — Linked cels
+
+Add `linkedCel: Record<string, Record<string, string | null>>` to pixelDocument (keyed `[layerId][frameId]`, value is the `frameId` of the source frame). When drawing on a linked cel, route the write to the source frame's buffer too (or vice versa — all cels in a link group stay identical). UI: right-click frame thumb → "Link to previous frame" / "Unlink".
+
+### Commit order
+
+```
+1. 21a — per-frame ticks in JellySprite editor
+2. 21b — cel opacity
+3. 21c — linked cels
+4. npm run build + enforcement greps
+5. Commit: "feat: Sprint 21 — advanced timeline (ticks, cel opacity, linked cels)"
+```
 
 ---
 
