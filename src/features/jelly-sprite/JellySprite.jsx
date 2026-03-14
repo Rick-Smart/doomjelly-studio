@@ -1152,8 +1152,24 @@ function JellySpriteBody() {
 
   useEffect(() => {
     function onKey(e) {
-      const tag = document.activeElement?.tagName;
-      if (["INPUT", "TEXTAREA"].includes(tag)) return;
+      const el = document.activeElement;
+      const tag = el?.tagName;
+      // Block shortcuts only when the user is actually typing text.
+      // Range sliders, checkboxes, color inputs etc. keep shortcuts active.
+      const isTextEntry =
+        tag === "TEXTAREA" ||
+        (tag === "INPUT" &&
+          ![
+            "range",
+            "checkbox",
+            "radio",
+            "color",
+            "button",
+            "submit",
+            "reset",
+            "file",
+          ].includes(el.type));
+      if (isTextEntry) return;
       const a = actionsRef.current;
       if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) {
         e.preventDefault();
