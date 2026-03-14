@@ -8,16 +8,16 @@
 
 ## Quick Navigation
 
-|                                                                            |                                              |
-| -------------------------------------------------------------------------- | -------------------------------------------- |
-| [Sprint Status Dashboard](#sprint-status-dashboard)                        | Current state of all sprints                 |
-| [Sprint Governance](#sprint-governance)                                    | Policies, shim rules, start/close checklists |
-| [Sprint Close Checklist](#sprint-close-checklist)                          | Enforcement greps to run before every close  |
-| [Rules 1–20 Reference](#rules-120-reference)                               | Architecture laws + enforcement notes        |
-| [Sprint 17 — Next](#sprint-17--ink-system-lock-alpha--shading-ink)         | Next sprint full detail                      |
-| [Sprint 16 — Last Completed](#sprint-16--crash-fix-dead-code--rough-edges) | Bugs fixed, changes, audit                   |
-| [Sprint 15](#sprint-15--data-model-normalization)                          | Collapsed summary                            |
-| [Sprint History (0–12)](#sprint-history-012)                               | Collapsed summaries for completed work       |
+|                                                                              |                                              |
+| ---------------------------------------------------------------------------- | -------------------------------------------- |
+| [Sprint Status Dashboard](#sprint-status-dashboard)                          | Current state of all sprints                 |
+| [Sprint Governance](#sprint-governance)                                      | Policies, shim rules, start/close checklists |
+| [Sprint Close Checklist](#sprint-close-checklist)                            | Enforcement greps to run before every close  |
+| [Rules 1–20 Reference](#rules-120-reference)                                 | Architecture laws + enforcement notes        |
+| [Sprint 18 — In Progress](#sprint-18--drawing-quality--onion-skin-upgrade)   | Current sprint full detail                   |
+| [Sprint 17 — Last Completed](#sprint-17--ink-system-lock-alpha--shading-ink) | Ink system complete                          |
+| [Sprint 15](#sprint-15--data-model-normalization)                            | Collapsed summary                            |
+| [Sprint History (0–12)](#sprint-history-012)                                 | Collapsed summaries for completed work       |
 
 ---
 
@@ -43,8 +43,8 @@
 | Sprint 14 | Full Ruleset Compliance Pass (CSS)   | ✅ Complete (`81bd5ec`) |
 | Sprint 15 | Data Model Normalization             | ✅ Complete (`1d6f081`) |
 | Sprint 16 | Crash Fix, Dead Code & Rough Edges   | ✅ Complete (`536a1f4`) |
-| Sprint 17 | Ink System (Lock Alpha + Shading)    | 🔲 Not started          |
-| Sprint 18 | Drawing Quality + Onion Skin Upgrade | 🔲 Not started          |
+| Sprint 17 | Ink System (Lock Alpha + Shading)    | ✅ Complete (`f1d5c13`) |
+| Sprint 18 | Drawing Quality + Onion Skin Upgrade | 🔄 In progress          |
 | Sprint 19 | Color Adjustments                    | 🔲 Not started          |
 | Sprint 20 | Drawing Tool Expansion               | 🔲 Not started          |
 | Sprint 21 | Advanced Timeline                    | 🔲 Not started          |
@@ -288,7 +288,7 @@ Every `src/ui/` component requires: `ComponentName.jsx`, `ComponentName.css` (to
 
 ## Sprint 17 — Ink System (Lock Alpha + Shading Ink)
 
-**Status:** 🔲 Not started  
+**Status:** ✅ Complete (`f1d5c13`)  
 **Origin:** Aseprite parity audit (March 2026). Lock alpha and shading ink are the two highest-ROI drawing modes missing from JellySprite. Both are isolated to the drawing engine layer and require no architectural change — just a new scalar in ToolStore and a rendering branch in pixelOps.
 
 ### Design assumptions challenged
@@ -301,31 +301,21 @@ Every `src/ui/` component requires: `ComponentName.jsx`, `ComponentName.css` (to
 
 ### Tasks
 
-#### 17a — Add `inkMode` to ToolStore ✅ (pending)
+#### 17a — Add `inkMode` to ToolStore ✅
 
-Add `inkMode: "simple" | "lock-alpha" | "shading"` to `tool.types.ts`, `jellySpriteActions.js`, `jellySpriteReducer.js`, `jellySpriteInitialState.js`, and the Zustand `useToolStore`. Default: `"simple"`.
+Added `inkMode: "simple" | "lock-alpha" | "shading"` to `tool.types.ts`, `jellySpriteActions.js`, `jellySpriteReducer.js`, `jellySpriteInitialState.js`, and the Zustand `useToolStore`. Default: `"simple"`. Also added `shadingRamp: string[]`. Default: `[]`.
 
-Also add `shadingRamp: string[]` (ordered palette color selection used by shading ink) to the same stores. Default: `[]`.
+#### 17b — Lock Alpha ink in drawing engine ✅
 
-#### 17b — Lock Alpha ink in drawing engine ✅ (pending)
+When `inkMode === "lock-alpha"`: strokes replace only the RGB channels of existing pixels. Alpha is read from the layer buffer, not the brush. Pixels with `alpha === 0` are never touched. Implemented `lockAlphaPixelConstrained()` in `pixelOps.js`; `paintWithSymmetry()` dispatches based on `inkMode`.
 
-When `inkMode === "lock-alpha"`: strokes replace only the RGB channels of existing pixels. Alpha is read from the layer buffer, not the brush. Pixels with `alpha === 0` are never touched — the ink cannot paint on transparent areas.
+#### 17c — Shading ink ✅
 
-Implementation: in `compositePixelConstrained` / `stampBrush` in `pixelOps.js`, add an `inkMode` branch. If `lock-alpha`: write `[srcR, srcG, srcB, existingA]` — only when `existingA > 0`.
+The shading ink shifts a pixel's color one step along `shadingRamp` on each stroke pass. Implemented `shadePixelConstrained()` in `pixelOps.js`. `SET_SHADING_RAMP` action dispatched from palette panel when user shift-clicks to select a run of palette swatches. Ramp builder UI added to PaletteManager.
 
-#### 17c — Shading ink ✅ (pending)
+#### 17d — Ink picker UI ✅
 
-The shading ink shifts a pixel's color one step along `shadingRamp` on each stroke pass. Left-click moves the pixel toward the start of the ramp (darker); right-click toward the end (lighter). A pixel whose color is not in the ramp is not affected.
-
-- Add `SET_SHADING_RAMP` action dispatched from palette panel when user shift-clicks to select a run of palette swatches.
-- In `drawingEngine.js` `applyBrushAt`, when `inkMode === "shading"`: read the pixel's current color, find its index in `shadingRamp`, increment/decrement, write the new palette color.
-- The shading ramp selection UI lives in the Palette tab: shift-click a swatch to start the ramp, shift-click another to extend it.
-
-#### 17d — Ink picker UI ✅ (pending)
-
-Add an ink-mode row to `LeftToolbar.jsx` below the existing tool groups (or as a compact 3-button row in the Draw section). Three buttons: `S` (simple), `⍻` (lock alpha), `◑` (shading). Active mode highlighted.
-
-For shading ink, show a visual ramp strip in the Palette panel when that mode is active so the user can see the selected gradient.
+Added 3-button ink picker row to `LeftToolbar.jsx`. Three buttons: `S` (simple), `⍻` (lock alpha), `◑` (shading). Active mode highlighted. `inkMode`/`shadingRamp`/`setInkMode`/`setShadingRamp` wired into JellySprite.jsx ctx.
 
 ### Rules compliance
 
@@ -347,62 +337,66 @@ grep -rn "shadingRamp" src/ | grep -v "store\|engine\|panel"
 npm run build
 ```
 
-### Commit order
+### Commit record
 
-```
-1. 17a — inkMode + shadingRamp in ToolStore
-2. 17b — Lock Alpha ink in pixelOps + drawingEngine
-3. 17c — Shading ink in drawingEngine + palette ramp selection UI
-4. 17d — Ink picker UI in LeftToolbar
-5. npm run build + enforcement greps
-6. Commit: "feat: Sprint 17 — ink system (lock alpha + shading)"
-```
+- `f1d5c13` — feat: Sprint 17 — ink system (lock alpha + shading)
 
 ---
 
 ## Sprint 18 — Drawing Quality + Onion Skin Upgrade
 
-**Status:** 🔲 Not started  
-**Origin:** Aseprite parity audit. Pixel perfect mode and onion skin improvements are independent of Sprint 17 and lower-risk — both are rendering-only changes with no schema impact.
+**Status:** 🔄 In progress  
+**Origin:** Aseprite parity audit. Drawing quality improvements, canvas UX fixes, and onion skin upgrades. Sprint scope was extended to include a brush cursor overlay and auto-fit zoom (canvas fill) which were higher priority than pixel perfect mode.
 
 ### Design assumptions challenged
 
-| Assumption                                       | Verdict                                                                                                                                                             |
-| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Pixel perfect is complex to implement            | ✅ False. The algorithm is a post-stroke filter: walk the bresenham line and remove any pixel that has two already-painted neighbours at a corner — about 20 lines. |
-| Onion skin depth should be a per-frame concept   | ❌ Wrong. It's a global view preference, same as Aseprite. Store in ToolStore as `onionPrev: number`, `onionNext: number`.                                          |
-| Red/blue tint requires a second compositing pass | ✅ True but cheap — draw prev frames with a red color-matrix, next frames with blue (canvas globalCompositeOperation + CSS filter, or tint in compositeEngine).     |
+| Assumption                                           | Verdict                                                                                                                    |
+| ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Pixel perfect is complex to implement                | ✅ False. The algorithm is a post-stroke filter. Deferred to 18d — brush cursor and auto-fit zoom were higher priority.    |
+| Onion skin depth should be a per-frame concept       | ❌ Wrong. It's a global view preference, same as Aseprite. Store in ToolStore as `onionPrev: number`, `onionNext: number`. |
+| Red/blue tint requires a second compositing pass     | ✅ True but cheap — draw prev frames with a red color-matrix, next frames with blue.                                       |
+| The canvas works at whatever zoom was last persisted | ❌ Wrong. Persisted zoom of 4 makes a 32×32 canvas look tiny. Auto-fit on open + wrap resize is the correct UX.            |
+| The native cursor is sufficient for pixel art tools  | ❌ Wrong. A brush-shape preview overlay is essential for usability with larger brush sizes.                                |
 
 ### Tasks
 
-#### 18a — Pixel Perfect freehand mode
+#### 18a — Brush cursor overlay ✅
 
-Add `pixelPerfect: boolean` to ToolStore (default `false`). When enabled during freehand pencil strokes: after each new pixel is stamped, check if the previous pixel forms an "L-bend" with the one before it (two pixels that could both be removed without breaking connectivity). If so, erase the redundant one. This is the canonical pixel-perfect algorithm.
+Added a transparent overlay `<canvas>` in `CanvasArea.jsx`. `renderBrushCursor()` draws the brush footprint outline using a double-stroke (black + white) for visibility on any background. Supports all brush shapes + spray tool circle. Cursor tracking attached to the wrapper div (`onPointerMove`/`onPointerLeave` on `.jelly-sprite__canvas-inner`) so bubbled events fire correctly. `cursorStyle` set to `"none"` for pencil/eraser/spray in `JellySprite.jsx`. Added `.jelly-sprite__canvas-inner` and `.jelly-sprite__brush-cursor` CSS.
 
-Affects: `drawingEngine.js` `onPointerMove` for pencil tool only. No pixelOps changes needed — it's a stroke post-filter.
+- `bc76451` — Sprint 18a: brush cursor overlay
+- `9a937cb` — Fix: move cursor tracking to wrapper div
 
-UI: Toggle button in LeftToolbar pencil-mode section (or auto-show when pencil is active).
+#### 18b — Auto-fit zoom (canvas fills available space) ✅
 
-#### 18b — Configurable onion skin depth
+Added `ResizeObserver` on `.jelly-sprite__canvas-wrap` in `CanvasArea.jsx`. On mount and every container resize, computes `fitZoom = floor(min((w-40)/canvasW, (h-40)/canvasH))` clamped to `[1, MAX_ZOOM]` and dispatches `setZoom`. Also fires when `canvasW`/`canvasH` change (canvas resize operation). `setZoom` dep omitted from the effect dep array to prevent infinite loops (annotated with eslint-disable). `MAX_ZOOM` imported from `jellySprite.constants`.
 
-Add `onionPrev: number` and `onionNext: number` to `jellySpriteInitialState` + actions + reducer. Default `1` each (preserves current behavior). Range 0–5.
+#### 18c — Supabase save 400 hotfix ✅
 
-In `CanvasArea.jsx` compositing / onion render: render `onionPrev` previous frames at decreasing opacity, `onionNext` next frames at decreasing opacity.
+`sbSaveSprite()` was sending `body: sprite.body ?? {}` in the upsert row but the `sprites` table has no `body` column (removed in Sprint 15 clean-slate schema). Supabase returned HTTP 400 for any save on the live GitHub Pages site. Dev was unaffected because `VITE_AUTH_BYPASS=true` routes to IndexedDB. Fixed by removing the stale `body:` field from the upsert row in `supabaseApi.js`.
 
-UI: Two number spinners in the frame-strip controls area (visible when onion skinning is on).
+- `1e2afc3` — Fix sprite save 400 on live site
 
-#### 18c — Red/blue onion skin tinting
+#### 18d — Pixel Perfect freehand mode 🔲
 
-Prev frames tinted red (`rgba(255,0,0,0.4)` overlay), next frames tinted blue (`rgba(0,100,255,0.4)` overlay). Replace the current single-opacity ghost with color-coded ghosts. Classic animation industry convention.
+Add `pixelPerfect: boolean` to ToolStore (default `false`). When enabled during freehand pencil strokes: after each new pixel is stamped, check if the previous pixel forms an "L-bend" with the one before it. If so, erase the redundant one.
 
-Add `onionTint: boolean` to ToolStore. Default `true`. Toggle button next to the onion toggle.
+Affects: `drawingEngine.js` `onPointerMove` for pencil tool only. UI: Toggle button in LeftToolbar.
 
-### Commit order
+#### 18e — Configurable onion skin depth 🔲
+
+Add `onionPrev: number` and `onionNext: number` to `jellySpriteInitialState` + actions + reducer. Default `1` each. Range 0–5. Two spinners in the frame-strip controls area.
+
+#### 18f — Red/blue onion skin tinting 🔲
+
+Prev frames tinted red, next frames tinted blue. Add `onionTint: boolean` to ToolStore. Default `true`.
+
+### Commit order (remaining)
 
 ```
-1. 18a — pixel perfect mode in drawingEngine + toolbar toggle
-2. 18b — onionPrev / onionNext depth controls
-3. 18c — red/blue onion tint
+1. 18d — pixel perfect mode in drawingEngine + toolbar toggle
+2. 18e — onionPrev / onionNext depth controls
+3. 18f — red/blue onion tint
 4. npm run build + enforcement greps
 5. Commit: "feat: Sprint 18 — pixel perfect + onion skin upgrade"
 ```

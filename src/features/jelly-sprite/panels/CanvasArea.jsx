@@ -1,6 +1,7 @@
 import { useRef, useCallback, useEffect } from "react";
 import { useJellySprite } from "../JellySpriteContext";
 import { FrameThumb } from "../FrameThumb";
+import { MAX_ZOOM } from "../jellySprite.constants";
 
 // ── Brush cursor helpers ──────────────────────────────────────────────────────
 
@@ -162,7 +163,34 @@ export function CanvasArea() {
     renameFrame,
     startPlayback,
     stopPlayback,
+    setZoom,
   } = useJellySprite();
+
+  // ── Auto-fit zoom ─────────────────────────────────────────────────────────
+  const wrapRef = useRef(null);
+
+  useEffect(() => {
+    const wrap = wrapRef.current;
+    if (!wrap) return;
+    const compute = () => {
+      const { width, height } = wrap.getBoundingClientRect();
+      const pad = 40; // 20px padding on each side
+      const fit = Math.max(
+        1,
+        Math.min(
+          MAX_ZOOM,
+          Math.floor(
+            Math.min((width - pad) / canvasW, (height - pad) / canvasH),
+          ),
+        ),
+      );
+      setZoom(fit);
+    };
+    compute();
+    const ro = new ResizeObserver(compute);
+    ro.observe(wrap);
+    return () => ro.disconnect();
+  }, [canvasW, canvasH]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Brush cursor overlay ────────────────────────────────────────────────────
   const brushCursorRef = useRef(null);
@@ -245,7 +273,7 @@ export function CanvasArea() {
           </button>
         </div>
       )}
-      <div className="jelly-sprite__canvas-wrap">
+      <div className="jelly-sprite__canvas-wrap" ref={wrapRef}>
         {/* Wrapper gives overlay canvas its positioning context.
             Cursor tracking lives here so bubbled canvas events update the
             preview without touching the drawing-engine handlers below. */}

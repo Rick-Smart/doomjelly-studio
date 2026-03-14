@@ -91,6 +91,7 @@
   padding: 7px 0;
   background: var(--accent);
   color: var(--color-on-accent);
+}
 
 .anim-sidebar__cta:hover {
   opacity: 0.85;
